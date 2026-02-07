@@ -223,7 +223,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
                 onComplete({
                   name: name.trim(),
                   date: fmtDate,
-                  course: { name: course.name, city: course.city },
+                  course: { name: course.name, city: course.city, tees: course.tees },
                   teeName,
                   teeData: course.tees.find(t => t.name === teeName) || course.tees[0],
                   groups: groups.map(g => ({

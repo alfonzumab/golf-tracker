@@ -12,7 +12,7 @@ import {
   importLocalData,
   joinRound, generateShareCode
 } from './utils/storage';
-import { createTournament, getTournament, startTournament, saveActiveTournament, clearActiveTournament, loadGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
+import { createTournament, getTournament, startTournament, updateTournamentScore, saveActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -30,6 +30,8 @@ import TournamentSetup from './components/tournament/TournamentSetup';
 import TournamentLobby from './components/tournament/TournamentLobby';
 import TournamentJoin from './components/tournament/TournamentJoin';
 import TournamentNav from './components/tournament/TournamentNav';
+import TournamentScore from './components/tournament/TournamentScore';
+import TournamentBoard from './components/tournament/TournamentBoard';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = logged out
@@ -200,6 +202,7 @@ export default function App() {
       return;
     }
     setTournament({ ...tournament, status: 'live' });
+    go('tscore');
   };
 
   const leaveTournament = () => {
@@ -210,6 +213,58 @@ export default function App() {
     clearGuestInfo();
     go('home');
   };
+
+  // Tournament score update
+  const handleTournamentScoreUpdate = (groupIdx, playerIdx, holeIdx, score) => {
+    setTournament(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        groups: prev.groups.map((g, gi) => {
+          if (gi !== groupIdx) return g;
+          return { ...g, players: g.players.map((p, pi) => {
+            if (pi !== playerIdx) return p;
+            const s = [...p.scores]; s[holeIdx] = score; return { ...p, scores: s };
+          }) };
+        })
+      };
+    });
+    if (tournament) updateTournamentScore(tournament.shareCode, groupIdx, playerIdx, holeIdx, score);
+  };
+
+  const handleSelectTournamentPlayer = (info) => {
+    setTournamentGuest(info);
+    saveGuestInfo(info);
+  };
+
+  // Poll tournament data every 10s when live
+  useEffect(() => {
+    if (!tournament || tournament.status !== 'live') return;
+    const code = tournament.shareCode;
+    const myGroup = tournamentGuest?.groupIdx;
+    const id = setInterval(async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const { tournament: fresh } = await getTournament(code);
+        if (fresh) {
+          setTournament(prev => {
+            if (!prev) return fresh;
+            // Keep local scores for user's group, update others from server
+            return {
+              ...fresh,
+              groups: fresh.groups.map((g, gi) => gi === myGroup ? prev.groups[gi] : g)
+            };
+          });
+        }
+      } catch {}
+    }, 10000);
+    return () => clearInterval(id);
+  }, [tournament?.shareCode, tournament?.status, tournamentGuest?.groupIdx]);
+
+  // Auto-navigate to scoring when tournament goes live
+  useEffect(() => {
+    if (tournament?.status === 'live' && pg === 'tlobby') go('tscore');
+  }, [tournament?.status]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -234,7 +289,8 @@ export default function App() {
   const titles = {
     home: "Golf Tracker", score: "Scoring", bets: "Bets & Settlement",
     players: "Players", courses: "Courses", hist: "History", setup: "Game Setup",
-    thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament"
+    thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament",
+    tscore: "Scoring", tboard: "Leaderboard"
   };
 
   return (
@@ -242,8 +298,8 @@ export default function App() {
       <div className="hdr">
         {["setup", "score", "bets"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
-        {pg === "tlobby" && <button className="hdr-bk" onClick={leaveTournament}>{"<"}</button>}
-        <div><div className="hdr-t">{titles[pg] || "Golf Tracker"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{pg === "tlobby" && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
+        {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={leaveTournament}>{"<"}</button>}
+        <div><div className="hdr-t">{titles[pg] || "Golf Tracker"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {pg === "score" && round && <>
             <button className="btn bp bsm" onClick={finish}>Finish</button>
@@ -275,9 +331,11 @@ export default function App() {
       {pg === "tsetup" && <TournamentSetup courses={courses} players={players} selectedCourseId={selectedCourseId} onComplete={handleCreateTournament} />}
       {pg === "tlobby" && <TournamentLobby tournament={tournament} isHost={isHost} onStart={handleStartTournament} onBack={leaveTournament} />}
       {pg === "tjoin" && joinCode && <TournamentJoin code={joinCode} onJoined={handleJoined} onBack={() => go('thub')} />}
+      {pg === "tscore" && tournament && <TournamentScore tournament={tournament} playerInfo={tournamentGuest} onUpdateScore={handleTournamentScoreUpdate} onSelectPlayer={handleSelectTournamentPlayer} />}
+      {pg === "tboard" && tournament && <TournamentBoard tournament={tournament} />}
 
       {/* Nav: show tournament nav for tournament pages, regular nav otherwise */}
-      {isTournamentPg && pg === "tlobby" ? <TournamentNav pg={pg} go={go} isHost={isHost} /> : !isTournamentPg && <Nav pg={pg} go={go} hr={!!round} />}
+      {["tlobby", "tscore", "tboard"].includes(pg) ? <TournamentNav pg={pg} go={go} isHost={isHost} /> : !isTournamentPg && <Nav pg={pg} go={go} hr={!!round} />}
       {modal && <Mdl {...modal} />}
     </div>
   );

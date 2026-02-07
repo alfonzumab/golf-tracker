@@ -29,3 +29,9 @@ export const sixPairs = () => {
 export const fmt$ = n => Math.abs(n) < 0.005 ? "$0" : (n >= 0 ? "+" : "-") + "$" + Math.abs(n).toFixed(2).replace(/\.00$/, "");
 
 export const scoreClass = (s, p) => { if (s == null) return ""; const d = s - p; return d <= -2 ? "eagle" : d === -1 ? "birdie" : d === 0 ? "" : d === 1 ? "bogey" : "dbl"; };
+
+export const enrichPlayer = (p, teeData) => {
+  const tp = teeData.pars.reduce((a, b) => a + b, 0);
+  const ch = calcCH(p.index, teeData.slope, teeData.rating, tp);
+  return { ...p, teeData, courseHandicap: ch, strokeHoles: getStrokes(ch, teeData.handicaps) };
+};

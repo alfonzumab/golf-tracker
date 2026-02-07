@@ -153,26 +153,24 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         </div>
       )}
 
-      {/* Join a round */}
-      {!round && (
-        <div className="cd mb10">
-          <div className="ct">Join a Round</div>
-          <p style={{ fontSize: 13, color: T.dim, marginBottom: 10 }}>Enter a share code to join someone else's round</p>
-          <div className="fx g6">
-            <input
-              className="t-code-inp"
-              style={{ flex: 1, fontSize: 20, padding: 10 }}
-              value={joinCode}
-              onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-              placeholder="ABC123"
-              maxLength={6}
-            />
-            <button className="btn bp bsm" style={{ flexShrink: 0 }} disabled={joinCode.length !== 6 || joining} onClick={handleJoin}>
-              {joining ? '...' : 'Join'}
-            </button>
-          </div>
+      {/* Join a round — always visible */}
+      <div className="cd mb10">
+        <div className="ct">Join a Round</div>
+        <p style={{ fontSize: 13, color: T.dim, marginBottom: 10 }}>Enter a share code to join someone else's round</p>
+        <div className="fx g6">
+          <input
+            className="t-code-inp"
+            style={{ flex: 1, fontSize: 20, padding: 10 }}
+            value={joinCode}
+            onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+            placeholder="ABC123"
+            maxLength={6}
+          />
+          <button className="btn bp bsm" style={{ flexShrink: 0 }} disabled={joinCode.length !== 6 || joining} onClick={handleJoin}>
+            {joining ? '...' : 'Join'}
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Tournament button */}
       <button className="btn bs mb10" style={{ fontSize: 15 }} onClick={() => go("thub")}>

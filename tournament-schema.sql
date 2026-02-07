@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
   course JSONB NOT NULL,
   tee_name TEXT NOT NULL,
   groups JSONB NOT NULL DEFAULT '[]'::jsonb,
-  tournament_games JSONB NOT NULL DEFAULT '{}'::jsonb,
+  tournament_games JSONB NOT NULL DEFAULT '[]'::jsonb,
   team_config JSONB,
   status TEXT NOT NULL DEFAULT 'setup' CHECK (status IN ('setup', 'live', 'finished')),
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -103,7 +103,7 @@ BEGIN
     course = p_tournament->'course',
     tee_name = p_tournament->>'tee_name',
     groups = p_tournament->'groups',
-    tournament_games = COALESCE(p_tournament->'tournament_games', '{}'::jsonb),
+    tournament_games = COALESCE(p_tournament->'tournament_games', '[]'::jsonb),
     team_config = p_tournament->'team_config',
     updated_at = now()
   WHERE share_code = v_code;

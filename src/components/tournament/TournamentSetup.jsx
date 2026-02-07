@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { T } from '../../theme';
+import { T, GT } from '../../theme';
+import { sixPairs } from '../../utils/golf';
+import Tog from '../Toggle';
 
 const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onComplete }) => {
   const [step, setStep] = useState(1);
@@ -16,6 +18,10 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
 
   // Step 3: Groups
   const [groups, setGroups] = useState([]);
+
+  // Step 4: Games
+  const [tGames, setTGames] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
 
   const course = courses.find(c => c.id === courseId) || courses[0];
   const teeName = course?.tees?.[0]?.name || '';
@@ -69,7 +75,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
     <div className="pg">
       {/* Progress */}
       <div className="fx g8 mb12" style={{ justifyContent: 'center' }}>
-        {[1, 2, 3].map(s => (
+        {[1, 2, 3, 4].map(s => (
           <div key={s} style={{
             width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 14, fontWeight: 700,
@@ -83,7 +89,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
       {/* Step 1: Basics */}
       {step === 1 && (
         <div className="cd">
-          <div className="t-step">Step 1 of 3</div>
+          <div className="t-step">Step 1 of 4</div>
           <div className="t-step-title">Tournament Info</div>
           <div className="mb10">
             <div className="il mb6">Tournament Name</div>
@@ -110,7 +116,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
       {step === 2 && (
         <div>
           <div className="cd">
-            <div className="t-step">Step 2 of 3</div>
+            <div className="t-step">Step 2 of 4</div>
             <div className="t-step-title">Players ({tPlayers.length})</div>
             <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
               Add at least 4 players. You can pick from saved players or add new ones.
@@ -182,7 +188,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
       {step === 3 && (
         <div>
           <div className="cd">
-            <div className="t-step">Step 3 of 3</div>
+            <div className="t-step">Step 3 of 4</div>
             <div className="t-step-title">Groups</div>
             <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
               Arrange players into foursomes (2-4 per group). Tap a player to move them.
@@ -218,27 +224,8 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
 
           <div className="fx g8">
             <button className="btn bs" style={{ flex: 1 }} onClick={() => setStep(2)}>{"<"} Back</button>
-            <button className="btn bp" style={{ flex: 2 }} disabled={!allValid}
-              onClick={() => {
-                const fmtDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-                onComplete({
-                  name: name.trim(),
-                  date: fmtDate,
-                  course: { name: course.name, city: course.city, tees: course.tees },
-                  teeName,
-                  teeData: course.tees.find(t => t.name === teeName) || course.tees[0],
-                  groups: groups.map(g => ({
-                    players: g.players.map(p => ({
-                      id: p.id, name: p.name, index: p.index,
-                      scores: Array(18).fill(null)
-                    })),
-                    games: []
-                  })),
-                  tournamentGames: {},
-                  teamConfig: null
-                });
-              }}>
-              Create Tournament {">"}
+            <button className="btn bp" style={{ flex: 2 }} disabled={!allValid} onClick={() => setStep(4)}>
+              Next: Games {">"}
             </button>
           </div>
           {!allValid && groups.length > 0 && (
@@ -248,6 +235,111 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
           )}
         </div>
       )}
+
+      {/* Step 4: Games */}
+      {step === 4 && (() => {
+        const all4 = groups.every(g => g.players.length === 4);
+        const addGame = t => {
+          const g = { type: t, id: Date.now() };
+          if (t === GT.STROKE) Object.assign(g, { net: true, wagerPerPlayer: 10 });
+          else if (t === GT.MATCH) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
+          else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: true, potPerPlayer: 20 });
+          else Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
+          setTGames([...tGames, g]); setShowAdd(false);
+        };
+        const u = (id, up) => setTGames(tGames.map(g => g.id === id ? { ...g, ...up } : g));
+
+        const createTournament = () => {
+          const fmtDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+          onComplete({
+            name: name.trim(),
+            date: fmtDate,
+            course: { name: course.name, city: course.city, tees: course.tees },
+            teeName,
+            teeData: course.tees.find(t => t.name === teeName) || course.tees[0],
+            groups: groups.map(g => ({
+              players: g.players.map(p => ({
+                id: p.id, name: p.name, index: p.index,
+                scores: Array(18).fill(null)
+              }))
+            })),
+            tournamentGames: tGames,
+            teamConfig: null
+          });
+        };
+
+        return (
+          <div>
+            <div className="cd">
+              <div className="t-step">Step 4 of 4</div>
+              <div className="t-step-title">Games (Optional)</div>
+              <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
+                Add bets that apply to every group. Skip this step to play without games.
+              </p>
+              {!all4 && <div style={{ background: T.gold + '22', padding: 10, borderRadius: 8, marginBottom: 12 }}>
+                <p style={{ fontSize: 13, color: T.gold }}>Match and 6-6-6 require all groups to have exactly 4 players.</p>
+              </div>}
+            </div>
+
+            <div className="fxb mb10">
+              <span className="pg-title">Games</span>
+              <button className="btn bp bsm" onClick={() => setShowAdd(true)}>+ Add</button>
+            </div>
+
+            {showAdd && <div className="cd"><div className="g2">
+              <button className="btn bs" onClick={() => addGame(GT.STROKE)}>Stroke</button>
+              <button className="btn bs" onClick={() => addGame(GT.SKINS)}>Skins</button>
+              <button className="btn bs" disabled={!all4} onClick={() => all4 && addGame(GT.MATCH)}>Match</button>
+              <button className="btn bs" disabled={!all4} onClick={() => all4 && addGame(GT.SIXES)}>6-6-6</button>
+            </div></div>}
+
+            {tGames.map(g => (
+              <div key={g.id} className="cd">
+                <div className="fxb mb6">
+                  <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : "6-6-6"}</span>
+                  <button className="bg" style={{ color: T.red, borderColor: T.red + '33' }} onClick={() => setTGames(tGames.filter(x => x.id !== g.id))}>Remove</button>
+                </div>
+                {g.type === GT.STROKE && <>
+                  <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
+                  <div><div className="il">$/player</div><input className="inp" type="number" value={g.wagerPerPlayer} onChange={e => u(g.id, { wagerPerPlayer: parseFloat(e.target.value) || 0 })} /></div>
+                </>}
+                {g.type === GT.MATCH && <>
+                  <p style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Players 1&2 vs 3&4 in each group</p>
+                  <div className="g3">{[["Front", "wagerFront"], ["Back", "wagerBack"], ["Overall", "wagerOverall"]].map(([l, k]) =>
+                    <div key={k}><div className="il">{l} $</div><input className="inp ism" style={{ width: "100%" }} type="number" value={g[k]} onChange={e => u(g.id, { [k]: parseFloat(e.target.value) || 0 })} /></div>
+                  )}</div>
+                </>}
+                {g.type === GT.SKINS && <>
+                  <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
+                  <Tog label="Carry-over" v={g.carryOver} onChange={v => u(g.id, { carryOver: v })} />
+                  <div><div className="il">Pot $/player</div><input className="inp" type="number" value={g.potPerPlayer} onChange={e => u(g.id, { potPerPlayer: parseFloat(e.target.value) || 0 })} /></div>
+                </>}
+                {g.type === GT.SIXES && <>
+                  <div className="il mb6">Format</div>
+                  <div className="fx g6 mb10">
+                    <button className={`chip ${g.mode === "match" ? "sel" : ""}`} onClick={() => u(g.id, { mode: "match" })}>Match</button>
+                    <button className={`chip ${g.mode === "stroke" ? "sel" : ""}`} onClick={() => u(g.id, { mode: "stroke" })}>Stroke</button>
+                  </div>
+                  <div><div className="il">$/segment/person</div><input className="inp" type="number" value={g.wagerPerSegment} onChange={e => u(g.id, { wagerPerSegment: parseFloat(e.target.value) || 0 })} /></div>
+                </>}
+              </div>
+            ))}
+
+            {tGames.length === 0 && !showAdd && (
+              <div className="cd" style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: T.dim }}>No games added — leaderboard only</p>
+              </div>
+            )}
+
+            <div className="fx g8">
+              <button className="btn bs" style={{ flex: 1 }} onClick={() => setStep(3)}>{"<"} Back</button>
+              <button className="btn bp" style={{ flex: 2 }} onClick={createTournament}>
+                Create Tournament {">"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

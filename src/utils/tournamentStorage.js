@@ -34,7 +34,7 @@ export async function createTournament({ name, date, course, teeName, groups, to
     course,
     tee_name: teeName,
     groups,
-    tournament_games: tournamentGames || {},
+    tournament_games: tournamentGames || [],
     team_config: teamConfig || null,
     status: 'setup'
   });
@@ -45,7 +45,7 @@ export async function createTournament({ name, date, course, teeName, groups, to
       const code2 = generateShareCode();
       const { error: e2 } = await supabase.from('tournaments').insert({
         share_code: code2, host_user_id: user.id, name, date, course,
-        tee_name: teeName, groups, tournament_games: tournamentGames || {},
+        tee_name: teeName, groups, tournament_games: tournamentGames || [],
         team_config: teamConfig || null, status: 'setup'
       });
       if (e2) return { error: e2.message };
@@ -76,7 +76,7 @@ export async function getTournament(code) {
       course: t.course,
       teeName: t.tee_name,
       groups: t.groups || [],
-      tournamentGames: t.tournament_games || {},
+      tournamentGames: Array.isArray(t.tournament_games) ? t.tournament_games : [],
       teamConfig: t.team_config,
       status: t.status
     }
@@ -92,7 +92,7 @@ export async function saveTournamentSetup(tournament) {
       course: tournament.course,
       tee_name: tournament.teeName,
       groups: tournament.groups,
-      tournament_games: tournament.tournamentGames || {},
+      tournament_games: tournament.tournamentGames || [],
       team_config: tournament.teamConfig || null
     }
   });

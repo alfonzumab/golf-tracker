@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { T, PC } from '../../theme';
-import { scoreClass, enrichPlayer } from '../../utils/golf';
+import { scoreClass, enrichPlayer, fmt$ } from '../../utils/golf';
+import { calcAll } from '../../utils/calc';
 
 const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer }) => {
   const teeData = tournament.course.tees?.find(t => t.name === tournament.teeName) || tournament.course.tees?.[0];
@@ -149,13 +150,80 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
     return <div><div style={{ fontSize: 13, color: T.accB, textAlign: 'center', marginBottom: 8 }}>Group {playerInfo.groupIdx + 1}</div>{rn(0, "FRONT")}{rn(9, "BACK")}</div>;
   };
 
+  const hasGames = tournament.tournamentGames && tournament.tournamentGames.length > 0;
+  const has4 = pl.length === 4;
+
+  const BV = () => {
+    if (!hasGames) return <div className="cd" style={{ textAlign: 'center' }}><p style={{ fontSize: 14, color: T.dim }}>No games configured for this tournament</p></div>;
+    if (!has4) return <div className="cd" style={{ textAlign: 'center' }}><p style={{ fontSize: 14, color: T.dim }}>Bets require exactly 4 players in your group</p></div>;
+
+    const { results, settlements, balances } = calcAll(tournament.tournamentGames, pl);
+    const currentHole = (() => { for (let h = 0; h < 18; h++) { if (!pl.every(p => p.scores[h] != null)) return h; } return 17; })();
+
+    return (
+      <div>
+        <div style={{ fontSize: 13, color: T.accB, textAlign: 'center', marginBottom: 8 }}>Group {playerInfo.groupIdx + 1}</div>
+        <div className="cd"><div className="ct">Player P&L</div>
+          {pl.map((_, i) => {
+            const v = -balances[i];
+            return <div key={i} className={`sr ${v > 0.01 ? "sp" : v < -0.01 ? "sn" : "su"}`}>
+              <span className={`pc${i}`} style={{ fontWeight: 700 }}>{n[i]}</span>
+              <span style={{ fontWeight: 700 }}>{fmt$(v)}</span>
+            </div>;
+          })}
+        </div>
+
+        {results.filter(r => r.title.includes("6-6-6") && r.segmentScores).map((r, ri) => {
+          const activeSeg = r.segmentScores.find(seg => currentHole >= (seg.range === "1-6" ? 0 : seg.range === "7-12" ? 6 : 12) && currentHole <= (seg.range === "1-6" ? 5 : seg.range === "7-12" ? 11 : 17));
+          if (!activeSeg) return null;
+          return (
+            <div key={ri} className="cd">
+              <div className="ct">Active: {r.title}</div>
+              <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Holes {activeSeg.range}</div>
+              <div className="fxb mb6">
+                <div style={{ textAlign: "center", flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${activeSeg.t1[0]}`}>{n[activeSeg.t1[0]]}</span> & <span className={`pc${activeSeg.t1[1]}`}>{n[activeSeg.t1[1]]}</span></div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: activeSeg.winner === "t1" ? T.accB : T.txt, marginTop: 4 }}>{activeSeg.s1}</div>
+                </div>
+                <div style={{ fontSize: 13, color: T.dim, alignSelf: "center" }}>vs</div>
+                <div style={{ textAlign: "center", flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${activeSeg.t2[0]}`}>{n[activeSeg.t2[0]]}</span> & <span className={`pc${activeSeg.t2[1]}`}>{n[activeSeg.t2[1]]}</span></div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: activeSeg.winner === "t2" ? T.accB : T.txt, marginTop: 4 }}>{activeSeg.s2}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: T.dim, textAlign: "center" }}>{activeSeg.played}/{activeSeg.holes} holes played</div>
+            </div>
+          );
+        })}
+
+        {settlements.length > 0 && <div className="cd"><div className="ct">Settlement</div>
+          {settlements.map((s, i) => (
+            <div key={i} className="sr sn">
+              <span style={{ fontSize: 14 }}><span className={`pc${s.from}`} style={{ fontWeight: 600 }}>{n[s.from]}</span> pays <span className={`pc${s.to}`} style={{ fontWeight: 600 }}>{n[s.to]}</span></span>
+              <span style={{ fontWeight: 700 }}>${s.amount.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>}
+
+        {results.map((r, ri) => (
+          <div key={ri} className="cd">
+            <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
+            {r.status && <div style={{ fontSize: 14, fontWeight: 700, color: T.accB, marginBottom: 6 }}>{r.status}</div>}
+            {r.details?.map((d, j) => <div key={j} style={{ fontSize: 13, color: T.dim, marginBottom: 4, lineHeight: 1.4 }}>{d}</div>)}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="pg">
       <div className="tabs">
         <button className={`tab ${view === "hole" ? "on" : ""}`} onClick={() => setView("hole")}>By Hole</button>
         <button className={`tab ${view === "card" ? "on" : ""}`} onClick={() => setView("card")}>Card</button>
+        {hasGames && has4 && <button className={`tab ${view === "bets" ? "on" : ""}`} onClick={() => setView("bets")}>Bets</button>}
       </div>
-      {view === "hole" ? <HV /> : <CV />}
+      {view === "hole" ? <HV /> : view === "card" ? <CV /> : <BV />}
     </div>
   );
 };

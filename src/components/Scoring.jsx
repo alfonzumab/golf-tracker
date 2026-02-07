@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { T, PC } from '../theme';
 import { calcAll } from '../utils/calc';
 import { fmt$, scoreClass } from '../utils/golf';
@@ -6,18 +6,22 @@ import { fmt$, scoreClass } from '../utils/golf';
 const Scoring = ({ round, updateScore }) => {
   const [hole, setHole] = useState(() => { for (let h = 0; h < 18; h++) { if (!round.players.every(p => p.scores[h] != null)) return h; } return 17; });
   const [view, setView] = useState("hole");
+  const prevHole = useRef(hole);
   const pl = round.players, n = pl.map(p => p.name.split(" ")[0]);
   const { balances, results } = useMemo(() => calcAll(round.games, pl), [round]);
 
   useEffect(() => {
+    const navigated = hole !== prevHole.current;
+    prevHole.current = hole;
+    if (navigated) return;
     if (pl.every(p => p.scores[hole] != null) && hole < 17) {
       const isFurthestHole = !pl.some(p => p.scores.slice(hole + 1).some(s => s != null));
       if (isFurthestHole) {
-        const t = setTimeout(() => setHole(h => Math.min(17, h + 1)), 500);
+        const t = setTimeout(() => setHole(h => Math.min(17, h + 1)), 1200);
         return () => clearTimeout(t);
       }
     }
-  }, [pl.map(p => p.scores[hole]).join(",")]);
+  }, [pl.map(p => p.scores[hole]).join(","), hole]);
 
   const HV = () => {
     const lb = pl.map((p, i) => {
@@ -73,6 +77,8 @@ const Scoring = ({ round, updateScore }) => {
 
         {pl.map((p, pi) => {
           const par = p.teeData.pars[hole], str = p.strokeHoles[hole], sc = p.scores[hole];
+          const lo = Math.max(1, par - 2), hi = par + 3;
+          const range = []; for (let v = lo; v <= hi; v++) range.push(v);
           return (
             <div key={p.id} className={`sec pb${pi}`}>
               <div className="fxb mb6">
@@ -85,12 +91,12 @@ const Scoring = ({ round, updateScore }) => {
                   <span style={{ fontSize: 12, color: T.dim }}>Par {par} | HCP {p.teeData.handicaps[hole]}</span>
                 </div>
               </div>
-              <div className="fx g6" style={{ justifyContent: "center" }}>
-                <button className="seb" onClick={() => updateScore(pi, hole, Math.max(1, (sc || par) - 1))}>{"-"}</button>
-                <div className={`sev ${sc != null ? scoreClass(sc, par) : ""}`}>{sc != null ? sc : "--"}</div>
-                <button className="seb" onClick={() => updateScore(pi, hole, Math.min(15, (sc || par) + 1))}>+</button>
-                <button className="seb" onClick={() => updateScore(pi, hole, par)} style={{ fontSize: 13, width: 56 }}>Par</button>
-                <button className="secl" onClick={() => updateScore(pi, hole, null)} style={{ visibility: sc != null ? "visible" : "hidden" }}>{"x"}</button>
+              <div className="snr">
+                {range.map(v => (
+                  <button key={v} className={`snb${v === par ? " par" : ""}${sc === v ? " sel " + scoreClass(v, par) : ""}`} onClick={() => updateScore(pi, hole, v)}>{v}</button>
+                ))}
+                <button className={`snb more${sc != null && sc > hi ? " sel " + scoreClass(sc, par) : ""}`} onClick={() => updateScore(pi, hole, sc != null && sc >= hi + 1 ? sc + 1 : hi + 1)}>{sc != null && sc > hi ? sc : `${hi + 1}+`}</button>
+                <button className="snx" onClick={() => updateScore(pi, hole, null)} style={{ visibility: sc != null ? "visible" : "hidden" }}>x</button>
               </div>
             </div>
           );

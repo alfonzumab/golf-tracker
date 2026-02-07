@@ -156,7 +156,7 @@ export async function saveSelectedCourse(courseId) {
   await supabase.from('user_preferences').upsert({ user_id: user.id, selected_course_id: courseId });
 }
 
-// Import local data on first login
+// Import local data on login — uses delete+insert to ensure deleted items stay deleted
 export async function importLocalData() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
@@ -166,16 +166,21 @@ export async function importLocalData() {
   const localRounds = ld('rounds', []);
   const localCurrent = ld('currentRound', null);
 
+  // Delete all then re-insert (matches savePlayers/saveCourses pattern)
+  await supabase.from('players').delete().eq('user_id', user.id);
   if (localPlayers.length > 0) {
-    for (const p of localPlayers) {
-      await supabase.from('players').upsert({ id: p.id, user_id: user.id, name: p.name, index: p.index });
-    }
+    await supabase.from('players').insert(
+      localPlayers.map(p => ({ id: p.id, user_id: user.id, name: p.name, index: p.index }))
+    );
   }
+
+  await supabase.from('courses').delete().eq('user_id', user.id);
   if (localCourses.length > 0) {
-    for (const c of localCourses) {
-      await supabase.from('courses').upsert({ id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees });
-    }
+    await supabase.from('courses').insert(
+      localCourses.map(c => ({ id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees }))
+    );
   }
+
   if (localRounds.length > 0) {
     for (const r of localRounds) {
       await supabase.from('rounds').upsert({ id: r.id, user_id: user.id, date: r.date, course: r.course, players: r.players, games: r.games, is_current: false });

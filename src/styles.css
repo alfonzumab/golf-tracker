@@ -156,6 +156,20 @@ select.inp{appearance:none;cursor:pointer;background-image:url("data:image/svg+x
 .sev{width:64px;height:52px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#081510;border:2px solid #2a5a3a;font-size:28px;font-weight:700}
 .secl{width:40px;height:52px;border:none;background:none;color:#6b9b7a;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
+/* === SCORE NUMBER BUTTONS === */
+.snr{display:flex;gap:4px;justify-content:center;flex-wrap:nowrap}
+.snb{min-width:40px;height:46px;border-radius:10px;border:2px solid #1a3a25;background:transparent;color:#8a9bb0;font-size:16px;font-weight:600;cursor:pointer;padding:0 2px;flex-shrink:0;transition:all .12s}
+.snb:active{transform:scale(0.93)}
+.snb.par{border-color:#3aa8c1;color:#3aa8c1}
+.snb.sel{color:#fff;border-color:transparent;background:#3a5a4a}
+.snb.sel.eagle{background:#2563eb}
+.snb.sel.birdie{background:#16a34a}
+.snb.sel.bogey{background:#b8860b}
+.snb.sel.dbl{background:#dc2626}
+.snb.more{font-size:13px;color:#6b9b7a;border-color:#1a3a2588}
+.snb.more.sel{background:#3a5a4a;color:#fff;border-color:transparent}
+.snx{width:32px;height:46px;border:none;background:none;color:#6b9b7a;font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+
 /* === EMPTY STATE === */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center}
 .empty-i{font-size:56px;margin-bottom:16px;opacity:0.5}

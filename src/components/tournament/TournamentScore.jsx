@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { T, PC, GT } from '../../theme';
 import { scoreClass, enrichPlayer, fmt$, sixPairs } from '../../utils/golf';
 import { calcAll } from '../../utils/calc';
@@ -42,17 +42,21 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
 
   const [hole, setHole] = useState(() => { for (let h = 0; h < 18; h++) { if (!pl.every(p => p.scores[h] != null)) return h; } return 17; });
   const [view, setView] = useState("hole");
+  const prevHole = useRef(hole);
 
   // Auto-advance hole
   useEffect(() => {
+    const navigated = hole !== prevHole.current;
+    prevHole.current = hole;
+    if (navigated) return;
     if (pl.every(p => p.scores[hole] != null) && hole < 17) {
       const isFurthestHole = !pl.some(p => p.scores.slice(hole + 1).some(s => s != null));
       if (isFurthestHole) {
-        const t = setTimeout(() => setHole(h => Math.min(17, h + 1)), 500);
+        const t = setTimeout(() => setHole(h => Math.min(17, h + 1)), 1200);
         return () => clearTimeout(t);
       }
     }
-  }, [pl.map(p => p.scores[hole]).join(",")]);
+  }, [pl.map(p => p.scores[hole]).join(","), hole]);
 
   const HV = () => {
     const lb = pl.map((p, i) => {
@@ -90,6 +94,8 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
 
         {pl.map((p, pi) => {
           const par = p.teeData.pars[hole], str = p.strokeHoles[hole], sc = p.scores[hole];
+          const lo = Math.max(1, par - 2), hi = par + 3;
+          const range = []; for (let v = lo; v <= hi; v++) range.push(v);
           return (
             <div key={pi} className={`sec pb${pi}`}>
               <div className="fxb mb6">
@@ -102,12 +108,12 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                   <span style={{ fontSize: 12, color: T.dim }}>Par {par} | HCP {p.teeData.handicaps[hole]}</span>
                 </div>
               </div>
-              <div className="fx g6" style={{ justifyContent: "center" }}>
-                <button className="seb" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, Math.max(1, (sc || par) - 1))}>{"-"}</button>
-                <div className={`sev ${sc != null ? scoreClass(sc, par) : ""}`}>{sc != null ? sc : "--"}</div>
-                <button className="seb" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, Math.min(15, (sc || par) + 1))}>+</button>
-                <button className="seb" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, par)} style={{ fontSize: 13, width: 56 }}>Par</button>
-                <button className="secl" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, null)} style={{ visibility: sc != null ? "visible" : "hidden" }}>{"x"}</button>
+              <div className="snr">
+                {range.map(v => (
+                  <button key={v} className={`snb${v === par ? " par" : ""}${sc === v ? " sel " + scoreClass(v, par) : ""}`} onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, v)}>{v}</button>
+                ))}
+                <button className={`snb more${sc != null && sc > hi ? " sel " + scoreClass(sc, par) : ""}`} onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, sc != null && sc >= hi + 1 ? sc + 1 : hi + 1)}>{sc != null && sc > hi ? sc : `${hi + 1}+`}</button>
+                <button className="snx" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, null)} style={{ visibility: sc != null ? "visible" : "hidden" }}>x</button>
               </div>
             </div>
           );
@@ -231,7 +237,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                   {has4 && <>
                     <div className="il mb6">Format</div>
                     <div className="fx g6 mb10">
-                      <button className={`chip ${!g.team1 ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; ug(g.id, rest); }}>Individual</button>
+                      <button className={`chip ${!g.team1 ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? rest : x)); }}>Individual</button>
                       <button className={`chip ${g.team1 ? "sel" : ""}`} onClick={() => ug(g.id, { team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] })}>2v2 Teams</button>
                     </div>
                   </>}
@@ -256,8 +262,8 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                 {g.type === GT.MATCH && <>
                   <div className="il mb6">Format</div>
                   <div className="fx g6 mb10">
-                    <button className={`chip ${g.matchups ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; ug(g.id, { ...rest, matchups: g.matchups || [[0, 1], [2, 3]] }); }}>Individual</button>
-                    <button className={`chip ${!g.matchups ? "sel" : ""}`} onClick={() => { const { matchups, ...rest } = g; ug(g.id, { ...rest, team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] }); }}>2v2 Best Ball</button>
+                    <button className={`chip ${g.matchups ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? { ...rest, matchups: g.matchups || [[0, 1], [2, 3]] } : x)); }}>Individual</button>
+                    <button className={`chip ${!g.matchups ? "sel" : ""}`} onClick={() => { const { matchups, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? { ...rest, team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] } : x)); }}>2v2 Best Ball</button>
                   </div>
                   {g.matchups ? <>
                     {g.matchups.map(([a, b], mi) => (

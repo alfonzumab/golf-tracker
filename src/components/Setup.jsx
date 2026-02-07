@@ -60,7 +60,7 @@ const Setup = ({ rp, course, onConfirm }) => {
           {g.type === GT.STROKE && <>
             <div className="il mb6">Format</div>
             <div className="fx g6 mb10">
-              <button className={`chip ${!g.team1 ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; u(g.id, rest); }}>Individual</button>
+              <button className={`chip ${!g.team1 ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; setGames(games.map(x => x.id === g.id ? rest : x)); }}>Individual</button>
               <button className={`chip ${g.team1 ? "sel" : ""}`} onClick={() => u(g.id, { team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] })}>2v2 Teams</button>
             </div>
             <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
@@ -84,8 +84,8 @@ const Setup = ({ rp, course, onConfirm }) => {
           {g.type === GT.MATCH && <>
             <div className="il mb6">Format</div>
             <div className="fx g6 mb10">
-              <button className={`chip ${g.matchups ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; u(g.id, { ...rest, matchups: g.matchups || [[0, 1], [2, 3]] }); }}>Individual</button>
-              <button className={`chip ${!g.matchups ? "sel" : ""}`} onClick={() => { const { matchups, ...rest } = g; u(g.id, { ...rest, team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] }); }}>2v2 Best Ball</button>
+              <button className={`chip ${g.matchups ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; setGames(games.map(x => x.id === g.id ? { ...rest, matchups: g.matchups || [[0, 1], [2, 3]] } : x)); }}>Individual</button>
+              <button className={`chip ${!g.matchups ? "sel" : ""}`} onClick={() => { const { matchups, ...rest } = g; setGames(games.map(x => x.id === g.id ? { ...rest, team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] } : x)); }}>2v2 Best Ball</button>
             </div>
             {g.matchups ? <>
               {g.matchups.map(([a, b], mi) => (

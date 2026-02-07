@@ -6,6 +6,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
   const [sel, setSel] = useState([]);
   const [tees, setTees] = useState({});
   const [showNewRound, setShowNewRound] = useState(false);
+  const [showPlayers, setShowPlayers] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -82,33 +83,40 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         <div className="cd">
           <div className="ct">New Round</div>
           <div className="il mb6">Select Course</div>
-          <select className="inp mb10" value={selectedCourseId || ""} onChange={e => { setSelectedCourseId(e.target.value); setSel([]); setTees({}); }}>
+          <select className="inp mb10" value={selectedCourseId || ""} onChange={e => { setSelectedCourseId(e.target.value); setSel([]); setTees({}); setShowPlayers(false); }}>
             {courses.map(c => <option key={c.id} value={c.id}>{c.name} - {c.city}</option>)}
           </select>
           {!rdy && <div style={{ background: T.gold + "22", padding: 12, borderRadius: 10, marginBottom: 12 }}>
             <p style={{ fontSize: 13, color: T.gold, fontWeight: 600 }}>This course needs tee data (rating/slope).</p>
             <button className="btn bg mt8" style={{ color: T.gold, borderColor: T.gold + "44" }} onClick={() => go("courses")}>Edit Course {">"}</button>
           </div>}
-          <div className="il mb6">Select 4 Players</div>
-          {players.map(p => {
-            const s = sel.includes(p.id), ci = sel.indexOf(p.id);
-            return (
-              <div key={p.id} onClick={() => tog(p.id)} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 4, cursor: "pointer",
-                background: s ? PC[ci] + "12" : "transparent", border: `1.5px solid ${s ? PC[ci] + "44" : T.bdr}`,
-                transition: "all .15s"
-              }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>{p.name}</div>
-                  <div style={{ fontSize: 13, color: T.dim }}>Index: {p.index}</div>
-                </div>
-                {s && course && <select className="inp ism" style={{ width: 90 }} value={tees[p.id] || course.tees[0]?.name} onChange={e => { e.stopPropagation(); setTees({ ...tees, [p.id]: e.target.value }); }}>
-                  {course.tees.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                </select>}
-              </div>
-            );
-          })}
+          {rdy && !showPlayers && (
+            <button className="btn bp" onClick={() => setShowPlayers(true)}>Add Players {">"}</button>
+          )}
+          {showPlayers && (
+            <>
+              <div className="il mb6">Select 4 Players</div>
+              {players.map(p => {
+                const s = sel.includes(p.id), ci = sel.indexOf(p.id);
+                return (
+                  <div key={p.id} onClick={() => tog(p.id)} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 4, cursor: "pointer",
+                    background: s ? PC[ci] + "12" : "transparent", border: `1.5px solid ${s ? PC[ci] + "44" : T.bdr}`,
+                    transition: "all .15s"
+                  }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600 }}>{p.name}</div>
+                      <div style={{ fontSize: 13, color: T.dim }}>Index: {p.index}</div>
+                    </div>
+                    {s && course && <select className="inp ism" style={{ width: 90 }} value={tees[p.id] || course.tees[0]?.name} onChange={e => { e.stopPropagation(); setTees({ ...tees, [p.id]: e.target.value }); }}>
+                      {course.tees.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                    </select>}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
         {sel.length === 4 && rdy && course && <button className="btn bp" style={{ fontSize: 16, padding: 16 }} onClick={() => {
           const rp = sel.map((id, i) => {
@@ -121,7 +129,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
           });
           onStart(rp, course);
         }}>Set Up Games {">"}</button>}
-        {sel.length > 0 && sel.length < 4 && <p style={{ fontSize: 13, color: T.dim, textAlign: "center", marginTop: 8 }}>Select {4 - sel.length} more player{4 - sel.length !== 1 ? "s" : ""}</p>}
+        {showPlayers && sel.length > 0 && sel.length < 4 && <p style={{ fontSize: 13, color: T.dim, textAlign: "center", marginTop: 8 }}>Select {4 - sel.length} more player{4 - sel.length !== 1 ? "s" : ""}</p>}
       </>
     );
   };

@@ -81,6 +81,8 @@ export default function App() {
           saveCurrentRound(cr);
         }
         setRound(cr);
+      } else {
+        setRound(null);
       }
       if (sc) setSelectedCourseId(sc);
       else if (c.length > 0) setSelectedCourseId(c[0].id);

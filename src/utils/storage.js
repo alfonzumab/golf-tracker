@@ -78,7 +78,11 @@ export async function saveRound(rounds) {
 
 export async function loadCurrentRound() {
   const { data, error } = await supabase.from('rounds').select('*').eq('is_current', true).limit(1);
-  if (error || !data || data.length === 0) return ld('currentRound', null);
+  if (error) return ld('currentRound', null); // Network error: use localStorage fallback
+  if (!data || data.length === 0) {
+    sv('currentRound', null); // Supabase says no round — clear stale localStorage
+    return null;
+  }
   const r = data[0];
   const round = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games, shareCode: r.share_code };
   sv('currentRound', round);

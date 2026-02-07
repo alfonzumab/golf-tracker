@@ -65,14 +65,21 @@ export default function App() {
 
   // Poll Supabase for score updates every 10s (cross-device sync)
   useEffect(() => {
-    if (!session || !round) return;
+    if (!session) return;
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
-      const cr = await loadCurrentRound();
-      if (cr) setRound(cr);
+      try {
+        const { data } = await supabase.from('rounds').select('*').eq('is_current', true).limit(1);
+        if (data && data.length > 0) {
+          const r = data[0];
+          const cr = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games };
+          setRound(cr);
+          sv('currentRound', cr);
+        }
+      } catch {}
     }, 10000);
     return () => clearInterval(id);
-  }, [session, !!round]);
+  }, [session]);
 
   const go = p => setPg(p);
 

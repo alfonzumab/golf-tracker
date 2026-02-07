@@ -20,20 +20,12 @@ export async function savePlayers(players) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: existing } = await supabase.from('players').select('id').eq('user_id', user.id);
-  const existingIds = new Set((existing || []).map(p => p.id));
-  const currentIds = new Set(players.map(p => p.id));
-
-  // Delete removed players (only own)
-  for (const id of existingIds) {
-    if (!currentIds.has(id)) await supabase.from('players').delete().eq('id', id);
-  }
-
-  // Upsert current players
-  for (const p of players) {
-    await supabase.from('players').upsert({
-      id: p.id, user_id: user.id, name: p.name, index: p.index
-    });
+  // Clear and re-insert to guarantee deleted players stay deleted
+  await supabase.from('players').delete().eq('user_id', user.id);
+  if (players.length > 0) {
+    await supabase.from('players').insert(
+      players.map(p => ({ id: p.id, user_id: user.id, name: p.name, index: p.index }))
+    );
   }
 }
 
@@ -50,18 +42,12 @@ export async function saveCourses(courses) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: existing } = await supabase.from('courses').select('id').eq('user_id', user.id);
-  const existingIds = new Set((existing || []).map(c => c.id));
-  const currentIds = new Set(courses.map(c => c.id));
-
-  for (const id of existingIds) {
-    if (!currentIds.has(id)) await supabase.from('courses').delete().eq('id', id);
-  }
-
-  for (const c of courses) {
-    await supabase.from('courses').upsert({
-      id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees
-    });
+  // Clear and re-insert to guarantee deleted courses stay deleted
+  await supabase.from('courses').delete().eq('user_id', user.id);
+  if (courses.length > 0) {
+    await supabase.from('courses').insert(
+      courses.map(c => ({ id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees }))
+    );
   }
 }
 

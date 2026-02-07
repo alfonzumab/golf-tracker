@@ -3,6 +3,7 @@ import { T } from '../../theme';
 
 const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
   const [copied, setCopied] = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
 
   if (!tournament) return null;
 
@@ -92,7 +93,18 @@ const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
         </div>
       )}
 
-      <button className="btn bg mt8" onClick={onBack}>{"<"} Leave Lobby</button>
+      <button className="btn bg mt8" style={{ color: T.red, borderColor: T.red + '33' }} onClick={() => setShowLeave(true)}>{"<"} Leave Lobby</button>
+
+      {showLeave && <div className="mbg" onClick={() => setShowLeave(false)}>
+        <div className="mdl" onClick={e => e.stopPropagation()}>
+          <div className="mdt">Leave Tournament?</div>
+          <p style={{ fontSize: 14, color: T.dim, marginBottom: 16 }}>You will no longer see this tournament. You can rejoin later with the share code: <strong style={{ color: T.accB }}>{tournament.shareCode}</strong></p>
+          <div className="fx g8">
+            <button className="btn bs" onClick={() => setShowLeave(false)}>Cancel</button>
+            <button className="btn bp" style={{ background: T.red }} onClick={onBack}>Leave</button>
+          </div>
+        </div>
+      </div>}
     </div>
   );
 };

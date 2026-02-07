@@ -113,6 +113,12 @@ export default function App() {
           const cr = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games, shareCode: r.share_code };
           setRound(cr);
           sv('currentRound', cr);
+        } else if (data && data.length === 0) {
+          // Round was finished/abandoned on another device — clear local state
+          setRound(prev => {
+            if (prev) sv('currentRound', null);
+            return null;
+          });
         }
       } catch {}
     }, 10000);

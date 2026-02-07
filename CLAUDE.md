@@ -15,7 +15,7 @@ No test framework is configured. Production deploys automatically via Vercel on 
 
 ## Architecture
 
-Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-time betting/settlement and multi-group tournament mode. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage.
+Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-time betting/settlement and multi-group tournament mode. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage. PWA-enabled (installable via Add to Home Screen).
 
 ### Auth & Data Flow
 
@@ -52,11 +52,13 @@ Convention: tournament pages start with `t`. The expression `pg.startsWith('t')`
 Multi-group tournament system with cross-device sync via Supabase:
 
 - **TournamentHub** — entry point: create new or join with 6-char share code
-- **TournamentSetup** — 3-step wizard: basics → players (min 4) → groups (2-4 per group, min 2 groups)
+- **TournamentSetup** — multi-step wizard with two flows:
+  - **Standard** (4 steps): basics → players (min 4) → groups (2-4 per group, min 2 groups) → skins
+  - **Ryder Cup** (5 steps): basics + format → players (even count) → team assignment → match creation → skins
 - **TournamentJoin** — fetches tournament by code, user picks their group/player
 - **TournamentLobby** — share code display, group roster, host starts tournament
 - **TournamentScore** — group scorecard (hole view + card view), mirrors `Scoring.jsx` patterns. Player picker shown if `playerInfo` is null.
-- **TournamentBoard** — cross-group leaderboard sorted by to-par
+- **TournamentBoard** — cross-group leaderboard sorted by to-par; Ryder Cup shows team scoreboard + match results
 - **TournamentNav** — 3-tab bottom nav (Lobby/Score/Board)
 
 Tournament data flows: `App.jsx` holds `tournament` state, `tournamentGuest` for player identity (persisted via `saveGuestInfo`). Score updates go through `handleTournamentScoreUpdate` → local state update + debounced RPC. Polling every 10s when tournament is live (keeps local scores for user's group, merges others from server).
@@ -75,6 +77,10 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 
 `calcTournamentSkins(config, players)` — N-player skins calculator for tournament-wide skins (across all groups). Does NOT use `calcAll` which requires exactly 4 players. Used by TournamentScore's Bets view for tournament-level skins display.
 
+`calcMatchPlay(players, matchType)` — Match play calculator for a single Ryder Cup group. Players ordered: team1 first, then team2. `matchType` is `"singles"` (2 players) or `"bestball"` (4 players, best net per pair). Returns `{ t1Won, t2Won, played, remaining, lead, absLead, clinched, finished, statusText, statusTeam, points }`. Status text values: `"AS"` (all square), `"X UP"`, `"DORMIE"`, `"X & Y"` (clinched), `"HALVED"`. Points: `[1,0]` win, `[0,1]` loss, `[0.5,0.5]` halve — only assigned when `finished` is true.
+
+`calcRyderCupStandings(tournament)` — Aggregates all match results. Returns `{ team1Points, team2Points, matchResults, totalMatches }`.
+
 ### Golf Math (`src/utils/golf.js`)
 
 `calcCH` → `getStrokes` pipeline: Player's handicap index → course handicap (via slope/rating) → per-hole stroke allocation array. `enrichPlayer(player, teeData)` computes courseHandicap + strokeHoles from a raw player object — used by both tournament scoring and leaderboard. Also: `fmt$()` for currency display, `scoreClass()` for score-to-par CSS classes, `sixPairs()` for random 6-6-6 team generation.
@@ -88,13 +94,13 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 - `user_preferences` — user_id (PK), selected_course_id
 
 **Shared table** (cross-user, RLS allows read by share code):
-- `tournaments` — id (UUID PK), share_code (TEXT, unique), host_user_id, name, date, course (JSONB), tee_name, groups (JSONB), tournament_games (JSONB), team_config (JSONB), status (TEXT: 'setup'|'live'|'finished')
+- `tournaments` — id (UUID PK), share_code (TEXT, unique), host_user_id, name, date, course (JSONB), tee_name, groups (JSONB), tournament_games (JSONB), team_config (JSONB), format (TEXT: 'standard'|'rydercup'), status (TEXT: 'setup'|'live'|'finished')
 
 **RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `update_group_games(p_code, p_group_idx, p_games)`, `join_round(p_code)`. The score/games RPCs use `FOR UPDATE` row locking to prevent concurrent write races on the `groups` JSONB column.
 
 ### Theme & Styling
 
-- `src/theme.js` exports `T` (color tokens), `GT` (game type enum), `PC` (4 player colors), `TT` (team colors)
+- `src/theme.js` exports `T` (color tokens), `GT` (game type enum), `PC` (4 player colors), `TT` (team colors: `a`/`aD` = blue Team A, `b`/`bD` = pink Team B)
 - `src/styles.css` is static CSS with hardcoded hex values (originally a JS template literal resolved against `T`)
 - Components use both CSS classes and inline styles referencing `T` object
 - Fonts: Playfair Display (headings), DM Sans (body) — loaded via `index.html`
@@ -108,6 +114,17 @@ A round always has exactly 4 players. Each round-player is enriched with: `tee`,
 ### Tournament Data Model
 
 A tournament has multiple groups, each with 2-4 players. Each tournament player has `{id, name, index, scores: [null x 18]}`. Players are enriched on-the-fly via `enrichPlayer()` in scoring/leaderboard components. The `groups` JSONB stores the full player/score state; individual score updates go through the `update_tournament_score` RPC which patches a single cell.
+
+**Ryder Cup additions:** `format: 'rydercup'` and `teamConfig: { teams: [{name, color, playerIds}], matches: [{type, t1, t2, groupIdx}] }`. Each match maps to one group — `t1`/`t2` are arrays of indices into each team's players. Groups are built in order: team1 players first, then team2 (e.g., singles = `[t1player, t2player]`, bestball = `[t1p1, t1p2, t2p1, t2p2]`).
+
+### PWA
+
+Installable via "Add to Home Screen" on Android/iOS. Launches fullscreen (`display: standalone`) with dark green status bar. Setup:
+- `public/manifest.json` — app metadata, icon references
+- `public/sw.js` — minimal service worker (skipWaiting + claim, no offline caching)
+- `public/icons/` — SVG + PNG icons (192/512, regular + maskable)
+- `src/main.jsx` — registers service worker on load
+- `index.html` — manifest link, apple-mobile-web-app meta tags, theme-color
 
 ## Environment
 

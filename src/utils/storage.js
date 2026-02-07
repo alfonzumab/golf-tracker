@@ -159,21 +159,25 @@ export async function saveSelectedCourse(courseId) {
   await supabase.from('user_preferences').upsert({ user_id: user.id, selected_course_id: courseId });
 }
 
-// Import local data on first login — only runs if localStorage has data to migrate
+// Import local data on first login — only runs if user has no data in Supabase yet
 export async function importLocalData() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
+
+  // Only migrate if user has ZERO data in Supabase (true first-time setup)
+  const { count } = await supabase.from('players').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+  const { count: cCount } = await supabase.from('courses').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+  if ((count || 0) > 0 || (cCount || 0) > 0) return;
 
   const localPlayers = ld('players', []);
   const localCourses = ld('courses', []);
   const localRounds = ld('rounds', []);
   const localCurrent = ld('currentRound', null);
 
-  // Skip if localStorage has nothing to import — prevents wiping Supabase data on new devices
+  // Skip if localStorage has nothing to import
   const hasLocalData = localPlayers.length > 0 || localCourses.length > 0 || localRounds.length > 0 || localCurrent;
   if (!hasLocalData) return;
 
-  // Upsert local data into Supabase (merge, don't delete)
   if (localPlayers.length > 0) {
     await supabase.from('players').upsert(
       localPlayers.map(p => ({ id: p.id, user_id: user.id, name: p.name, index: p.index })),

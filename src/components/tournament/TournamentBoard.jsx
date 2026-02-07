@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { T } from '../../theme';
+import { T, TT } from '../../theme';
 import { enrichPlayer } from '../../utils/golf';
-import { calcTournamentSkins } from '../../utils/tournamentCalc';
+import { calcTournamentSkins, calcRyderCupStandings } from '../../utils/tournamentCalc';
 
 const TournamentBoard = ({ tournament }) => {
   const teeData = tournament.course.tees?.find(t => t.name === tournament.teeName) || tournament.course.tees?.[0];
+  const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
 
   const leaderboard = useMemo(() => {
     if (!teeData) return [];
@@ -27,9 +28,16 @@ const TournamentBoard = ({ tournament }) => {
     });
   }, [tournament.groups, teeData]);
 
+  const standings = useMemo(() => {
+    if (!isRC) return null;
+    return calcRyderCupStandings(tournament);
+  }, [tournament, isRC]);
+
   if (!teeData) {
     return <div className="pg"><div className="cd"><div className="ct">Missing tee data</div><p style={{ fontSize: 13, color: T.dim }}>This tournament was created before tee data was stored.</p></div></div>;
   }
+
+  const teams = isRC ? tournament.teamConfig.teams : null;
 
   return (
     <div className="pg">
@@ -38,11 +46,59 @@ const TournamentBoard = ({ tournament }) => {
         <p style={{ fontSize: 14, color: T.dim }}>{tournament.course.name} | {tournament.teeName} tees</p>
       </div>
 
+      {/* Ryder Cup: Team Scoreboard + Match Results */}
+      {isRC && standings && (
+        <>
+          <div className="cd">
+            <div className="fxb" style={{ justifyContent: 'center', gap: 32, padding: '8px 0' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: teams[0].color }}>{teams[0].name}</div>
+                <div style={{ fontSize: 40, fontWeight: 700, color: teams[0].color }}>{standings.team1Points}</div>
+              </div>
+              <div style={{ fontSize: 14, color: T.dim, alignSelf: 'center' }}>vs</div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: teams[1].color }}>{teams[1].name}</div>
+                <div style={{ fontSize: 40, fontWeight: 700, color: teams[1].color }}>{standings.team2Points}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: T.dim, textAlign: 'center' }}>
+              {standings.matchResults.filter(m => m.finished).length} of {standings.totalMatches} matches decided
+            </div>
+          </div>
+
+          <div className="cd">
+            <div className="ct">Matches</div>
+            {standings.matchResults.map((m, mi) => {
+              const winColor = m.statusTeam === 1 ? teams[0].color : m.statusTeam === 2 ? teams[1].color : T.dim;
+              return (
+                <div key={mi} style={{ padding: '10px 0', borderBottom: mi < standings.matchResults.length - 1 ? `1px solid ${T.bdr}11` : 'none' }}>
+                  <div className="fxb mb4">
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: T.mut + '33', color: T.dim }}>
+                      {m.matchType === 'bestball' ? 'Best Ball' : 'Singles'}
+                    </span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: winColor }}>{m.statusText}</span>
+                  </div>
+                  <div className="fxb">
+                    <span style={{ fontSize: 14, color: TT.a, fontWeight: 600 }}>{m.t1Names}</span>
+                    <span style={{ fontSize: 12, color: T.dim }}>vs</span>
+                    <span style={{ fontSize: 14, color: TT.b, fontWeight: 600 }}>{m.t2Names}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>
+                    {m.played} holes played{m.finished ? (m.played < 18 ? ' (decided)' : '') : `, ${m.remaining} remaining`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Standard Leaderboard (also shown below Ryder Cup results) */}
       <div className="cd">
-        <div className="ct">Leaderboard</div>
+        <div className="ct">{isRC ? 'Individual Scores' : 'Leaderboard'}</div>
         <div className="fxb" style={{ padding: '4px 0', borderBottom: `1px solid ${T.bdr}`, marginBottom: 6 }}>
           <div style={{ flex: 2, fontSize: 12, color: T.mut }}>#  Player</div>
-          <div style={{ width: 32, fontSize: 12, color: T.mut, textAlign: 'center' }}>Grp</div>
+          <div style={{ width: 32, fontSize: 12, color: T.mut, textAlign: 'center' }}>{isRC ? 'Mtch' : 'Grp'}</div>
           <div style={{ width: 36, fontSize: 12, color: T.mut, textAlign: 'center' }}>Thru</div>
           <div style={{ width: 40, fontSize: 12, color: T.mut, textAlign: 'center' }}>Grs</div>
           <div style={{ width: 40, fontSize: 12, color: T.mut, textAlign: 'center' }}>+/-</div>
@@ -84,7 +140,7 @@ const TournamentBoard = ({ tournament }) => {
             {sr.totalSkins > 0 && <div style={{ fontSize: 12, color: T.dim, marginBottom: 8 }}>${sr.perSkin.toFixed(2)}/skin | {skinsConfig.net ? "Net" : "Gross"}{skinsConfig.carryOver ? " | Carry" : ""}</div>}
             <div className="fxb" style={{ padding: '4px 0', borderBottom: `1px solid ${T.bdr}`, marginBottom: 4 }}>
               <div style={{ flex: 2, fontSize: 12, color: T.mut }}>Player</div>
-              <div style={{ width: 32, fontSize: 12, color: T.mut, textAlign: 'center' }}>Grp</div>
+              <div style={{ width: 32, fontSize: 12, color: T.mut, textAlign: 'center' }}>{isRC ? 'Mtch' : 'Grp'}</div>
               <div style={{ width: 44, fontSize: 12, color: T.mut, textAlign: 'center' }}>Skins</div>
               <div style={{ width: 56, fontSize: 12, color: T.mut, textAlign: 'right' }}>P&L</div>
             </div>
@@ -102,7 +158,8 @@ const TournamentBoard = ({ tournament }) => {
         );
       })()}
 
-      {tournament.groups.map((g, gi) => (
+      {/* Group breakdown (standard only) */}
+      {!isRC && tournament.groups.map((g, gi) => (
         <div key={gi} className="cd">
           <div className="ct">Group {gi + 1}</div>
           {g.players.map((p, pi) => {

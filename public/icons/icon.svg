@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0b1a10"/>
+  <g transform="translate(256,256)">
+    <!-- Fairway curve -->
+    <ellipse cx="0" cy="60" rx="140" ry="40" fill="#143020" opacity="0.6"/>
+    <!-- Hole -->
+    <circle cx="0" cy="50" r="12" fill="#081510" stroke="#2ecc71" stroke-width="2"/>
+    <!-- Flag pole -->
+    <line x1="0" y1="48" x2="0" y2="-100" stroke="#e8f5e9" stroke-width="5" stroke-linecap="round"/>
+    <!-- Flag -->
+    <path d="M3,-100 L70,-75 L3,-50 Z" fill="#2ecc71"/>
+    <!-- SA text -->
+    <text x="0" y="140" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="56" fill="#4ade80" letter-spacing="6">SA</text>
+  </g>
+</svg>

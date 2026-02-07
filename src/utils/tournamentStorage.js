@@ -21,33 +21,24 @@ export const clearActiveTournament = () => sv('active-tournament', null);
 
 // --- Supabase RPC wrappers ---
 
-export async function createTournament({ name, date, course, teeName, groups, tournamentGames, teamConfig }) {
+export async function createTournament({ name, date, course, teeName, groups, tournamentGames, teamConfig, format }) {
   const code = generateShareCode();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not logged in' };
 
-  const { error } = await supabase.from('tournaments').insert({
-    share_code: code,
-    host_user_id: user.id,
-    name,
-    date,
-    course,
-    tee_name: teeName,
-    groups,
-    tournament_games: tournamentGames || [],
-    team_config: teamConfig || null,
-    status: 'setup'
-  });
+  const row = {
+    share_code: code, host_user_id: user.id, name, date, course,
+    tee_name: teeName, groups, tournament_games: tournamentGames || [],
+    team_config: teamConfig || null, format: format || 'standard', status: 'setup'
+  };
+
+  const { error } = await supabase.from('tournaments').insert(row);
 
   if (error) {
     // Retry once with new code if collision
     if (error.code === '23505') {
       const code2 = generateShareCode();
-      const { error: e2 } = await supabase.from('tournaments').insert({
-        share_code: code2, host_user_id: user.id, name, date, course,
-        tee_name: teeName, groups, tournament_games: tournamentGames || [],
-        team_config: teamConfig || null, status: 'setup'
-      });
+      const { error: e2 } = await supabase.from('tournaments').insert({ ...row, share_code: code2 });
       if (e2) return { error: e2.message };
       saveActiveTournament(code2);
       return { code: code2 };
@@ -78,6 +69,7 @@ export async function getTournament(code) {
       groups: t.groups || [],
       tournamentGames: Array.isArray(t.tournament_games) ? t.tournament_games : [],
       teamConfig: t.team_config,
+      format: t.format || 'standard',
       status: t.status
     }
   };

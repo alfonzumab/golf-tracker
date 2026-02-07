@@ -15,7 +15,7 @@ No test framework is configured. Production deploys automatically via Vercel on 
 
 ## Architecture
 
-Mobile-first (480px max-width) golf round tracker with real-time betting/settlement and multi-group tournament mode. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage.
+Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-time betting/settlement and multi-group tournament mode. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage.
 
 ### Auth & Data Flow
 
@@ -65,7 +65,15 @@ Share codes use `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no ambiguous chars: 0/O, 1/I/
 
 ### Calculation Engine (`src/utils/calc.js`)
 
-Pure functions with no React dependencies. `calcAll(games, players)` returns `{ results, settlements, balances }`. Four game calculators: `cStroke`, `cMatch`, `cSkins`, `cSixes` — each returns the same interface shape. **Do not modify calculation logic** without thorough testing — the payout math is correct and interdependent.
+Pure functions with no React dependencies. `calcAll(games, players)` returns `{ results, settlements, balances }`. Requires exactly 4 players. Four game calculators: `cStroke`, `cMatch`, `cSkins`, `cSixes` — each returns the same `{ title, details, status, payouts, wager }` shape. **Do not modify calculation logic** without thorough testing — the payout math is correct and interdependent.
+
+**Game mode detection** (stroke & match support two formats each):
+- Stroke: `g.team1` exists → 2v2 best-ball; absent → individual (all 4 compete). Both use `wagerFront`/`wagerBack`/`wagerOverall`.
+- Match: `g.matchups` exists → individual 1v1 pairs (e.g. `[[0,1],[2,3]]`); absent → 2v2 best-ball with `team1`/`team2`. Both use `wagerFront`/`wagerBack`/`wagerOverall`.
+
+### Tournament Calculation Engine (`src/utils/tournamentCalc.js`)
+
+`calcTournamentSkins(config, players)` — N-player skins calculator for tournament-wide skins (across all groups). Does NOT use `calcAll` which requires exactly 4 players. Used by TournamentScore's Bets view for tournament-level skins display.
 
 ### Golf Math (`src/utils/golf.js`)
 
@@ -82,7 +90,7 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 **Shared table** (cross-user, RLS allows read by share code):
 - `tournaments` — id (UUID PK), share_code (TEXT, unique), host_user_id, name, date, course (JSONB), tee_name, groups (JSONB), tournament_games (JSONB), team_config (JSONB), status (TEXT: 'setup'|'live'|'finished')
 
-**RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `join_round(p_code)`.
+**RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `update_group_games(p_code, p_group_idx, p_games)`, `join_round(p_code)`. The score/games RPCs use `FOR UPDATE` row locking to prevent concurrent write races on the `groups` JSONB column.
 
 ### Theme & Styling
 

@@ -186,7 +186,8 @@ export default function App() {
         teeName: setupData.teeName,
         groups: setupData.groups,
         tournamentGames: setupData.tournamentGames,
-        teamConfig: setupData.teamConfig
+        teamConfig: setupData.teamConfig,
+        format: setupData.format
       });
       if (result.error) {
         setModal({ title: 'Error', text: result.error, onOk: () => setModal(null) });

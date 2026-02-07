@@ -21,11 +21,14 @@ export async function savePlayers(players) {
   if (!user) return;
 
   // Clear and re-insert to guarantee deleted players stay deleted
-  await supabase.from('players').delete().eq('user_id', user.id);
+  const { error: delErr } = await supabase.from('players').delete().eq('user_id', user.id);
+  if (delErr) return; // Don't insert if delete failed — data still intact
   if (players.length > 0) {
-    await supabase.from('players').insert(
+    const { error: insErr } = await supabase.from('players').insert(
       players.map(p => ({ id: p.id, user_id: user.id, name: p.name, index: p.index }))
     );
+    // If insert fails, restore from localStorage on next load
+    if (insErr) console.error('savePlayers insert failed:', insErr.message);
   }
 }
 

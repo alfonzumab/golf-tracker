@@ -22,28 +22,33 @@ const Bets = ({ round }) => {
         })}
       </div>
 
-      {results.filter(r => r.title.includes("6-6-6") && r.segmentScores).map((r, ri) => {
-        const activeSeg = r.segmentScores.find(seg => currentHole >= (seg.range === "1-6" ? 0 : seg.range === "7-12" ? 6 : 12) && currentHole <= (seg.range === "1-6" ? 5 : seg.range === "7-12" ? 11 : 17));
-        if (!activeSeg) return null;
-        return (
-          <div key={ri} className="cd">
-            <div className="ct">Active: {r.title}</div>
-            <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Holes {activeSeg.range}</div>
-            <div className="fxb mb6">
-              <div style={{ textAlign: "center", flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${activeSeg.t1[0]}`}>{n[activeSeg.t1[0]]}</span> & <span className={`pc${activeSeg.t1[1]}`}>{n[activeSeg.t1[1]]}</span></div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: activeSeg.winner === "t1" ? T.accB : T.txt, marginTop: 4 }}>{activeSeg.s1}</div>
+      {results.filter(r => r.title.includes("6-6-6") && r.segmentScores).map((r, ri) => (
+        <div key={ri} className="cd">
+          <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
+          {r.segmentScores.map((seg, si) => {
+            const isActive = currentHole >= (seg.range === "1-6" ? 0 : seg.range === "7-12" ? 6 : 12) && currentHole <= (seg.range === "1-6" ? 5 : seg.range === "7-12" ? 11 : 17);
+            return (
+              <div key={si} style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 8, border: `1.5px solid ${isActive ? T.acc : T.bdr}`, background: isActive ? T.accD + '15' : 'transparent' }}>
+                <div style={{ fontSize: 13, color: isActive ? T.accB : T.dim, marginBottom: 6, fontWeight: isActive ? 600 : 400 }}>
+                  Holes {seg.range}{isActive ? ' (current)' : ''}
+                </div>
+                <div className="fxb mb6">
+                  <div style={{ textAlign: "center", flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${seg.t1[0]}`}>{n[seg.t1[0]]}</span> & <span className={`pc${seg.t1[1]}`}>{n[seg.t1[1]]}</span></div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: seg.winner === "t1" ? T.accB : T.txt, marginTop: 4 }}>{seg.s1}</div>
+                  </div>
+                  <div style={{ fontSize: 13, color: T.dim, alignSelf: "center" }}>vs</div>
+                  <div style={{ textAlign: "center", flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${seg.t2[0]}`}>{n[seg.t2[0]]}</span> & <span className={`pc${seg.t2[1]}`}>{n[seg.t2[1]]}</span></div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: seg.winner === "t2" ? T.accB : T.txt, marginTop: 4 }}>{seg.s2}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: T.dim, textAlign: "center" }}>{seg.played}/{seg.holes} holes played</div>
               </div>
-              <div style={{ fontSize: 13, color: T.dim, alignSelf: "center" }}>vs</div>
-              <div style={{ textAlign: "center", flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${activeSeg.t2[0]}`}>{n[activeSeg.t2[0]]}</span> & <span className={`pc${activeSeg.t2[1]}`}>{n[activeSeg.t2[1]]}</span></div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: activeSeg.winner === "t2" ? T.accB : T.txt, marginTop: 4 }}>{activeSeg.s2}</div>
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: T.dim, textAlign: "center" }}>{activeSeg.played}/{activeSeg.holes} holes played</div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      ))}
 
       {settlements.length > 0 && <div className="cd"><div className="ct">Settlement</div>
         {settlements.map((s, i) => (

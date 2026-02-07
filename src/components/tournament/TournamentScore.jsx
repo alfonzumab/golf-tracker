@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { T, PC, GT } from '../../theme';
+import { T, PC, GT, TT } from '../../theme';
 import { scoreClass, enrichPlayer, fmt$, sixPairs } from '../../utils/golf';
 import { calcAll } from '../../utils/calc';
-import { calcTournamentSkins } from '../../utils/tournamentCalc';
+import { calcTournamentSkins, calcMatchPlay, calcRyderCupStandings } from '../../utils/tournamentCalc';
 import Tog from '../Toggle';
 
 const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer, onUpdateGroupGames }) => {
@@ -370,8 +370,53 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
       );
     })();
 
+    // Section 3: Ryder Cup match play status
+    const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
+    const matchPlaySection = isRC ? (() => {
+      const standings = calcRyderCupStandings(tournament);
+      const teams = tournament.teamConfig.teams;
+      const myMatch = tournament.teamConfig.matches.find(m => m.groupIdx === playerInfo.groupIdx);
+      const myResult = myMatch ? calcMatchPlay(pl, myMatch.type) : null;
+
+      return (
+        <div>
+          <div className="cd" style={{ textAlign: 'center' }}>
+            <div className="fxb" style={{ justifyContent: 'center', gap: 24 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: teams[0].color }}>{teams[0].name}</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: teams[0].color }}>{standings.team1Points}</div>
+              </div>
+              <div style={{ fontSize: 14, color: T.dim, alignSelf: 'center' }}>vs</div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: teams[1].color }}>{teams[1].name}</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: teams[1].color }}>{standings.team2Points}</div>
+              </div>
+            </div>
+          </div>
+
+          {myResult && (
+            <div className="cd">
+              <div className="ct">This Match ({myMatch.type === 'bestball' ? 'Best Ball' : 'Singles'})</div>
+              <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 700, color: myResult.statusTeam === 1 ? teams[0].color : myResult.statusTeam === 2 ? teams[1].color : T.accB }}>
+                {myResult.statusText}
+              </div>
+              {myResult.statusTeam > 0 && <div style={{ fontSize: 13, color: T.dim, textAlign: 'center', marginTop: 4 }}>
+                {myResult.statusTeam === 1 ? teams[0].name : teams[1].name}
+              </div>}
+              <div style={{ fontSize: 12, color: T.dim, textAlign: 'center', marginTop: 4 }}>
+                {myResult.played} holes played{myResult.remaining > 0 ? `, ${myResult.remaining} remaining` : ''}
+                {myResult.finished && myResult.played < 18 ? ' (match decided)' : ''}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    })() : null;
+
     return (
       <div>
+        {matchPlaySection}
+        {matchPlaySection && (skinsSection || groupSection) && <div className="dvd" style={{ margin: '12px 0' }} />}
         {skinsSection}
         {skinsSection && groupSection && <div className="dvd" style={{ margin: '12px 0' }} />}
         {groupSection}
@@ -379,7 +424,8 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
     );
   };
 
-  const showBets = skinsConfig || groupGames.length > 0 || has4;
+  const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
+  const showBets = skinsConfig || groupGames.length > 0 || has4 || isRC;
 
   return (
     <div className="pg">

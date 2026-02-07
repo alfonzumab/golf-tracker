@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T } from '../../theme';
+import { T, TT } from '../../theme';
 
 const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
   const [copied, setCopied] = useState(false);
@@ -65,20 +65,59 @@ const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
         </div>
       </div>
 
-      {/* Groups */}
-      <div className="fxb mb8 mt10">
-        <span className="pg-title">Groups</span>
-      </div>
-      {tournament.groups.map((g, gi) => (
-        <div key={gi} className="t-grp">
-          <div className="t-grp-h">Group {gi + 1}</div>
-          {g.players.map((p, pi) => (
-            <div key={pi} className="t-grp-p">
-              {p.name} <span style={{ fontSize: 12, color: T.dim }}>({p.index})</span>
+      {/* Ryder Cup: Teams & Matches */}
+      {tournament.format === 'rydercup' && tournament.teamConfig ? (
+        <div>
+          <div className="fx g8 mt10">
+            {tournament.teamConfig.teams.map((team, ti) => (
+              <div key={ti} className="cd" style={{ flex: 1, borderColor: team.color + '44' }}>
+                <div className="ct" style={{ color: team.color }}>{team.name}</div>
+                {tournament.groups.flatMap(g => g.players).filter(p => team.playerIds.includes(p.id)).map((p, pi) => (
+                  <div key={pi} style={{ fontSize: 14, color: team.color, padding: '4px 0' }}>{p.name}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div className="fxb mb8 mt10"><span className="pg-title">Matches</span></div>
+          {tournament.teamConfig.matches.map((m, mi) => {
+            const g = tournament.groups[m.groupIdx];
+            if (!g) return null;
+            const pl = g.players;
+            const t1Names = m.type === 'singles' ? pl[0]?.name : (pl[0]?.name.split(' ')[0] + ' & ' + pl[1]?.name.split(' ')[0]);
+            const t2Names = m.type === 'singles' ? pl[pl.length - 1]?.name : (pl[2]?.name.split(' ')[0] + ' & ' + pl[3]?.name.split(' ')[0]);
+            return (
+              <div key={mi} className="cd">
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: T.mut + '33', color: T.dim, marginRight: 8 }}>
+                  {m.type === 'bestball' ? 'Best Ball' : 'Singles'}
+                </span>
+                <div style={{ fontSize: 14, marginTop: 6 }}>
+                  <span style={{ color: TT.a, fontWeight: 600 }}>{t1Names}</span>
+                  <span style={{ color: T.dim }}> vs </span>
+                  <span style={{ color: TT.b, fontWeight: 600 }}>{t2Names}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div>
+          {/* Standard: Groups */}
+          <div className="fxb mb8 mt10">
+            <span className="pg-title">Groups</span>
+          </div>
+          {tournament.groups.map((g, gi) => (
+            <div key={gi} className="t-grp">
+              <div className="t-grp-h">Group {gi + 1}</div>
+              {g.players.map((p, pi) => (
+                <div key={pi} className="t-grp-p">
+                  {p.name} <span style={{ fontSize: 12, color: T.dim }}>({p.index})</span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
-      ))}
+      )}
 
       {/* Actions */}
       {isHost && tournament.status === 'setup' && (

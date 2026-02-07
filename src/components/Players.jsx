@@ -9,11 +9,15 @@ const Players = ({ players, setPlayers }) => {
 
   const add = () => {
     if (!nm.trim()) return;
-    const up = [...players, { id: Date.now().toString(), name: nm.trim(), index: parseFloat(ix) || 0 }];
+    const up = [...players, { id: crypto.randomUUID(), name: nm.trim(), index: parseFloat(ix) || 0 }];
     setPlayers(up); setNm(""); setIx(""); setSa(false);
   };
 
-  const rm = id => { const up = players.filter(p => p.id !== id); setPlayers(up); };
+  const rm = (id, name) => {
+    if (!window.confirm(`Delete ${name}?`)) return;
+    const up = players.filter(p => p.id !== id);
+    setPlayers(up);
+  };
 
   const saveEdit = () => {
     if (!edit || !edit.name.trim()) return;
@@ -57,7 +61,7 @@ const Players = ({ players, setPlayers }) => {
             <div className="prow-i">Index: {p.index}</div>
           </div>
           <button className="bg" onClick={() => setEdit({ ...p })}>Edit</button>
-          <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id)}>Delete</button>
+          <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id, p.name)}>Delete</button>
         </div>
       ))}
 

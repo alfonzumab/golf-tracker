@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { T, PC } from '../theme';
 import { calcCH, getStrokes } from '../utils/golf';
 
-const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart, round, go, onJoinRound }) => {
+const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart, round, go, onJoinRound, tournament, onLeaveTournament }) => {
   const [sel, setSel] = useState([]);
   const [tees, setTees] = useState({});
   const [showNewRound, setShowNewRound] = useState(false);
@@ -172,10 +172,30 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         </div>
       </div>
 
+      {/* Active tournament resume card */}
+      {tournament && (
+        <div className="cd mb10">
+          <div className="ct">Active Tournament</div>
+          <p style={{ fontSize: 14, color: T.dim, marginBottom: 4 }}>{tournament.name}</p>
+          <p style={{ fontSize: 13, color: T.dim, marginBottom: 4 }}>{tournament.course.name}</p>
+          <div className={`t-status ${tournament.status}`} style={{ display: 'inline-block', marginBottom: 12 }}>
+            {tournament.status === 'setup' ? 'Setting Up' : tournament.status === 'live' ? 'Live' : 'Finished'}
+          </div>
+          <button className="btn bp mb6" onClick={() => go(tournament.status === 'live' ? 'tscore' : 'tlobby')}>
+            Resume Tournament {">"}
+          </button>
+          <button className="btn bg" style={{ color: T.red, borderColor: T.red + '33', fontSize: 13 }} onClick={onLeaveTournament}>
+            Leave Tournament
+          </button>
+        </div>
+      )}
+
       {/* Tournament button */}
-      <button className="btn bs mb10" style={{ fontSize: 15 }} onClick={() => go("thub")}>
-        Tournament Mode
-      </button>
+      {!tournament && (
+        <button className="btn bs mb10" style={{ fontSize: 15 }} onClick={() => go("thub")}>
+          Tournament Mode
+        </button>
+      )}
 
       {/* New round section — always available */}
       {round && !showNewRound ? (

@@ -12,7 +12,7 @@ import {
   importLocalData,
   joinRound, generateShareCode
 } from './utils/storage';
-import { createTournament, getTournament, startTournament, updateTournamentScore, saveActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
+import { createTournament, getTournament, startTournament, updateTournamentScore, saveActiveTournament, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -81,6 +81,19 @@ export default function App() {
       }
       if (sc) setSelectedCourseId(sc);
       else if (c.length > 0) setSelectedCourseId(c[0].id);
+
+      // Auto-resume active tournament
+      const activeCode = loadActiveTournament();
+      if (activeCode) {
+        try {
+          const { tournament: t } = await getTournament(activeCode);
+          if (t) {
+            setTournament(t);
+            const guest = loadGuestInfo();
+            if (guest) setTournamentGuest(guest);
+          }
+        } catch {}
+      }
     };
     load();
   }, [session]);
@@ -307,7 +320,7 @@ export default function App() {
       <div className="hdr">
         {["setup", "score", "bets"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
-        {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={leaveTournament}>{"<"}</button>}
+        {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={() => go('home')}>{"<"}</button>}
         <div><div className="hdr-t">{titles[pg] || "Golf Tracker"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {pg === "score" && round && <>
@@ -317,7 +330,7 @@ export default function App() {
           <button className="bg" onClick={logout} style={{ fontSize: 12, color: T.dim }}>Logout</button>
         </div>
       </div>
-      {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} />}
+      {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
       {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} />}
       {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} />}
       {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={games => {

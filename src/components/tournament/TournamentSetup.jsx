@@ -42,8 +42,9 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   const autoGroup = () => {
     const ungrouped = [...tPlayers];
     const g = [];
-    while (ungrouped.length >= 4) {
-      g.push({ players: ungrouped.splice(0, 4) });
+    const groupSize = ungrouped.length >= 8 ? 4 : Math.ceil(ungrouped.length / 2);
+    while (ungrouped.length > groupSize) {
+      g.push({ players: ungrouped.splice(0, groupSize) });
     }
     if (ungrouped.length > 0) {
       g.push({ players: ungrouped });
@@ -112,7 +113,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
             <div className="t-step">Step 2 of 3</div>
             <div className="t-step-title">Players ({tPlayers.length})</div>
             <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
-              Add 8-24 players. You can pick from saved players or add new ones.
+              Add at least 4 players. You can pick from saved players or add new ones.
             </p>
 
             {/* Add from saved */}
@@ -164,14 +165,14 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
 
           <div className="fx g8">
             <button className="btn bs" style={{ flex: 1 }} onClick={() => setStep(1)}>{"<"} Back</button>
-            <button className="btn bp" style={{ flex: 2 }} disabled={tPlayers.length < 8}
+            <button className="btn bp" style={{ flex: 2 }} disabled={tPlayers.length < 4}
               onClick={() => { if (groups.length === 0) autoGroup(); setStep(3); }}>
               Next: Groups {">"}
             </button>
           </div>
-          {tPlayers.length > 0 && tPlayers.length < 8 && (
+          {tPlayers.length > 0 && tPlayers.length < 4 && (
             <p style={{ fontSize: 13, color: T.dim, textAlign: 'center', marginTop: 8 }}>
-              Need {8 - tPlayers.length} more player{8 - tPlayers.length !== 1 ? 's' : ''} (minimum 8)
+              Need {4 - tPlayers.length} more player{4 - tPlayers.length !== 1 ? 's' : ''} (minimum 4)
             </p>
           )}
         </div>

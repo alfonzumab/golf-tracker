@@ -162,24 +162,33 @@ export default function App() {
 
   // Tournament handlers
   const handleCreateTournament = async (setupData) => {
-    const result = await createTournament({
-      name: setupData.name,
-      date: setupData.date,
-      course: setupData.course,
-      teeName: setupData.teeName,
-      groups: setupData.groups,
-      tournamentGames: setupData.tournamentGames,
-      teamConfig: setupData.teamConfig
-    });
-    if (result.error) {
-      setModal({ title: 'Error', text: result.error, onOk: () => setModal(null) });
-      return;
-    }
-    // Fetch the created tournament
-    const { tournament: t } = await getTournament(result.code);
-    if (t) {
-      setTournament(t);
-      go('tlobby');
+    try {
+      const result = await createTournament({
+        name: setupData.name,
+        date: setupData.date,
+        course: setupData.course,
+        teeName: setupData.teeName,
+        groups: setupData.groups,
+        tournamentGames: setupData.tournamentGames,
+        teamConfig: setupData.teamConfig
+      });
+      if (result.error) {
+        setModal({ title: 'Error', text: result.error, onOk: () => setModal(null) });
+        return;
+      }
+      const { tournament: t, error: fetchErr } = await getTournament(result.code);
+      if (fetchErr) {
+        setModal({ title: 'Error', text: fetchErr, onOk: () => setModal(null) });
+        return;
+      }
+      if (t) {
+        setTournament(t);
+        go('tlobby');
+      } else {
+        setModal({ title: 'Error', text: 'Tournament created but could not be loaded. Check Supabase RPC.', onOk: () => setModal(null) });
+      }
+    } catch (e) {
+      setModal({ title: 'Error', text: e.message || 'Unknown error creating tournament', onOk: () => setModal(null) });
     }
   };
 

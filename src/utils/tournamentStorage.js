@@ -62,8 +62,10 @@ export async function createTournament({ name, date, course, teeName, groups, to
 export async function getTournament(code) {
   const { data, error } = await supabase.rpc('get_tournament', { p_code: code.toUpperCase() });
   if (error) return { error: error.message };
-  if (!data || data.length === 0) return { error: 'Tournament not found' };
-  const t = data[0];
+  if (!data) return { error: 'Tournament not found' };
+  // RPC may return array or single object depending on function signature
+  const t = Array.isArray(data) ? data[0] : data;
+  if (!t || !t.id) return { error: 'Tournament not found' };
   return {
     tournament: {
       id: t.id,

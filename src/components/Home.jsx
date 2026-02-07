@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { T, PC } from '../theme';
 import { calcCH, getStrokes } from '../utils/golf';
-import { sv } from '../utils/storage';
 
 const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart, round, go }) => {
   const [sel, setSel] = useState([]);
@@ -64,7 +63,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
       <div className="cd">
         <div className="ct">New Round</div>
         <div className="il mb6">Select Course</div>
-        <select className="inp mb10" value={selectedCourseId || ""} onChange={e => { setSelectedCourseId(e.target.value); sv("selectedCourse", e.target.value); setSel([]); setTees({}); }}>
+        <select className="inp mb10" value={selectedCourseId || ""} onChange={e => { setSelectedCourseId(e.target.value); setSel([]); setTees({}); }}>
           {courses.map(c => <option key={c.id} value={c.id}>{c.name} - {c.city}</option>)}
         </select>
         {!rdy && <div style={{ background: T.gold + "22", padding: 10, borderRadius: 8, marginBottom: 10 }}>

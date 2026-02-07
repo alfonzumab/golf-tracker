@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { T } from '../theme';
-import { sv } from '../utils/storage';
 
 const Players = ({ players, setPlayers }) => {
   const [sa, setSa] = useState(false);
@@ -11,15 +10,15 @@ const Players = ({ players, setPlayers }) => {
   const add = () => {
     if (!nm.trim()) return;
     const up = [...players, { id: Date.now().toString(), name: nm.trim(), index: parseFloat(ix) || 0 }];
-    setPlayers(up); sv("players", up); setNm(""); setIx(""); setSa(false);
+    setPlayers(up); setNm(""); setIx(""); setSa(false);
   };
 
-  const rm = id => { const up = players.filter(p => p.id !== id); setPlayers(up); sv("players", up); };
+  const rm = id => { const up = players.filter(p => p.id !== id); setPlayers(up); };
 
   const saveEdit = () => {
     if (!edit || !edit.name.trim()) return;
     const up = players.map(p => p.id === edit.id ? { ...p, name: edit.name.trim(), index: parseFloat(edit.index) || 0 } : p);
-    setPlayers(up); sv("players", up); setEdit(null);
+    setPlayers(up); setEdit(null);
   };
 
   return (

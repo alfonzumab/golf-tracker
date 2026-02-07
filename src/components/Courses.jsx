@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { T } from '../theme';
-import { sv } from '../utils/storage';
 
 const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
   const c = courses.find(x => x.id === courseId);
@@ -11,7 +10,7 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
 
   const save = () => {
     const up = courses.map(x => x.id === courseId ? { ...x, name, city, tees } : x);
-    setCourses(up); sv("courses", up); onClose();
+    setCourses(up); onClose();
   };
 
   const ut = (f, v) => { const u = [...tees]; u[at] = { ...u[at], [f]: v }; setTees(u); };
@@ -108,14 +107,14 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId })
       tees: [{ name: "White", rating: 0, slope: 0, pars: Array(18).fill(4), handicaps: Array.from({ length: 18 }, (_, i) => i + 1) }]
     };
     const up = [...courses, newC];
-    setCourses(up); sv("courses", up);
+    setCourses(up);
     setEdit(newC.id);
   };
 
   const deleteCourse = id => {
     const up = courses.filter(c => c.id !== id);
-    setCourses(up); sv("courses", up);
-    if (selectedCourseId === id) { setSelectedCourseId(up[0]?.id || null); sv("selectedCourse", up[0]?.id || null); }
+    setCourses(up);
+    if (selectedCourseId === id) { setSelectedCourseId(up[0]?.id || null); }
   };
 
   return (

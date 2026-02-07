@@ -1,2 +1,167 @@
+import { supabase } from '../lib/supabase';
+
+// Local cache (instant UI, offline fallback)
 export const sv = (k, d) => { try { localStorage.setItem("gt3-" + k, JSON.stringify(d)); } catch {} };
 export const ld = (k, f) => { try { const d = localStorage.getItem("gt3-" + k); return d ? JSON.parse(d) : f; } catch { return f; } };
+
+// --- Supabase CRUD ---
+
+export async function loadPlayers() {
+  const { data, error } = await supabase.from('players').select('*').order('created_at');
+  if (error) return ld('players', []);
+  const players = data.map(p => ({ id: p.id, name: p.name, index: Number(p.index) }));
+  sv('players', players);
+  return players;
+}
+
+export async function savePlayers(players) {
+  sv('players', players);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: existing } = await supabase.from('players').select('id');
+  const existingIds = new Set((existing || []).map(p => p.id));
+  const currentIds = new Set(players.map(p => p.id));
+
+  // Delete removed players
+  for (const id of existingIds) {
+    if (!currentIds.has(id)) await supabase.from('players').delete().eq('id', id);
+  }
+
+  // Upsert current players
+  for (const p of players) {
+    await supabase.from('players').upsert({
+      id: p.id, user_id: user.id, name: p.name, index: p.index
+    });
+  }
+}
+
+export async function loadCourses() {
+  const { data, error } = await supabase.from('courses').select('*').order('created_at');
+  if (error) return ld('courses', []);
+  const courses = data.map(c => ({ id: c.id, name: c.name, city: c.city, tees: c.tees }));
+  sv('courses', courses);
+  return courses;
+}
+
+export async function saveCourses(courses) {
+  sv('courses', courses);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: existing } = await supabase.from('courses').select('id');
+  const existingIds = new Set((existing || []).map(c => c.id));
+  const currentIds = new Set(courses.map(c => c.id));
+
+  for (const id of existingIds) {
+    if (!currentIds.has(id)) await supabase.from('courses').delete().eq('id', id);
+  }
+
+  for (const c of courses) {
+    await supabase.from('courses').upsert({
+      id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees
+    });
+  }
+}
+
+export async function loadRounds() {
+  const { data, error } = await supabase.from('rounds').select('*').eq('is_current', false).order('created_at');
+  if (error) return ld('rounds', []);
+  const rounds = data.map(r => ({ id: r.id, date: r.date, course: r.course, players: r.players, games: r.games }));
+  sv('rounds', rounds);
+  return rounds;
+}
+
+export async function saveRound(rounds) {
+  sv('rounds', rounds);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  // Delete all non-current rounds, re-insert
+  await supabase.from('rounds').delete().eq('is_current', false).eq('user_id', user.id);
+  for (const r of rounds) {
+    await supabase.from('rounds').insert({
+      id: r.id, user_id: user.id, date: r.date, course: r.course, players: r.players, games: r.games, is_current: false
+    });
+  }
+}
+
+export async function loadCurrentRound() {
+  const { data, error } = await supabase.from('rounds').select('*').eq('is_current', true).limit(1);
+  if (error || !data || data.length === 0) return ld('currentRound', null);
+  const r = data[0];
+  const round = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games };
+  sv('currentRound', round);
+  return round;
+}
+
+let saveCurrentTimeout = null;
+export async function saveCurrentRound(round) {
+  sv('currentRound', round);
+  // Debounce Supabase writes (scoring taps happen fast)
+  clearTimeout(saveCurrentTimeout);
+  saveCurrentTimeout = setTimeout(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Delete old current round, insert new one
+    await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
+    if (round) {
+      await supabase.from('rounds').insert({
+        id: round.id, user_id: user.id, date: round.date, course: round.course, players: round.players, games: round.games, is_current: true
+      });
+    }
+  }, 1500);
+}
+
+export async function clearCurrentRound() {
+  sv('currentRound', null);
+  clearTimeout(saveCurrentTimeout);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
+}
+
+export async function loadSelectedCourse() {
+  const { data, error } = await supabase.from('user_preferences').select('selected_course_id').limit(1);
+  if (error || !data || data.length === 0) return ld('selectedCourse', null);
+  sv('selectedCourse', data[0].selected_course_id);
+  return data[0].selected_course_id;
+}
+
+export async function saveSelectedCourse(courseId) {
+  sv('selectedCourse', courseId);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('user_preferences').upsert({ user_id: user.id, selected_course_id: courseId });
+}
+
+// Import local data on first login
+export async function importLocalData() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const localPlayers = ld('players', []);
+  const localCourses = ld('courses', []);
+  const localRounds = ld('rounds', []);
+  const localCurrent = ld('currentRound', null);
+
+  if (localPlayers.length > 0) {
+    for (const p of localPlayers) {
+      await supabase.from('players').upsert({ id: p.id, user_id: user.id, name: p.name, index: p.index });
+    }
+  }
+  if (localCourses.length > 0) {
+    for (const c of localCourses) {
+      await supabase.from('courses').upsert({ id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees });
+    }
+  }
+  if (localRounds.length > 0) {
+    for (const r of localRounds) {
+      await supabase.from('rounds').upsert({ id: r.id, user_id: user.id, date: r.date, course: r.course, players: r.players, games: r.games, is_current: false });
+    }
+  }
+  if (localCurrent) {
+    await supabase.from('rounds').upsert({ id: localCurrent.id, user_id: user.id, date: localCurrent.date, course: localCurrent.course, players: localCurrent.players, games: localCurrent.games, is_current: true });
+  }
+}

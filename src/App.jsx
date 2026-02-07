@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './styles.css';
 import { T } from './theme';
 import { supabase } from './lib/supabase';
@@ -59,9 +59,12 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load data from Supabase when logged in
+  // Load data from Supabase when logged in (once per sign-in, skip token refreshes)
+  const dataLoaded = useRef(false);
   useEffect(() => {
-    if (!session) return;
+    if (!session) { dataLoaded.current = false; return; }
+    if (dataLoaded.current) return;
+    dataLoaded.current = true;
     const load = async () => {
       await importLocalData();
       const [p, c, r, cr, sc] = await Promise.all([

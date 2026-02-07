@@ -97,7 +97,10 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                   <span className={`pc${pi}`} style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</span>
                   {str > 0 && <span className="tag ty">{str > 1 ? str + "x" : "1 str"}</span>}
                 </div>
-                <span style={{ fontSize: 12, color: T.dim }}>Par {par} | HCP {p.teeData.handicaps[hole]}</span>
+                <div className="fx g6" style={{ alignItems: 'center' }}>
+                  {sc != null && str > 0 && <span style={{ fontSize: 13, color: T.gold, fontWeight: 600 }}>Net: {sc - str}</span>}
+                  <span style={{ fontSize: 12, color: T.dim }}>Par {par} | HCP {p.teeData.handicaps[hole]}</span>
+                </div>
               </div>
               <div className="fx g6" style={{ justifyContent: "center" }}>
                 <button className="seb" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, Math.max(1, (sc || par) - 1))}>{"-"}</button>
@@ -106,7 +109,6 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                 <button className="seb" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, par)} style={{ fontSize: 13, width: 56 }}>Par</button>
                 <button className="secl" onClick={() => onUpdateScore(playerInfo.groupIdx, pi, hole, null)} style={{ visibility: sc != null ? "visible" : "hidden" }}>{"x"}</button>
               </div>
-              {sc != null && str > 0 && <div style={{ textAlign: "center", marginTop: 6, fontSize: 13, color: T.gold }}>Net: {sc - str}</div>}
             </div>
           );
         })}

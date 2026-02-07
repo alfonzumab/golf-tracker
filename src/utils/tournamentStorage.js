@@ -116,15 +116,17 @@ export async function finishTournament(code) {
   return { ok: true };
 }
 
-let scoreSaveTimeout = null;
-export async function updateTournamentScore(code, groupIdx, playerIdx, holeIdx, score) {
-  // Debounce the RPC call (500ms)
-  clearTimeout(scoreSaveTimeout);
-  scoreSaveTimeout = setTimeout(async () => {
+const scoreTimeouts = {};
+export function updateTournamentScore(code, groupIdx, playerIdx, holeIdx, score) {
+  // Per-cell debounce so scoring different players doesn't cancel each other
+  const key = `${groupIdx}-${playerIdx}-${holeIdx}`;
+  clearTimeout(scoreTimeouts[key]);
+  scoreTimeouts[key] = setTimeout(async () => {
     await supabase.rpc('update_tournament_score', {
       p_code: code, p_group_idx: groupIdx, p_player_idx: playerIdx,
       p_hole_idx: holeIdx, p_score: score
     });
+    delete scoreTimeouts[key];
   }, 500);
 }
 

@@ -19,9 +19,6 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
     if (f === "handicaps") {
       if (val < 0) val = 0;
       if (val > 18) val = 18;
-      // Check for duplicates — if this value is already used on another hole, don't allow it
-      const current = [...tees[at].handicaps];
-      if (val > 0 && current.some((h, i) => i !== hi && h === val)) return;
     }
     const u = [...tees]; const a = [...u[at][f]]; a[hi] = val; u[at] = { ...u[at], [f]: a }; setTees(u);
   };
@@ -109,7 +106,7 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
 
         <div className="fx g8">
           <button className="btn bs" onClick={onClose}>Cancel</button>
-          <button className="btn bp" onClick={save}>Save Course</button>
+          <button className="btn bp" disabled={hasDupes || hasOver18} onClick={save}>Save Course</button>
         </div>
       </div>
     </div>

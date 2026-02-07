@@ -15,7 +15,7 @@ No test framework is configured. Production deploys automatically via Vercel on 
 
 ## Architecture
 
-Mobile-first (480px max-width) golf round tracker for 4-player rounds with real-time betting and settlement. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage.
+Mobile-first (480px max-width) golf round tracker with real-time betting/settlement and multi-group tournament mode. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage.
 
 ### Auth & Data Flow
 
@@ -33,13 +33,35 @@ Components never call storage functions directly. `App.jsx` provides wrapper fun
 2. Write to localStorage via `sv()` (instant UI)
 3. Write to Supabase async (cloud persistence)
 
-Score updates go through `saveCurrentRound()` which has a 1.5s debounce to batch rapid scoring taps.
+Two storage modules:
+- `src/utils/storage.js` — regular rounds, players, courses, preferences. `saveCurrentRound()` has 1.5s debounce. `joinRound(code)` calls `join_round` RPC for share-code round joining.
+- `src/utils/tournamentStorage.js` — tournament CRUD via Supabase RPCs (`get_tournament`, `save_tournament`, `update_tournament_status`, `update_tournament_score`). `updateTournamentScore()` has 500ms debounce. Also manages share code generation, guest identity, and active tournament localStorage.
 
 ### State Management
 
 All app state lives in `src/App.jsx` via `useState` hooks. No context/Redux — props drilled to children. The component tree is shallow (max 3 levels).
 
-**Page routing** is a string state (`pg`) with values: `home`, `players`, `courses`, `setup`, `score`, `bets`, `hist`.
+**Page routing** is a string state (`pg`):
+- Regular pages: `home`, `players`, `courses`, `setup`, `score`, `bets`, `hist`
+- Tournament pages: `thub`, `tsetup`, `tjoin`, `tlobby`, `tscore`, `tboard`
+
+Convention: tournament pages start with `t`. The expression `pg.startsWith('t')` determines whether tournament nav is shown.
+
+### Tournament Mode
+
+Multi-group tournament system with cross-device sync via Supabase:
+
+- **TournamentHub** — entry point: create new or join with 6-char share code
+- **TournamentSetup** — 3-step wizard: basics → players (min 4) → groups (2-4 per group, min 2 groups)
+- **TournamentJoin** — fetches tournament by code, user picks their group/player
+- **TournamentLobby** — share code display, group roster, host starts tournament
+- **TournamentScore** — group scorecard (hole view + card view), mirrors `Scoring.jsx` patterns. Player picker shown if `playerInfo` is null.
+- **TournamentBoard** — cross-group leaderboard sorted by to-par
+- **TournamentNav** — 3-tab bottom nav (Lobby/Score/Board)
+
+Tournament data flows: `App.jsx` holds `tournament` state, `tournamentGuest` for player identity (persisted via `saveGuestInfo`). Score updates go through `handleTournamentScoreUpdate` → local state update + debounced RPC. Polling every 10s when tournament is live (keeps local scores for user's group, merges others from server).
+
+Share codes use `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no ambiguous chars: 0/O, 1/I/L).
 
 ### Calculation Engine (`src/utils/calc.js`)
 
@@ -47,19 +69,24 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 
 ### Golf Math (`src/utils/golf.js`)
 
-`calcCH` → `getStrokes` pipeline: Player's handicap index → course handicap (via slope/rating) → per-hole stroke allocation array. Also: `fmt$()` for currency display, `scoreClass()` for score-to-par CSS classes, `sixPairs()` for random 6-6-6 team generation.
+`calcCH` → `getStrokes` pipeline: Player's handicap index → course handicap (via slope/rating) → per-hole stroke allocation array. `enrichPlayer(player, teeData)` computes courseHandicap + strokeHoles from a raw player object — used by both tournament scoring and leaderboard. Also: `fmt$()` for currency display, `scoreClass()` for score-to-par CSS classes, `sixPairs()` for random 6-6-6 team generation.
 
 ### Supabase Schema
 
-Tables (all with RLS — each user sees only their own data):
+**User-scoped tables** (RLS — each user sees only their own data):
 - `players` — id (TEXT PK), user_id, name, index
 - `courses` — id (TEXT PK), user_id, name, city, tees (JSONB)
-- `rounds` — composite PK (id, user_id), date, course (JSONB), players (JSONB), games (JSONB), is_current (BOOLEAN)
+- `rounds` — composite PK (id, user_id), date, course (JSONB), players (JSONB), games (JSONB), is_current (BOOLEAN), share_code (TEXT, unique)
 - `user_preferences` — user_id (PK), selected_course_id
+
+**Shared table** (cross-user, RLS allows read by share code):
+- `tournaments` — id (UUID PK), share_code (TEXT, unique), host_user_id, name, date, course (JSONB), tee_name, groups (JSONB), tournament_games (JSONB), team_config (JSONB), status (TEXT: 'setup'|'live'|'finished')
+
+**RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `join_round(p_code)`.
 
 ### Theme & Styling
 
-- `src/theme.js` exports `T` (color tokens), `GT` (game type enum), `PC` (4 player colors)
+- `src/theme.js` exports `T` (color tokens), `GT` (game type enum), `PC` (4 player colors), `TT` (team colors)
 - `src/styles.css` is static CSS with hardcoded hex values (originally a JS template literal resolved against `T`)
 - Components use both CSS classes and inline styles referencing `T` object
 - Fonts: Playfair Display (headings), DM Sans (body) — loaded via `index.html`
@@ -68,7 +95,11 @@ Tables (all with RLS — each user sees only their own data):
 
 ### Round Data Model
 
-A round always has exactly 4 players. Each round-player is enriched with: `tee`, `teeData` (pars/handicaps/rating/slope), `courseHandicap`, `strokeHoles` (18-element stroke allocation array), `scores` (18-element array, null = not scored). Course tee data is JSONB with arrays of 18 values for pars and handicaps.
+A round always has exactly 4 players. Each round-player is enriched with: `tee`, `teeData` (pars/handicaps/rating/slope), `courseHandicap`, `strokeHoles` (18-element stroke allocation array), `scores` (18-element array, null = not scored). Course tee data is JSONB with arrays of 18 values for pars and handicaps. Rounds have a `shareCode` for cross-device sync.
+
+### Tournament Data Model
+
+A tournament has multiple groups, each with 2-4 players. Each tournament player has `{id, name, index, scores: [null x 18]}`. Players are enriched on-the-fly via `enrichPlayer()` in scoring/leaderboard components. The `groups` JSONB stores the full player/score state; individual score updates go through the `update_tournament_score` RPC which patches a single cell.
 
 ## Environment
 

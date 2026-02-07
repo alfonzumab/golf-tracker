@@ -63,6 +63,21 @@ export default function App() {
     load();
   }, [session]);
 
+  // Re-fetch current round when tab becomes visible (cross-device sync)
+  useEffect(() => {
+    if (!session) return;
+    let lastFetch = 0;
+    const onVisible = async () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastFetch > 5000) {
+        lastFetch = Date.now();
+        const cr = await loadCurrentRound();
+        if (cr) setRound(cr);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [session]);
+
   const go = p => setPg(p);
 
   // Wrappers that save to both localStorage and Supabase

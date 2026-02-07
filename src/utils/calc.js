@@ -57,8 +57,8 @@ function cStroke(g, pl) {
     const pay = [];
     const pm = (s1, s2, w) => {
       if (s1.holes === 0) return;
-      if (s1.total < s2.total) { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: w }); }
-      else if (s2.total < s1.total) { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: w }); }
+      if (s1.total < s2.total) { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: w / t1.length }); }
+      else if (s2.total < s1.total) { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: w / t2.length }); }
     };
     if (fr1.holes > 0) pm(fr1, fr2, g.wagerFront);
     if (bk1.holes > 0) pm(bk1, bk2, g.wagerBack);
@@ -111,8 +111,8 @@ function cMatch(g, pl) {
   const fs = (s, l) => { if (!s.p) return l + ": --"; if (s.w1 > s.w2) return l + ": " + t1N + " (" + s.w1 + "-" + s.w2 + ")"; if (s.w2 > s.w1) return l + ": " + t2N + " (" + s.w2 + "-" + s.w1 + ")"; return l + ": Push"; };
   const pay = [];
   const pm = (s, w) => {
-    if (s.w1 > s.w2) { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: w }); }
-    else if (s.w2 > s.w1) { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: w }); }
+    if (s.w1 > s.w2) { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: w / t1.length }); }
+    else if (s.w2 > s.w1) { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: w / t2.length }); }
   };
   if (fr.p > 0) pm(fr, g.wagerFront);
   if (bk.p > 0) pm(bk, g.wagerBack);
@@ -175,8 +175,8 @@ function cSixes(g, pl) {
     det.push(pr.l + ": " + t1N + " vs " + t2N + " \u2192 " + r);
     segmentScores.push({ t1, t2, t1N, t2N, s1, s2, played, holes: pr.e - pr.s + 1, range: pr.l, winner: w });
     const wg = g.wagerPerSegment;
-    if (w === "t1") { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: wg }); }
-    else if (w === "t2") { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: wg }); }
+    if (w === "t1") { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: wg / t1.length }); }
+    else if (w === "t2") { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: wg / t2.length }); }
   }
   return { title: "6-6-6 (" + (g.mode === "match" ? "Match" : "Stroke") + ")", details: det, payouts: pay, wager: "$" + g.wagerPerSegment + "/seg", pairs, segmentScores };
 }

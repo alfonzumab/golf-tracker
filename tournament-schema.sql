@@ -36,6 +36,10 @@ END $$;
 ALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;
 
 -- 4. RLS Policies for tournaments
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Host has full access to their tournaments" ON tournaments;
+DROP POLICY IF EXISTS "Anyone can read tournaments by share code" ON tournaments;
+
 -- Host can do everything with their tournament
 CREATE POLICY "Host has full access to their tournaments"
   ON tournaments

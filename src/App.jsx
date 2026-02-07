@@ -63,20 +63,16 @@ export default function App() {
     load();
   }, [session]);
 
-  // Re-fetch current round when tab becomes visible (cross-device sync)
+  // Poll Supabase for score updates every 10s (cross-device sync)
   useEffect(() => {
-    if (!session) return;
-    let lastFetch = 0;
-    const onVisible = async () => {
-      if (document.visibilityState === 'visible' && Date.now() - lastFetch > 5000) {
-        lastFetch = Date.now();
-        const cr = await loadCurrentRound();
-        if (cr) setRound(cr);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [session]);
+    if (!session || !round) return;
+    const id = setInterval(async () => {
+      if (document.visibilityState !== 'visible') return;
+      const cr = await loadCurrentRound();
+      if (cr) setRound(cr);
+    }, 10000);
+    return () => clearInterval(id);
+  }, [session, !!round]);
 
   const go = p => setPg(p);
 

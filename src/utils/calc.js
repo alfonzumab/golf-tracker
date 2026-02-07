@@ -30,6 +30,8 @@ export function calcAll(games, players) {
 
 function cStroke(g, pl) {
   const n = pl.map(p => p.name.split(" ")[0]);
+  const wF = g.wagerFront || 0, wB = g.wagerBack || 0, wO = g.wagerOverall || 0;
+  const wTag = "$" + wF + "/$" + wB + "/$" + wO;
   if (g.team1 && g.team2) {
     const t1 = g.team1, t2 = g.team2;
     const t1N = n[t1[0]] + "&" + n[t1[1]], t2N = n[t2[0]] + "&" + n[t2[1]];
@@ -60,9 +62,9 @@ function cStroke(g, pl) {
       if (s1.total < s2.total) { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: w / t1.length }); }
       else if (s2.total < s1.total) { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: w / t2.length }); }
     };
-    if (fr1.holes > 0) pm(fr1, fr2, g.wagerFront);
-    if (bk1.holes > 0) pm(bk1, bk2, g.wagerBack);
-    if (ov1.holes === 18 && ov1.total !== ov2.total) pm(ov1, ov2, g.wagerOverall);
+    if (fr1.holes > 0) pm(fr1, fr2, wF);
+    if (bk1.holes > 0) pm(bk1, bk2, wB);
+    if (ov1.holes === 18 && ov1.total !== ov2.total) pm(ov1, ov2, wO);
     let st = "";
     if (ov1.holes > 0) {
       const rem = 18 - ov1.holes;
@@ -77,7 +79,7 @@ function cStroke(g, pl) {
         else st = "TIED " + ov1.total;
       }
     }
-    return { title: "Stroke 2v2 (" + (g.net ? "Net" : "Gross") + " BB)", details: [t1N + " vs " + t2N, fs(fr1, fr2, "F9"), fs(bk1, bk2, "B9"), fs(ov1, ov2, "18")], status: st, payouts: pay, wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
+    return { title: "Stroke 2v2 (" + (g.net ? "Net" : "Gross") + " BB)", details: [t1N + " vs " + t2N, fs(fr1, fr2, "F9"), fs(bk1, bk2, "B9"), fs(ov1, ov2, "18")], status: st, payouts: pay, wager: wTag };
   }
   // Individual stroke with front/back/overall
   const calcSeg = (start, end) => pl.map((p, i) => {
@@ -89,7 +91,7 @@ function cStroke(g, pl) {
   });
   const fr = calcSeg(0, 9), bk = calcSeg(9, 18);
   const ov = pl.map((_, i) => ({ i, total: fr[i].total + bk[i].total, holes: fr[i].holes + bk[i].holes }));
-  if (!ov.some(s => s.holes > 0)) return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: ["No scores"], payouts: [], wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
+  if (!ov.some(s => s.holes > 0)) return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: ["No scores"], payouts: [], wager: wTag };
   const fs = (scores, expected, label) => {
     if (!scores.some(s => s.holes > 0)) return label + ": --";
     const best = Math.min(...scores.map(s => s.total));
@@ -105,18 +107,20 @@ function cStroke(g, pl) {
     const ws = scores.filter(s => s.total === best), ls = scores.filter(s => s.total !== best);
     if (ws.length < scores.length) { for (const loser of ls) for (const winner of ws) pay.push({ f: loser.i, t: winner.i, a: wager / ws.length }); }
   };
-  pm(fr, 9, g.wagerFront); pm(bk, 9, g.wagerBack); pm(ov, 18, g.wagerOverall);
+  pm(fr, 9, wF); pm(bk, 9, wB); pm(ov, 18, wO);
   const det = pl.map((p, i) => {
     const gr = p.scores.filter(s => s != null).reduce((a, b) => a + b, 0), h = p.scores.filter(s => s != null).length;
     return n[i] + ": " + gr + (g.net ? " (net " + ov[i].total + ", CH " + p.courseHandicap + ")" : "") + " " + h + "/18";
   });
   const sorted = [...ov].sort((a, b) => a.total - b.total);
   const st = ov.some(s => s.holes > 0) ? "Leader: " + n[sorted[0].i] + " (" + (g.net ? "net " : "") + sorted[0].total + ")" : "";
-  return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: [fs(fr, 9, "F9"), fs(bk, 9, "B9"), fs(ov, 18, "18"), ...det], status: st, payouts: pay, wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
+  return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: [fs(fr, 9, "F9"), fs(bk, 9, "B9"), fs(ov, 18, "18"), ...det], status: st, payouts: pay, wager: wTag };
 }
 
 function cMatch(g, pl) {
   const n = pl.map(p => p.name.split(" ")[0]);
+  const wF = g.wagerFront || 0, wB = g.wagerBack || 0, wO = g.wagerOverall || 0;
+  const wTag = "$" + wF + "/$" + wB + "/$" + wO;
   if (g.matchups) {
     // Individual match: 1v1 matchups
     const pay = [], det = [], statuses = [];
@@ -133,9 +137,9 @@ function cMatch(g, pl) {
       const fr = seg(0, 9), bk = seg(9, 18), ov = { w1: fr.w1 + bk.w1, w2: fr.w2 + bk.w2, p: fr.p + bk.p };
       const fs = (s, l) => { if (!s.p) return l + ": --"; if (s.w1 > s.w2) return l + ": " + aN + " (" + s.w1 + "-" + s.w2 + ")"; if (s.w2 > s.w1) return l + ": " + bN + " (" + s.w2 + "-" + s.w1 + ")"; return l + ": Push"; };
       const pm = (s, w) => { if (s.w1 > s.w2) pay.push({ f: b, t: a, a: w }); else if (s.w2 > s.w1) pay.push({ f: a, t: b, a: w }); };
-      if (fr.p > 0) pm(fr, g.wagerFront);
-      if (bk.p > 0) pm(bk, g.wagerBack);
-      if (ov.p === 18 && ov.w1 !== ov.w2) pm(ov, g.wagerOverall);
+      if (fr.p > 0) pm(fr, wF);
+      if (bk.p > 0) pm(bk, wB);
+      if (ov.p === 18 && ov.w1 !== ov.w2) pm(ov, wO);
       det.push(aN + " vs " + bN + ": " + fs(fr, "F9") + " | " + fs(bk, "B9") + " | " + fs(ov, "18"));
       if (ov.p > 0) {
         const d = ov.w1 - ov.w2, r = 18 - ov.p;
@@ -143,7 +147,7 @@ function cMatch(g, pl) {
         else { if (d > 0) statuses.push(aN + " WIN " + ov.w1 + "-" + ov.w2); else if (d < 0) statuses.push(bN + " WIN " + ov.w2 + "-" + ov.w1); else statuses.push(aN + "/" + bN + " HALVED"); }
       }
     }
-    return { title: "Match (1v1 Net)", details: det, status: statuses.join(" | "), payouts: pay, wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
+    return { title: "Match (1v1 Net)", details: det, status: statuses.join(" | "), payouts: pay, wager: wTag };
   }
   const t1 = g.team1, t2 = g.team2;
   const t1N = n[t1[0]] + "&" + n[t1[1]], t2N = n[t2[0]] + "&" + n[t2[1]];
@@ -163,16 +167,16 @@ function cMatch(g, pl) {
     if (s.w1 > s.w2) { for (const loser of t2) for (const winner of t1) pay.push({ f: loser, t: winner, a: w / t1.length }); }
     else if (s.w2 > s.w1) { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: w / t2.length }); }
   };
-  if (fr.p > 0) pm(fr, g.wagerFront);
-  if (bk.p > 0) pm(bk, g.wagerBack);
-  if (ov.p === 18 && ov.w1 !== ov.w2) pm(ov, g.wagerOverall);
+  if (fr.p > 0) pm(fr, wF);
+  if (bk.p > 0) pm(bk, wB);
+  if (ov.p === 18 && ov.w1 !== ov.w2) pm(ov, wO);
   let st = "";
   if (ov.p > 0) {
     const d = ov.w1 - ov.w2, r = 18 - ov.p;
     if (r > 0) { if (d > 0) st = t1N + " " + d + "UP (" + r + " left)"; else if (d < 0) st = t2N + " " + (-d) + "UP (" + r + " left)"; else st = "AS (" + r + " left)"; }
     else { if (d > 0) st = t1N + " WIN " + ov.w1 + "-" + ov.w2; else if (d < 0) st = t2N + " WIN " + ov.w2 + "-" + ov.w1; else st = "HALVED"; }
   }
-  return { title: "Match (2v2 BB)", details: [t1N + " vs " + t2N, fs(fr, "F9"), fs(bk, "B9"), fs(ov, "18")], status: st, payouts: pay, wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
+  return { title: "Match (2v2 BB)", details: [t1N + " vs " + t2N, fs(fr, "F9"), fs(bk, "B9"), fs(ov, "18")], status: st, payouts: pay, wager: wTag };
 }
 
 function cSkins(g, pl) {

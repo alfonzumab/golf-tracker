@@ -127,3 +127,11 @@ export async function updateTournamentScore(code, groupIdx, playerIdx, holeIdx, 
     });
   }, 500);
 }
+
+export async function updateGroupGames(code, groupIdx, games) {
+  const { error } = await supabase.rpc('update_group_games', {
+    p_code: code, p_group_idx: groupIdx, p_games: games
+  });
+  if (error) return { error: error.message };
+  return { ok: true };
+}

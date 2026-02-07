@@ -155,4 +155,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 9. Update group games (RPC)
+DROP FUNCTION IF EXISTS update_group_games(TEXT, INT, JSONB);
+CREATE OR REPLACE FUNCTION update_group_games(
+  p_code TEXT,
+  p_group_idx INT,
+  p_games JSONB
+)
+RETURNS void AS $$
+DECLARE
+  v_groups JSONB;
+BEGIN
+  SELECT groups INTO v_groups FROM tournaments WHERE share_code = UPPER(p_code);
+  v_groups := jsonb_set(v_groups, ARRAY[p_group_idx::text, 'games'], p_games);
+  UPDATE tournaments
+  SET groups = v_groups, updated_at = now()
+  WHERE share_code = UPPER(p_code);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Done! Tournament mode schema is ready.

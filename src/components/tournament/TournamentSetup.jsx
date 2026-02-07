@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { T, GT } from '../../theme';
-import { sixPairs } from '../../utils/golf';
+import { T } from '../../theme';
 import Tog from '../Toggle';
 
 const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onComplete }) => {
@@ -19,9 +18,11 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   // Step 3: Groups
   const [groups, setGroups] = useState([]);
 
-  // Step 4: Games
-  const [tGames, setTGames] = useState([]);
-  const [showAdd, setShowAdd] = useState(false);
+  // Step 4: Tournament Skins
+  const [skinsOn, setSkinsOn] = useState(false);
+  const [skinsNet, setSkinsNet] = useState(true);
+  const [skinsCarry, setSkinsCarry] = useState(true);
+  const [skinsPot, setSkinsPot] = useState(20);
 
   const course = courses.find(c => c.id === courseId) || courses[0];
   const teeName = course?.tees?.[0]?.name || '';
@@ -236,21 +237,13 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
         </div>
       )}
 
-      {/* Step 4: Games */}
+      {/* Step 4: Tournament Skins */}
       {step === 4 && (() => {
-        const all4 = groups.every(g => g.players.length === 4);
-        const addGame = t => {
-          const g = { type: t, id: Date.now() };
-          if (t === GT.STROKE) Object.assign(g, { net: true, wagerPerPlayer: 10 });
-          else if (t === GT.MATCH) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
-          else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: true, potPerPlayer: 20 });
-          else Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
-          setTGames([...tGames, g]); setShowAdd(false);
-        };
-        const u = (id, up) => setTGames(tGames.map(g => g.id === id ? { ...g, ...up } : g));
+        const totalPlayers = groups.reduce((sum, g) => sum + g.players.length, 0);
 
         const createTournament = () => {
           const fmtDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+          const tGames = skinsOn ? [{ type: 'skins', net: skinsNet, carryOver: skinsCarry, potPerPlayer: skinsPot }] : [];
           onComplete({
             name: name.trim(),
             date: fmtDate,
@@ -272,62 +265,29 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
           <div>
             <div className="cd">
               <div className="t-step">Step 4 of 4</div>
-              <div className="t-step-title">Games (Optional)</div>
+              <div className="t-step-title">Tournament Skins (Optional)</div>
               <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
-                Add bets that apply to every group. Skip this step to play without games.
+                All {totalPlayers} players compete for skins across every group. Each group can also add their own side games during scoring.
               </p>
-              {!all4 && <div style={{ background: T.gold + '22', padding: 10, borderRadius: 8, marginBottom: 12 }}>
-                <p style={{ fontSize: 13, color: T.gold }}>Match and 6-6-6 require all groups to have exactly 4 players.</p>
-              </div>}
-            </div>
 
-            <div className="fxb mb10">
-              <span className="pg-title">Games</span>
-              <button className="btn bp bsm" onClick={() => setShowAdd(true)}>+ Add</button>
-            </div>
+              <Tog label="Enable Tournament Skins" v={skinsOn} onChange={setSkinsOn} />
 
-            {showAdd && <div className="cd"><div className="g2">
-              <button className="btn bs" onClick={() => addGame(GT.STROKE)}>Stroke</button>
-              <button className="btn bs" onClick={() => addGame(GT.SKINS)}>Skins</button>
-              <button className="btn bs" disabled={!all4} onClick={() => all4 && addGame(GT.MATCH)}>Match</button>
-              <button className="btn bs" disabled={!all4} onClick={() => all4 && addGame(GT.SIXES)}>6-6-6</button>
-            </div></div>}
-
-            {tGames.map(g => (
-              <div key={g.id} className="cd">
-                <div className="fxb mb6">
-                  <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : "6-6-6"}</span>
-                  <button className="bg" style={{ color: T.red, borderColor: T.red + '33' }} onClick={() => setTGames(tGames.filter(x => x.id !== g.id))}>Remove</button>
+              {skinsOn && <>
+                <Tog label="Net (use handicap)" v={skinsNet} onChange={setSkinsNet} />
+                <Tog label="Carry-over" v={skinsCarry} onChange={setSkinsCarry} />
+                <div className="mt8">
+                  <div className="il">Pot $/player</div>
+                  <input className="inp" type="number" value={skinsPot} onChange={e => setSkinsPot(parseFloat(e.target.value) || 0)} />
                 </div>
-                {g.type === GT.STROKE && <>
-                  <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
-                  <div><div className="il">$/player</div><input className="inp" type="number" value={g.wagerPerPlayer} onChange={e => u(g.id, { wagerPerPlayer: parseFloat(e.target.value) || 0 })} /></div>
-                </>}
-                {g.type === GT.MATCH && <>
-                  <p style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Players 1&2 vs 3&4 in each group</p>
-                  <div className="g3">{[["Front", "wagerFront"], ["Back", "wagerBack"], ["Overall", "wagerOverall"]].map(([l, k]) =>
-                    <div key={k}><div className="il">{l} $</div><input className="inp ism" style={{ width: "100%" }} type="number" value={g[k]} onChange={e => u(g.id, { [k]: parseFloat(e.target.value) || 0 })} /></div>
-                  )}</div>
-                </>}
-                {g.type === GT.SKINS && <>
-                  <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
-                  <Tog label="Carry-over" v={g.carryOver} onChange={v => u(g.id, { carryOver: v })} />
-                  <div><div className="il">Pot $/player</div><input className="inp" type="number" value={g.potPerPlayer} onChange={e => u(g.id, { potPerPlayer: parseFloat(e.target.value) || 0 })} /></div>
-                </>}
-                {g.type === GT.SIXES && <>
-                  <div className="il mb6">Format</div>
-                  <div className="fx g6 mb10">
-                    <button className={`chip ${g.mode === "match" ? "sel" : ""}`} onClick={() => u(g.id, { mode: "match" })}>Match</button>
-                    <button className={`chip ${g.mode === "stroke" ? "sel" : ""}`} onClick={() => u(g.id, { mode: "stroke" })}>Stroke</button>
-                  </div>
-                  <div><div className="il">$/segment/person</div><input className="inp" type="number" value={g.wagerPerSegment} onChange={e => u(g.id, { wagerPerSegment: parseFloat(e.target.value) || 0 })} /></div>
-                </>}
-              </div>
-            ))}
+                <div style={{ fontSize: 13, color: T.accB, marginTop: 8 }}>
+                  Total pot: ${skinsPot * totalPlayers} ({totalPlayers} players x ${skinsPot})
+                </div>
+              </>}
+            </div>
 
-            {tGames.length === 0 && !showAdd && (
+            {!skinsOn && (
               <div className="cd" style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 14, color: T.dim }}>No games added — leaderboard only</p>
+                <p style={{ fontSize: 14, color: T.dim }}>No tournament skins — leaderboard only. Groups can still add their own games.</p>
               </div>
             )}
 

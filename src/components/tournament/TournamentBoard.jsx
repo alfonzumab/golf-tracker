@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { T } from '../../theme';
 import { enrichPlayer } from '../../utils/golf';
+import { calcTournamentSkins } from '../../utils/tournamentCalc';
 
 const TournamentBoard = ({ tournament }) => {
   const teeData = tournament.course.tees?.find(t => t.name === tournament.teeName) || tournament.course.tees?.[0];
@@ -63,6 +64,43 @@ const TournamentBoard = ({ tournament }) => {
         ))}
         {leaderboard.length === 0 && <div style={{ fontSize: 13, color: T.dim, textAlign: 'center', padding: 12 }}>No scores yet</div>}
       </div>
+
+      {/* Tournament Skins */}
+      {(() => {
+        const skinsConfig = tournament.tournamentGames?.find(g => g.type === 'skins');
+        if (!skinsConfig) return null;
+        const allPlayers = [];
+        tournament.groups.forEach((g, gi) => {
+          g.players.forEach(p => allPlayers.push({ ...enrichPlayer(p, teeData), groupIdx: gi }));
+        });
+        const sr = calcTournamentSkins(skinsConfig, allPlayers);
+        return (
+          <div className="cd">
+            <div className="ct">Tournament Skins</div>
+            <div className="fxb mb6">
+              <span style={{ fontSize: 13, color: T.dim }}>Pot: ${sr.pot}</span>
+              <span style={{ fontSize: 13, color: T.dim }}>{sr.totalSkins} skin{sr.totalSkins !== 1 ? "s" : ""}{sr.carry > 0 ? ` (${sr.carry} carrying)` : ""}</span>
+            </div>
+            {sr.totalSkins > 0 && <div style={{ fontSize: 12, color: T.dim, marginBottom: 8 }}>${sr.perSkin.toFixed(2)}/skin | {skinsConfig.net ? "Net" : "Gross"}{skinsConfig.carryOver ? " | Carry" : ""}</div>}
+            <div className="fxb" style={{ padding: '4px 0', borderBottom: `1px solid ${T.bdr}`, marginBottom: 4 }}>
+              <div style={{ flex: 2, fontSize: 12, color: T.mut }}>Player</div>
+              <div style={{ width: 32, fontSize: 12, color: T.mut, textAlign: 'center' }}>Grp</div>
+              <div style={{ width: 44, fontSize: 12, color: T.mut, textAlign: 'center' }}>Skins</div>
+              <div style={{ width: 56, fontSize: 12, color: T.mut, textAlign: 'right' }}>P&L</div>
+            </div>
+            {sr.playerResults.map((p, i) => (
+              <div key={i} className="fxb" style={{ padding: '6px 0', borderBottom: `1px solid ${T.bdr}11` }}>
+                <div style={{ flex: 2, fontSize: 14, fontWeight: 600 }}>{p.name}</div>
+                <div style={{ width: 32, fontSize: 13, color: T.dim, textAlign: 'center' }}>{p.groupIdx + 1}</div>
+                <div style={{ width: 44, fontSize: 14, fontWeight: 700, textAlign: 'center' }}>{p.skins}</div>
+                <div style={{ width: 56, fontSize: 13, fontWeight: 600, textAlign: 'right',
+                  color: p.netPL > 0.01 ? T.accB : p.netPL < -0.01 ? T.red : T.dim }}>{p.netPLStr}</div>
+              </div>
+            ))}
+            {sr.totalSkins === 0 && <div style={{ fontSize: 13, color: T.dim, textAlign: 'center', padding: 8 }}>No skins awarded yet</div>}
+          </div>
+        );
+      })()}
 
       {tournament.groups.map((g, gi) => (
         <div key={gi} className="cd">

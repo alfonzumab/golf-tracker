@@ -12,7 +12,7 @@ import {
   importLocalData,
   joinRound, generateShareCode
 } from './utils/storage';
-import { createTournament, getTournament, startTournament, updateTournamentScore, saveActiveTournament, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
+import { createTournament, getTournament, startTournament, updateTournamentScore, updateGroupGames, saveActiveTournament, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -254,6 +254,17 @@ export default function App() {
     if (tournament) updateTournamentScore(tournament.shareCode, groupIdx, playerIdx, holeIdx, score);
   };
 
+  const handleUpdateGroupGames = (groupIdx, games) => {
+    setTournament(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        groups: prev.groups.map((g, gi) => gi === groupIdx ? { ...g, games } : g)
+      };
+    });
+    if (tournament) updateGroupGames(tournament.shareCode, groupIdx, games);
+  };
+
   const handleSelectTournamentPlayer = (info) => {
     setTournamentGuest(info);
     saveGuestInfo(info);
@@ -274,7 +285,7 @@ export default function App() {
             // Keep local scores for user's group, update others from server
             return {
               ...fresh,
-              groups: fresh.groups.map((g, gi) => gi === myGroup ? prev.groups[gi] : g)
+              groups: fresh.groups.map((g, gi) => gi === myGroup ? { ...g, players: prev.groups[gi].players } : g)
             };
           });
         }
@@ -353,7 +364,7 @@ export default function App() {
       {pg === "tsetup" && <TournamentSetup courses={courses} players={players} selectedCourseId={selectedCourseId} onComplete={handleCreateTournament} />}
       {pg === "tlobby" && <TournamentLobby tournament={tournament} isHost={isHost} onStart={handleStartTournament} onBack={leaveTournament} />}
       {pg === "tjoin" && joinCode && <TournamentJoin code={joinCode} onJoined={handleJoined} onBack={() => go('thub')} />}
-      {pg === "tscore" && tournament && <TournamentScore tournament={tournament} playerInfo={tournamentGuest} onUpdateScore={handleTournamentScoreUpdate} onSelectPlayer={handleSelectTournamentPlayer} />}
+      {pg === "tscore" && tournament && <TournamentScore tournament={tournament} playerInfo={tournamentGuest} onUpdateScore={handleTournamentScoreUpdate} onSelectPlayer={handleSelectTournamentPlayer} onUpdateGroupGames={handleUpdateGroupGames} />}
       {pg === "tboard" && tournament && <TournamentBoard tournament={tournament} />}
 
       {/* Nav: show tournament nav for tournament pages, regular nav otherwise */}

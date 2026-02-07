@@ -35,6 +35,7 @@ CREATE POLICY "Anyone can read tournaments by share code"
   USING (true);
 
 -- 4. Get tournament by share code (RPC)
+DROP FUNCTION IF EXISTS get_tournament(TEXT);
 CREATE OR REPLACE FUNCTION get_tournament(p_code TEXT)
 RETURNS TABLE (
   id UUID,
@@ -69,6 +70,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5. Save/update tournament (RPC)
+DROP FUNCTION IF EXISTS save_tournament(JSONB);
 CREATE OR REPLACE FUNCTION save_tournament(p_tournament JSONB)
 RETURNS void AS $$
 DECLARE
@@ -91,6 +93,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 6. Update tournament status (RPC)
+DROP FUNCTION IF EXISTS update_tournament_status(TEXT, TEXT);
 CREATE OR REPLACE FUNCTION update_tournament_status(p_code TEXT, p_status TEXT)
 RETURNS void AS $$
 BEGIN
@@ -103,6 +106,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 7. Update individual score (RPC)
+DROP FUNCTION IF EXISTS update_tournament_score(TEXT, INT, INT, INT, INT);
 CREATE OR REPLACE FUNCTION update_tournament_score(
   p_code TEXT,
   p_group_idx INT,

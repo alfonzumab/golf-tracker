@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { T } from '../theme';
 import { supabase } from '../lib/supabase';
 
 const Auth = () => {
@@ -28,58 +27,33 @@ const Auth = () => {
   };
 
   return (
-    <div style={{ background: T.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ width: "100%", maxWidth: 360 }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 700, color: T.accB }}>Golf Tracker</div>
-          <div style={{ fontSize: 12, color: T.dim, marginTop: 4 }}>Track rounds, settle bets</div>
+    <div className="auth-wrap">
+      <div className="auth-box">
+        <div className="auth-logo">
+          <div className="auth-title">Golf Tracker</div>
+          <div className="auth-sub">Track rounds, settle bets</div>
         </div>
 
-        <div style={{ background: T.card, border: `1px solid ${T.bdr}`, borderRadius: 12, padding: 20 }}>
-          <div style={{ display: "flex", gap: 2, background: T.inp, borderRadius: 8, padding: 2, marginBottom: 16 }}>
-            <button
-              onClick={() => { setMode("login"); setError(null); setMessage(null); }}
-              style={{ flex: 1, padding: "8px 4px", border: "none", background: mode === "login" ? T.accD + "44" : "none", color: mode === "login" ? T.accB : T.dim, fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: "pointer" }}
-            >Log In</button>
-            <button
-              onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
-              style={{ flex: 1, padding: "8px 4px", border: "none", background: mode === "signup" ? T.accD + "44" : "none", color: mode === "signup" ? T.accB : T.dim, fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: "pointer" }}
-            >Sign Up</button>
+        <div className="auth-card">
+          <div className="tabs mb10">
+            <button className={`tab ${mode === "login" ? "on" : ""}`} onClick={() => { setMode("login"); setError(null); setMessage(null); }}>Log In</button>
+            <button className={`tab ${mode === "signup" ? "on" : ""}`} onClick={() => { setMode("signup"); setError(null); setMessage(null); }}>Sign Up</button>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, color: T.dim, marginBottom: 3, fontWeight: 500 }}>Email</div>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@email.com"
-                required
-                style={{ width: "100%", background: T.inp, border: `1px solid ${T.bdr}`, color: T.txt, padding: "9px 10px", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box" }}
-              />
+            <div className="mb10">
+              <div className="il">Email</div>
+              <input className="inp" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" required />
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: T.dim, marginBottom: 3, fontWeight: 500 }}>Password</div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder={mode === "signup" ? "Choose a password (6+ chars)" : "Your password"}
-                required
-                minLength={6}
-                style={{ width: "100%", background: T.inp, border: `1px solid ${T.bdr}`, color: T.txt, padding: "9px 10px", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box" }}
-              />
+            <div className="mb12">
+              <div className="il">Password</div>
+              <input className="inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === "signup" ? "Choose a password (6+ chars)" : "Your password"} required minLength={6} />
             </div>
 
-            {error && <div style={{ background: T.red + "15", color: T.red, padding: 8, borderRadius: 7, fontSize: 11, marginBottom: 12 }}>{error}</div>}
-            {message && <div style={{ background: T.accD + "22", color: T.accB, padding: 8, borderRadius: 7, fontSize: 11, marginBottom: 12 }}>{message}</div>}
+            {error && <div className="auth-err">{error}</div>}
+            {message && <div className="auth-msg">{message}</div>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ width: "100%", padding: "11px 16px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${T.acc}, ${T.accD})`, color: T.bg, fontSize: 13, fontWeight: 600, cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1 }}
-            >{loading ? "..." : mode === "login" ? "Log In" : "Create Account"}</button>
+            <button type="submit" disabled={loading} className="btn bp">{loading ? "..." : mode === "login" ? "Log In" : "Create Account"}</button>
           </form>
         </div>
       </div>

@@ -21,9 +21,9 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
     return (
       <div className="pg"><div className="cd">
         <div className="ct">Round in Progress</div>
-        <p style={{ fontSize: 12, color: T.dim, marginBottom: 4 }}>{round.course.name}</p>
-        <p style={{ fontSize: 12, color: T.dim, marginBottom: 10 }}>{round.players.map(p => p.name).join(" | ")}</p>
-        <div style={{ fontSize: 11, color: T.accB, marginBottom: 10 }}>{hc}/18 holes | {round.games.length} game{round.games.length !== 1 ? "s" : ""}</div>
+        <p style={{ fontSize: 14, color: T.dim, marginBottom: 4 }}>{round.course.name}</p>
+        <p style={{ fontSize: 14, color: T.dim, marginBottom: 12 }}>{round.players.map(p => p.name).join(" | ")}</p>
+        <div style={{ fontSize: 13, color: T.accB, marginBottom: 12 }}>{hc}/18 holes | {round.games.length} game{round.games.length !== 1 ? "s" : ""}</div>
         <button className="btn bp mb6" onClick={() => go("score")}>Continue Scoring {">"}</button>
         <button className="btn bs" onClick={() => go("bets")}>View Bets {">"}</button>
       </div></div>
@@ -36,7 +36,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         <div className="empty">
           <div className="empty-i">{"\u26F3"}</div>
           <div className="empty-t">No courses yet</div>
-          <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Add a course in the Courses tab to get started</div>
+          <div style={{ fontSize: 14, color: T.dim, marginTop: 8 }}>Add a course in the Courses tab to get started</div>
           <button className="btn bp bsm mt10" onClick={() => go("courses")}>Go to Courses</button>
         </div>
       </div>
@@ -49,7 +49,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         <div className="empty">
           <div className="empty-i">{"\uD83D\uDC65"}</div>
           <div className="empty-t">No players yet</div>
-          <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Add players in the Players tab to start a round</div>
+          <div style={{ fontSize: 14, color: T.dim, marginTop: 8 }}>Add players in the Players tab to start a round</div>
           <button className="btn bp bsm mt10" onClick={() => go("players")}>Go to Players</button>
         </div>
       </div>
@@ -66,8 +66,8 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         <select className="inp mb10" value={selectedCourseId || ""} onChange={e => { setSelectedCourseId(e.target.value); setSel([]); setTees({}); }}>
           {courses.map(c => <option key={c.id} value={c.id}>{c.name} - {c.city}</option>)}
         </select>
-        {!rdy && <div style={{ background: T.gold + "22", padding: 10, borderRadius: 8, marginBottom: 10 }}>
-          <p style={{ fontSize: 11, color: T.gold, fontWeight: 600 }}>This course needs tee data (rating/slope).</p>
+        {!rdy && <div style={{ background: T.gold + "22", padding: 12, borderRadius: 10, marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: T.gold, fontWeight: 600 }}>This course needs tee data (rating/slope).</p>
           <button className="btn bg mt8" style={{ color: T.gold, borderColor: T.gold + "44" }} onClick={() => go("courses")}>Edit Course {">"}</button>
         </div>}
         <div className="il mb6">Select 4 Players</div>
@@ -75,22 +75,23 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
           const s = sel.includes(p.id), ci = sel.indexOf(p.id);
           return (
             <div key={p.id} onClick={() => tog(p.id)} style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "7px 8px", borderRadius: 7, marginBottom: 3, cursor: "pointer",
-              background: s ? PC[ci] + "12" : "transparent", border: `1px solid ${s ? PC[ci] + "44" : T.bdr}`
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 4, cursor: "pointer",
+              background: s ? PC[ci] + "12" : "transparent", border: `1.5px solid ${s ? PC[ci] + "44" : T.bdr}`,
+              transition: "all .15s"
             }}>
-              <div style={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
-                <div style={{ fontSize: 10, color: T.dim }}>Index: {p.index}</div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{p.name}</div>
+                <div style={{ fontSize: 13, color: T.dim }}>Index: {p.index}</div>
               </div>
-              {s && course && <select className="inp ism" style={{ width: 80 }} value={tees[p.id] || course.tees[0]?.name} onChange={e => { e.stopPropagation(); setTees({ ...tees, [p.id]: e.target.value }); }}>
+              {s && course && <select className="inp ism" style={{ width: 90 }} value={tees[p.id] || course.tees[0]?.name} onChange={e => { e.stopPropagation(); setTees({ ...tees, [p.id]: e.target.value }); }}>
                 {course.tees.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
               </select>}
             </div>
           );
         })}
       </div>
-      {sel.length === 4 && rdy && course && <button className="btn bp" style={{ fontSize: 15, padding: 14 }} onClick={() => {
+      {sel.length === 4 && rdy && course && <button className="btn bp" style={{ fontSize: 16, padding: 16 }} onClick={() => {
         const rp = sel.map((id, i) => {
           const p = players.find(x => x.id === id);
           const tn = tees[id] || course.tees[0]?.name;
@@ -101,7 +102,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         });
         onStart(rp, course);
       }}>Set Up Games {">"}</button>}
-      {sel.length > 0 && sel.length < 4 && <p style={{ fontSize: 11, color: T.dim, textAlign: "center", marginTop: 6 }}>Select {4 - sel.length} more player{4 - sel.length !== 1 ? "s" : ""}</p>}
+      {sel.length > 0 && sel.length < 4 && <p style={{ fontSize: 13, color: T.dim, textAlign: "center", marginTop: 8 }}>Select {4 - sel.length} more player{4 - sel.length !== 1 ? "s" : ""}</p>}
     </div>
   );
 };

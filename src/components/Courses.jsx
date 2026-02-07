@@ -14,7 +14,17 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
   };
 
   const ut = (f, v) => { const u = [...tees]; u[at] = { ...u[at], [f]: v }; setTees(u); };
-  const uh = (f, hi, v) => { const u = [...tees]; const a = [...u[at][f]]; a[hi] = parseInt(v) || 0; u[at] = { ...u[at], [f]: a }; setTees(u); };
+  const uh = (f, hi, v) => {
+    let val = parseInt(v) || 0;
+    if (f === "handicaps") {
+      if (val < 0) val = 0;
+      if (val > 18) val = 18;
+      // Check for duplicates — if this value is already used on another hole, don't allow it
+      const current = [...tees[at].handicaps];
+      if (val > 0 && current.some((h, i) => i !== hi && h === val)) return;
+    }
+    const u = [...tees]; const a = [...u[at][f]]; a[hi] = val; u[at] = { ...u[at], [f]: a }; setTees(u);
+  };
 
   const addTee = () => {
     const newT = { name: "New Tee", rating: 0, slope: 0, pars: [...tees[0].pars], handicaps: [...tees[0].handicaps] };
@@ -28,6 +38,11 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
   };
 
   const tee = tees[at];
+
+  // Check for handicap issues
+  const hcpValues = tee.handicaps.filter(h => h > 0);
+  const hasDupes = hcpValues.length !== new Set(hcpValues).size;
+  const hasOver18 = tee.handicaps.some(h => h > 18);
 
   return (
     <div className="mbg" onClick={onClose}>
@@ -63,7 +78,12 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
           </div>
         </div>
 
-        <div style={{ fontSize: 11, color: T.dim, marginBottom: 10 }}>Par: {tee.pars.reduce((a, b) => a + b, 0)}</div>
+        <div style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>Par: {tee.pars.reduce((a, b) => a + b, 0)}</div>
+
+        {(hasDupes || hasOver18) && <div style={{ background: T.red + "18", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13, color: T.red }}>
+          {hasOver18 && <div>Handicap values must be 1-18.</div>}
+          {hasDupes && <div>Each handicap number must be unique.</div>}
+        </div>}
 
         {[{ l: "Front 9", s: 0 }, { l: "Back 9", s: 9 }].map(nine => (
           <div key={nine.l} style={{ marginBottom: 12 }}>
@@ -73,12 +93,12 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
               {Array.from({ length: 9 }, (_, i) => <th key={i} className="hn">{nine.s + i + 1}</th>)}
               <th className="tc">Tot</th>
             </tr></thead><tbody>
-              <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 9, color: T.dim }}>Par</td>
+              <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 12, color: T.dim }}>Par</td>
                 {Array.from({ length: 9 }, (_, i) => <td key={i}><input className="si" type="number" value={tee.pars[nine.s + i] || ""} onChange={e => uh("pars", nine.s + i, e.target.value)} /></td>)}
-                <td className="tc" style={{ fontSize: 10 }}>{tee.pars.slice(nine.s, nine.s + 9).reduce((a, b) => a + b, 0)}</td>
+                <td className="tc" style={{ fontSize: 12 }}>{tee.pars.slice(nine.s, nine.s + 9).reduce((a, b) => a + b, 0)}</td>
               </tr>
-              <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 9, color: T.dim }}>HCP</td>
-                {Array.from({ length: 9 }, (_, i) => <td key={i}><input className="si" type="number" value={tee.handicaps[nine.s + i] || ""} onChange={e => uh("handicaps", nine.s + i, e.target.value)} /></td>)}
+              <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 12, color: T.dim }}>HCP</td>
+                {Array.from({ length: 9 }, (_, i) => <td key={i}><input className="si" type="number" min="1" max="18" value={tee.handicaps[nine.s + i] || ""} onChange={e => uh("handicaps", nine.s + i, e.target.value)} /></td>)}
                 <td />
               </tr>
             </tbody></table></div>
@@ -120,7 +140,7 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId })
   return (
     <div className="pg">
       <div className="fxb mb10">
-        <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 700, color: T.accB }}>Courses</span>
+        <span className="pg-title">Courses</span>
         <button className="btn bp bsm" onClick={addCourse}>+ Add Course</button>
       </div>
 
@@ -128,7 +148,7 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId })
         <div className="empty">
           <div className="empty-i">{"\u26F3"}</div>
           <div className="empty-t">No courses yet</div>
-          <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Add a course to start playing rounds</div>
+          <div style={{ fontSize: 14, color: T.dim, marginTop: 8 }}>Add a course to start playing rounds</div>
         </div>
       )}
 

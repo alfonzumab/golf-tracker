@@ -118,7 +118,7 @@ export default function App() {
   if (session === undefined) {
     return (
       <div style={{ background: T.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: T.dim, fontSize: 14 }}>Loading...</div>
+        <div style={{ color: T.dim, fontSize: 15 }}>Loading...</div>
       </div>
     );
   }
@@ -133,12 +133,12 @@ export default function App() {
       <div className="hdr">
         {["setup", "score", "bets"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
         <div><div className="hdr-t">{titles[pg]}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}</div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {pg === "score" && round && <>
             <button className="btn bp bsm" onClick={finish}>Finish</button>
             <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={abandon}>{"x"}</button>
           </>}
-          <button className="bg" onClick={logout} style={{ fontSize: 10, color: T.dim }}>Logout</button>
+          <button className="bg" onClick={logout} style={{ fontSize: 12, color: T.dim }}>Logout</button>
         </div>
       </div>
       {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} />}

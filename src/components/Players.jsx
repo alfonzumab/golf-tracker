@@ -24,7 +24,7 @@ const Players = ({ players, setPlayers }) => {
   return (
     <div className="pg">
       <div className="fxb mb10">
-        <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 700, color: T.accB }}>Players</span>
+        <span className="pg-title">Players</span>
         <button className="btn bp bsm" onClick={() => setSa(true)}>+ Add</button>
       </div>
 
@@ -46,7 +46,7 @@ const Players = ({ players, setPlayers }) => {
         <div className="empty">
           <div className="empty-i">{"\uD83D\uDC65"}</div>
           <div className="empty-t">No players yet</div>
-          <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Add players to start tracking rounds</div>
+          <div style={{ fontSize: 14, color: T.dim, marginTop: 8 }}>Add players to start tracking rounds</div>
         </div>
       )}
 

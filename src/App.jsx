@@ -323,7 +323,7 @@ export default function App() {
   const isHost = tournament && session && tournament.hostUserId === session.user.id;
 
   const titles = {
-    home: "Golf Tracker", score: "Scoring", bets: "Bets & Settlement",
+    home: "SideAction Golf", score: "Scoring", bets: "Bets & Settlement",
     players: "Players", courses: "Courses", hist: "History", setup: "Game Setup",
     thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament",
     tscore: "Scoring", tboard: "Leaderboard"
@@ -335,7 +335,7 @@ export default function App() {
         {["setup", "score", "bets"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
         {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={() => go('home')}>{"<"}</button>}
-        <div><div className="hdr-t">{titles[pg] || "Golf Tracker"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
+        <div><div className="hdr-t">{titles[pg] || "SideAction Golf"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {pg === "score" && round && <>
             <button className="btn bp bsm" onClick={finish}>Finish</button>

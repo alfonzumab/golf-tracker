@@ -21,7 +21,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   // Step 4: Tournament Skins
   const [skinsOn, setSkinsOn] = useState(false);
   const [skinsNet, setSkinsNet] = useState(true);
-  const [skinsCarry, setSkinsCarry] = useState(true);
+  const [skinsCarry, setSkinsCarry] = useState(false);
   const [skinsPot, setSkinsPot] = useState(20);
 
   const course = courses.find(c => c.id === courseId) || courses[0];

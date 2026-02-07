@@ -79,24 +79,73 @@ function cStroke(g, pl) {
     }
     return { title: "Stroke 2v2 (" + (g.net ? "Net" : "Gross") + " BB)", details: [t1N + " vs " + t2N, fs(fr1, fr2, "F9"), fs(bk1, bk2, "B9"), fs(ov1, ov2, "18")], status: st, payouts: pay, wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
   }
-  const d = pl.map((p, i) => {
-    const h = p.scores.filter(s => s != null), gr = h.reduce((a, b) => a + b, 0);
-    return { i, gr, net: gr - p.courseHandicap, h: h.length, ch: p.courseHandicap, n: n[i] };
+  // Individual stroke with front/back/overall
+  const calcSeg = (start, end) => pl.map((p, i) => {
+    let total = 0, holes = 0;
+    for (let h = start; h < end; h++) {
+      if (p.scores[h] != null) { total += g.net ? p.scores[h] - p.strokeHoles[h] : p.scores[h]; holes++; }
+    }
+    return { i, total, holes };
   });
-  if (!d.some(x => x.h > 0)) return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: ["No scores"], payouts: [], wager: "$" + g.wagerPerPlayer + "/pl" };
-  const sorted = [...d].sort((a, b) => g.net ? a.net - b.net : a.gr - b.gr);
-  const det = d.map(x => x.n + ": " + x.gr + (g.net ? " (net " + x.net + ", CH " + x.ch + ")" : "") + " " + x.h + "/18");
+  const fr = calcSeg(0, 9), bk = calcSeg(9, 18);
+  const ov = pl.map((_, i) => ({ i, total: fr[i].total + bk[i].total, holes: fr[i].holes + bk[i].holes }));
+  if (!ov.some(s => s.holes > 0)) return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: ["No scores"], payouts: [], wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
+  const fs = (scores, expected, label) => {
+    if (!scores.some(s => s.holes > 0)) return label + ": --";
+    const best = Math.min(...scores.map(s => s.total));
+    const ws = scores.filter(s => s.total === best);
+    if (scores.every(s => s.holes === expected)) return ws.length === 1 ? label + ": " + n[ws[0].i] + " (" + best + ")" : label + ": Tie (" + best + ")";
+    const leader = [...scores].sort((a, b) => a.total - b.total)[0];
+    return label + ": " + n[leader.i] + " (" + leader.total + ", " + leader.holes + "h)";
+  };
   const pay = [];
-  if (d.every(x => x.h === 18)) {
-    const m = d.map(x => g.net ? x.net : x.gr), best = Math.min(...m);
-    const winners = d.filter((_, i) => m[i] === best), losers = d.filter((_, i) => m[i] !== best);
-    for (const loser of losers) { for (const winner of winners) pay.push({ f: loser.i, t: winner.i, a: g.wagerPerPlayer / winners.length }); }
-  }
-  return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: det, status: "Leader: " + sorted[0].n + " (" + (g.net ? "net " + sorted[0].net : sorted[0].gr) + ")", payouts: pay, wager: "$" + g.wagerPerPlayer + "/pl" };
+  const pm = (scores, expected, wager) => {
+    if (!scores.every(s => s.holes === expected) || wager <= 0) return;
+    const best = Math.min(...scores.map(s => s.total));
+    const ws = scores.filter(s => s.total === best), ls = scores.filter(s => s.total !== best);
+    if (ws.length < scores.length) { for (const loser of ls) for (const winner of ws) pay.push({ f: loser.i, t: winner.i, a: wager / ws.length }); }
+  };
+  pm(fr, 9, g.wagerFront); pm(bk, 9, g.wagerBack); pm(ov, 18, g.wagerOverall);
+  const det = pl.map((p, i) => {
+    const gr = p.scores.filter(s => s != null).reduce((a, b) => a + b, 0), h = p.scores.filter(s => s != null).length;
+    return n[i] + ": " + gr + (g.net ? " (net " + ov[i].total + ", CH " + p.courseHandicap + ")" : "") + " " + h + "/18";
+  });
+  const sorted = [...ov].sort((a, b) => a.total - b.total);
+  const st = ov.some(s => s.holes > 0) ? "Leader: " + n[sorted[0].i] + " (" + (g.net ? "net " : "") + sorted[0].total + ")" : "";
+  return { title: "Stroke (" + (g.net ? "Net" : "Gross") + ")", details: [fs(fr, 9, "F9"), fs(bk, 9, "B9"), fs(ov, 18, "18"), ...det], status: st, payouts: pay, wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
 }
 
 function cMatch(g, pl) {
-  const n = pl.map(p => p.name.split(" ")[0]), t1 = g.team1, t2 = g.team2;
+  const n = pl.map(p => p.name.split(" ")[0]);
+  if (g.matchups) {
+    // Individual match: 1v1 matchups
+    const pay = [], det = [], statuses = [];
+    for (const [a, b] of g.matchups) {
+      const aN = n[a], bN = n[b];
+      const seg = (s, e) => {
+        let w1 = 0, w2 = 0, p = 0;
+        for (let h = s; h < e; h++) {
+          if (pl[a].scores[h] == null || pl[b].scores[h] == null) continue; p++;
+          const sa = pl[a].scores[h] - pl[a].strokeHoles[h], sb = pl[b].scores[h] - pl[b].strokeHoles[h];
+          if (sa < sb) w1++; else if (sb < sa) w2++;
+        } return { w1, w2, p };
+      };
+      const fr = seg(0, 9), bk = seg(9, 18), ov = { w1: fr.w1 + bk.w1, w2: fr.w2 + bk.w2, p: fr.p + bk.p };
+      const fs = (s, l) => { if (!s.p) return l + ": --"; if (s.w1 > s.w2) return l + ": " + aN + " (" + s.w1 + "-" + s.w2 + ")"; if (s.w2 > s.w1) return l + ": " + bN + " (" + s.w2 + "-" + s.w1 + ")"; return l + ": Push"; };
+      const pm = (s, w) => { if (s.w1 > s.w2) pay.push({ f: b, t: a, a: w }); else if (s.w2 > s.w1) pay.push({ f: a, t: b, a: w }); };
+      if (fr.p > 0) pm(fr, g.wagerFront);
+      if (bk.p > 0) pm(bk, g.wagerBack);
+      if (ov.p === 18 && ov.w1 !== ov.w2) pm(ov, g.wagerOverall);
+      det.push(aN + " vs " + bN + ": " + fs(fr, "F9") + " | " + fs(bk, "B9") + " | " + fs(ov, "18"));
+      if (ov.p > 0) {
+        const d = ov.w1 - ov.w2, r = 18 - ov.p;
+        if (r > 0) { if (d > 0) statuses.push(aN + " " + d + "UP"); else if (d < 0) statuses.push(bN + " " + (-d) + "UP"); else statuses.push(aN + "/" + bN + " AS"); }
+        else { if (d > 0) statuses.push(aN + " WIN " + ov.w1 + "-" + ov.w2); else if (d < 0) statuses.push(bN + " WIN " + ov.w2 + "-" + ov.w1); else statuses.push(aN + "/" + bN + " HALVED"); }
+      }
+    }
+    return { title: "Match (1v1 Net)", details: det, status: statuses.join(" | "), payouts: pay, wager: "$" + g.wagerFront + "/$" + g.wagerBack + "/$" + g.wagerOverall };
+  }
+  const t1 = g.team1, t2 = g.team2;
   const t1N = n[t1[0]] + "&" + n[t1[1]], t2N = n[t2[0]] + "&" + n[t2[1]];
   const seg = (s, e) => {
     let w1 = 0, w2 = 0, p = 0;

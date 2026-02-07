@@ -30,7 +30,7 @@ const Auth = () => {
     <div className="auth-wrap">
       <div className="auth-box">
         <div className="auth-logo">
-          <div className="auth-title">Golf Tracker</div>
+          <div className="auth-title">SideAction Golf</div>
           <div className="auth-sub">Track rounds, settle bets</div>
         </div>
 

@@ -136,8 +136,8 @@ RETURNS void AS $$
 DECLARE
   v_groups JSONB;
 BEGIN
-  -- Fetch current groups
-  SELECT groups INTO v_groups FROM tournaments WHERE share_code = UPPER(p_code);
+  -- Fetch current groups (FOR UPDATE prevents concurrent read-modify-write race)
+  SELECT groups INTO v_groups FROM tournaments WHERE share_code = UPPER(p_code) FOR UPDATE;
 
   -- Update the specific score using jsonb_set with array indexing
   v_groups := jsonb_set(
@@ -166,7 +166,7 @@ RETURNS void AS $$
 DECLARE
   v_groups JSONB;
 BEGIN
-  SELECT groups INTO v_groups FROM tournaments WHERE share_code = UPPER(p_code);
+  SELECT groups INTO v_groups FROM tournaments WHERE share_code = UPPER(p_code) FOR UPDATE;
   v_groups := jsonb_set(v_groups, ARRAY[p_group_idx::text, 'games'], p_games);
   UPDATE tournaments
   SET groups = v_groups, updated_at = now()

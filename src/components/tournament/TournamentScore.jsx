@@ -168,9 +168,9 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
   const saveGroupGames = () => { onUpdateGroupGames(playerInfo.groupIdx, editGames); setEditing(false); };
   const addGame = t => {
     const g = { type: t, id: Date.now() };
-    if (t === GT.STROKE) Object.assign(g, { net: true, wagerPerPlayer: 10 });
+    if (t === GT.STROKE) Object.assign(g, { net: true, wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
     else if (t === GT.MATCH) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
-    else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: true, potPerPlayer: 20 });
+    else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: false, potPerPlayer: 20 });
     else Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
     setEditGames([...editGames, g]); setShowAddGame(false);
   };
@@ -228,11 +228,64 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                   <button style={{ background: "none", border: "none", color: T.red, cursor: "pointer", fontSize: 13 }} onClick={() => setEditGames(editGames.filter(x => x.id !== g.id))}>Remove</button>
                 </div>
                 {g.type === GT.STROKE && <>
+                  {has4 && <>
+                    <div className="il mb6">Format</div>
+                    <div className="fx g6 mb10">
+                      <button className={`chip ${!g.team1 ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; ug(g.id, rest); }}>Individual</button>
+                      <button className={`chip ${g.team1 ? "sel" : ""}`} onClick={() => ug(g.id, { team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] })}>2v2 Teams</button>
+                    </div>
+                  </>}
                   <Tog label="Net" v={g.net} onChange={v => ug(g.id, { net: v })} />
-                  <div><div className="il">$/player</div><input className="inp" type="number" value={g.wagerPerPlayer} onChange={e => ug(g.id, { wagerPerPlayer: parseFloat(e.target.value) || 0 })} /></div>
+                  {g.team1 && has4 && <>
+                    <div className="fx g6 mb8" style={{ justifyContent: "center" }}>
+                      <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.accD + "22", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team1[0]}`}>{n[g.team1[0]]}</span> & <span className={`pc${g.team1[1]}`}>{n[g.team1[1]]}</span></div>
+                      <span style={{ color: T.dim, fontWeight: 700, fontSize: 13 }}>vs</span>
+                      <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.red + "15", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team2[0]}`}>{n[g.team2[0]]}</span> & <span className={`pc${g.team2[1]}`}>{n[g.team2[1]]}</span></div>
+                    </div>
+                    <button className="btn bg mb10" style={{ width: "100%" }} onClick={() => {
+                      const c = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]];
+                      const cur = c.findIndex(x => x[0] === g.team1[0] && x[1] === g.team1[1]);
+                      const nx = c[(cur + 1) % 3];
+                      ug(g.id, { team1: [nx[0], nx[1]], team2: [nx[2], nx[3]] });
+                    }}>Swap Teams</button>
+                  </>}
+                  <div className="g3">{[["Front", "wagerFront"], ["Back", "wagerBack"], ["Overall", "wagerOverall"]].map(([l, k]) =>
+                    <div key={k}><div className="il">{l} $</div><input className="inp ism" style={{ width: "100%" }} type="number" value={g[k]} onChange={e => ug(g.id, { [k]: parseFloat(e.target.value) || 0 })} /></div>
+                  )}</div>
                 </>}
                 {g.type === GT.MATCH && <>
-                  <p style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Players 1&2 vs 3&4</p>
+                  <div className="il mb6">Format</div>
+                  <div className="fx g6 mb10">
+                    <button className={`chip ${g.matchups ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; ug(g.id, { ...rest, matchups: g.matchups || [[0, 1], [2, 3]] }); }}>Individual</button>
+                    <button className={`chip ${!g.matchups ? "sel" : ""}`} onClick={() => { const { matchups, ...rest } = g; ug(g.id, { ...rest, team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] }); }}>2v2 Best Ball</button>
+                  </div>
+                  {g.matchups ? <>
+                    {g.matchups.map(([a, b], mi) => (
+                      <div key={mi} className="fx g6 mb6" style={{ justifyContent: "center" }}>
+                        <span className={`pc${a}`} style={{ fontWeight: 600, fontSize: 14 }}>{n[a]}</span>
+                        <span style={{ color: T.dim, fontWeight: 700, fontSize: 13 }}>vs</span>
+                        <span className={`pc${b}`} style={{ fontWeight: 600, fontSize: 14 }}>{n[b]}</span>
+                      </div>
+                    ))}
+                    <button className="btn bg mb10" style={{ width: "100%" }} onClick={() => {
+                      const c = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
+                      const cur = c.findIndex(x => x[0][0] === g.matchups[0][0] && x[0][1] === g.matchups[0][1]);
+                      const nx = c[(cur + 1) % 3];
+                      ug(g.id, { matchups: nx });
+                    }}>Swap Matchups</button>
+                  </> : <>
+                    <div className="fx g6 mb8" style={{ justifyContent: "center" }}>
+                      <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.accD + "22", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team1[0]}`}>{n[g.team1[0]]}</span> & <span className={`pc${g.team1[1]}`}>{n[g.team1[1]]}</span></div>
+                      <span style={{ color: T.dim, fontWeight: 700, fontSize: 13 }}>vs</span>
+                      <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.red + "15", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team2[0]}`}>{n[g.team2[0]]}</span> & <span className={`pc${g.team2[1]}`}>{n[g.team2[1]]}</span></div>
+                    </div>
+                    <button className="btn bg mb10" style={{ width: "100%" }} onClick={() => {
+                      const c = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]];
+                      const cur = c.findIndex(x => x[0] === g.team1[0] && x[1] === g.team1[1]);
+                      const nx = c[(cur + 1) % 3];
+                      ug(g.id, { team1: [nx[0], nx[1]], team2: [nx[2], nx[3]] });
+                    }}>Swap Teams</button>
+                  </>}
                   <div className="g3">{[["Front", "wagerFront"], ["Back", "wagerBack"], ["Overall", "wagerOverall"]].map(([l, k]) =>
                     <div key={k}><div className="il">{l} $</div><input className="inp ism" style={{ width: "100%" }} type="number" value={g[k]} onChange={e => ug(g.id, { [k]: parseFloat(e.target.value) || 0 })} /></div>
                   )}</div>

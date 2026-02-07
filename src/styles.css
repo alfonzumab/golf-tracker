@@ -178,3 +178,27 @@ select.inp{appearance:none;cursor:pointer;background-image:url("data:image/svg+x
 
 /* === PAGE TITLE === */
 .pg-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#4ade80}
+
+/* === TOURNAMENT === */
+.t-hub{display:flex;flex-direction:column;gap:12px;padding:24px 0}
+.t-or{text-align:center;color:#6b9b7a;font-size:13px;font-weight:600;padding:4px 0}
+.t-code-box{text-align:center;padding:20px 0}
+.t-code{font-family:'DM Sans',monospace;font-size:36px;font-weight:700;letter-spacing:6px;color:#4ade80;background:#081510;border:2px dashed #2a5a3a;border-radius:14px;padding:16px 24px;display:inline-block}
+.t-code-label{font-size:13px;color:#6b9b7a;margin-top:8px}
+.t-code-inp{font-family:'DM Sans',monospace;font-size:28px;font-weight:700;letter-spacing:4px;text-align:center;text-transform:uppercase;width:100%;background:#081510;border:2px solid #1a3a25;color:#4ade80;padding:14px;border-radius:12px;outline:none}
+.t-code-inp:focus{border-color:#2ecc71;box-shadow:0 0 0 3px #2ecc7118}
+.t-grp{background:#0f2518;border:1px solid #1a3a25;border-radius:12px;padding:14px;margin-bottom:10px}
+.t-grp-h{font-size:15px;font-weight:700;color:#4ade80;margin-bottom:8px}
+.t-grp-p{font-size:14px;color:#e8f5e9;padding:4px 0}
+.t-team-a{color:#60a5fa}
+.t-team-b{color:#f472b6}
+.t-step{font-size:13px;color:#6b9b7a;font-weight:600;margin-bottom:8px}
+.t-step-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#4ade80;margin-bottom:16px}
+.t-player-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#081510;border:1px solid #1a3a25;border-radius:10px;margin-bottom:6px}
+.t-player-row .prow-n{flex:1}
+.t-share-btns{display:flex;gap:8px;margin-top:12px}
+.t-share-btns .btn{flex:1}
+.t-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600}
+.t-status.setup{background:#f0c04022;color:#f0c040}
+.t-status.live{background:#1a7a4233;color:#4ade80}
+.t-status.finished{background:#3d6b5033;color:#6b9b7a}

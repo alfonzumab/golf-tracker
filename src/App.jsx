@@ -9,8 +9,10 @@ import {
   loadRounds, saveRound,
   loadCurrentRound, saveCurrentRound, clearCurrentRound,
   loadSelectedCourse, saveSelectedCourse,
-  importLocalData
+  importLocalData,
+  joinRound, generateShareCode
 } from './utils/storage';
+import { createTournament, getTournament, startTournament, saveActiveTournament, clearActiveTournament, loadGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -23,6 +25,11 @@ import Setup from './components/Setup';
 import Scoring from './components/Scoring';
 import Bets from './components/Bets';
 import Hist from './components/History';
+import TournamentHub from './components/tournament/TournamentHub';
+import TournamentSetup from './components/tournament/TournamentSetup';
+import TournamentLobby from './components/tournament/TournamentLobby';
+import TournamentJoin from './components/tournament/TournamentJoin';
+import TournamentNav from './components/tournament/TournamentNav';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = logged out
@@ -35,6 +42,11 @@ export default function App() {
   const [setup, setSetup] = useState(null);
   const [setupCourse, setSetupCourse] = useState(null);
   const [modal, setModal] = useState(null);
+
+  // Tournament state
+  const [tournament, setTournament] = useState(null);
+  const [tournamentGuest, setTournamentGuest] = useState(null);
+  const [joinCode, setJoinCode] = useState(null);
 
   // Listen for auth changes
   useEffect(() => {
@@ -56,7 +68,15 @@ export default function App() {
       setPlayers(p);
       setCourses(c);
       setRounds(r);
-      if (cr) setRound(cr);
+      if (cr) {
+        // Auto-generate share code for rounds created before the feature
+        if (!cr.shareCode) {
+          cr.shareCode = generateShareCode();
+          sv('currentRound', cr);
+          saveCurrentRound(cr);
+        }
+        setRound(cr);
+      }
       if (sc) setSelectedCourseId(sc);
       else if (c.length > 0) setSelectedCourseId(c[0].id);
     };
@@ -72,7 +92,7 @@ export default function App() {
         const { data } = await supabase.from('rounds').select('*').eq('is_current', true).limit(1);
         if (data && data.length > 0) {
           const r = data[0];
-          const cr = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games };
+          const cr = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games, shareCode: r.share_code };
           setRound(cr);
           sv('currentRound', cr);
         }
@@ -82,6 +102,7 @@ export default function App() {
   }, [session]);
 
   const go = p => setPg(p);
+  const isTournamentPg = pg.startsWith('t');
 
   // Wrappers that save to both localStorage and Supabase
   const handleSetPlayers = (up) => { setPlayers(up); sv("players", up); savePlayers(up); };
@@ -126,6 +147,70 @@ export default function App() {
     onNo: () => setModal(null)
   });
 
+  // Join round by share code
+  const handleJoinRound = async (code) => {
+    const result = await joinRound(code);
+    if (result.error) {
+      setModal({ title: 'Error', text: result.error, onOk: () => setModal(null) });
+      return;
+    }
+    setRound(result.round);
+    go('score');
+  };
+
+  // Tournament handlers
+  const handleCreateTournament = async (setupData) => {
+    const result = await createTournament({
+      name: setupData.name,
+      date: setupData.date,
+      course: setupData.course,
+      teeName: setupData.teeName,
+      groups: setupData.groups,
+      tournamentGames: setupData.tournamentGames,
+      teamConfig: setupData.teamConfig
+    });
+    if (result.error) {
+      setModal({ title: 'Error', text: result.error, onOk: () => setModal(null) });
+      return;
+    }
+    // Fetch the created tournament
+    const { tournament: t } = await getTournament(result.code);
+    if (t) {
+      setTournament(t);
+      go('tlobby');
+    }
+  };
+
+  const handleJoinTournament = (code) => {
+    setJoinCode(code);
+    go('tjoin');
+  };
+
+  const handleJoined = (t, guestInfo) => {
+    setTournament(t);
+    setTournamentGuest(guestInfo);
+    go('tlobby');
+  };
+
+  const handleStartTournament = async () => {
+    if (!tournament) return;
+    const result = await startTournament(tournament.shareCode);
+    if (result.error) {
+      setModal({ title: 'Error', text: result.error, onOk: () => setModal(null) });
+      return;
+    }
+    setTournament({ ...tournament, status: 'live' });
+  };
+
+  const leaveTournament = () => {
+    setTournament(null);
+    setTournamentGuest(null);
+    setJoinCode(null);
+    clearActiveTournament();
+    clearGuestInfo();
+    go('home');
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setSession(null);
@@ -144,13 +229,21 @@ export default function App() {
   // Not logged in
   if (!session) return <Auth />;
 
-  const titles = { home: "Golf Tracker", score: "Scoring", bets: "Bets & Settlement", players: "Players", courses: "Courses", hist: "History", setup: "Game Setup" };
+  const isHost = tournament && session && tournament.hostUserId === session.user.id;
+
+  const titles = {
+    home: "Golf Tracker", score: "Scoring", bets: "Bets & Settlement",
+    players: "Players", courses: "Courses", hist: "History", setup: "Game Setup",
+    thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament"
+  };
 
   return (
     <div className="app">
       <div className="hdr">
         {["setup", "score", "bets"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
-        <div><div className="hdr-t">{titles[pg]}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}</div>
+        {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
+        {pg === "tlobby" && <button className="hdr-bk" onClick={leaveTournament}>{"<"}</button>}
+        <div><div className="hdr-t">{titles[pg] || "Golf Tracker"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{pg === "tlobby" && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {pg === "score" && round && <>
             <button className="btn bp bsm" onClick={finish}>Finish</button>
@@ -159,7 +252,7 @@ export default function App() {
           <button className="bg" onClick={logout} style={{ fontSize: 12, color: T.dim }}>Logout</button>
         </div>
       </div>
-      {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} />}
+      {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} />}
       {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} />}
       {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} />}
       {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={games => {
@@ -167,15 +260,24 @@ export default function App() {
           id: Date.now().toString(),
           date: new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
           course: { name: setupCourse.name, city: setupCourse.city },
-          players: setup, games
+          players: setup, games,
+          shareCode: generateShareCode()
         };
         setRound(r); sv("currentRound", r); saveCurrentRound(r);
         setSetup(null); setSetupCourse(null); go("score");
       }} />}
       {pg === "score" && round && <Scoring round={round} updateScore={us} />}
       {pg === "bets" && round && <Bets round={round} />}
-      {pg === "hist" && <Hist rounds={rounds} onLoad={r => { setRound(r); sv("currentRound", r); saveCurrentRound(r); go("bets"); }} />}
-      <Nav pg={pg} go={go} hr={!!round} />
+      {pg === "hist" && <Hist rounds={rounds} onLoad={r => { setRound({ ...r }); sv("currentRound", r); go("bets"); }} />}
+
+      {/* Tournament pages */}
+      {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}
+      {pg === "tsetup" && <TournamentSetup courses={courses} players={players} selectedCourseId={selectedCourseId} onComplete={handleCreateTournament} />}
+      {pg === "tlobby" && <TournamentLobby tournament={tournament} isHost={isHost} onStart={handleStartTournament} onBack={leaveTournament} />}
+      {pg === "tjoin" && joinCode && <TournamentJoin code={joinCode} onJoined={handleJoined} onBack={() => go('thub')} />}
+
+      {/* Nav: show tournament nav for tournament pages, regular nav otherwise */}
+      {isTournamentPg && pg === "tlobby" ? <TournamentNav pg={pg} go={go} isHost={isHost} /> : !isTournamentPg && <Nav pg={pg} go={go} hr={!!round} />}
       {modal && <Mdl {...modal} />}
     </div>
   );

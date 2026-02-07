@@ -1,0 +1,127 @@
+import { supabase } from '../lib/supabase';
+import { sv, ld } from './storage';
+
+// 6-char share code (no ambiguous chars: 0/O, 1/I/L)
+const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export function generateShareCode() {
+  let code = '';
+  for (let i = 0; i < 6; i++) code += CHARS[Math.floor(Math.random() * CHARS.length)];
+  return code;
+}
+
+// Save tournament guest identity
+export const saveGuestInfo = (info) => sv('tournament-guest', info);
+export const loadGuestInfo = () => ld('tournament-guest', null);
+export const clearGuestInfo = () => sv('tournament-guest', null);
+
+// Save active tournament code for quick resume
+export const saveActiveTournament = (code) => sv('active-tournament', code);
+export const loadActiveTournament = () => ld('active-tournament', null);
+export const clearActiveTournament = () => sv('active-tournament', null);
+
+// --- Supabase RPC wrappers ---
+
+export async function createTournament({ name, date, course, teeName, groups, tournamentGames, teamConfig }) {
+  const code = generateShareCode();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not logged in' };
+
+  const { error } = await supabase.from('tournaments').insert({
+    share_code: code,
+    host_user_id: user.id,
+    name,
+    date,
+    course,
+    tee_name: teeName,
+    groups,
+    tournament_games: tournamentGames || {},
+    team_config: teamConfig || null,
+    status: 'setup'
+  });
+
+  if (error) {
+    // Retry once with new code if collision
+    if (error.code === '23505') {
+      const code2 = generateShareCode();
+      const { error: e2 } = await supabase.from('tournaments').insert({
+        share_code: code2, host_user_id: user.id, name, date, course,
+        tee_name: teeName, groups, tournament_games: tournamentGames || {},
+        team_config: teamConfig || null, status: 'setup'
+      });
+      if (e2) return { error: e2.message };
+      saveActiveTournament(code2);
+      return { code: code2 };
+    }
+    return { error: error.message };
+  }
+
+  saveActiveTournament(code);
+  return { code };
+}
+
+export async function getTournament(code) {
+  const { data, error } = await supabase.rpc('get_tournament', { p_code: code.toUpperCase() });
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: 'Tournament not found' };
+  const t = data[0];
+  return {
+    tournament: {
+      id: t.id,
+      shareCode: t.share_code,
+      hostUserId: t.host_user_id,
+      name: t.name,
+      date: t.date,
+      course: t.course,
+      teeName: t.tee_name,
+      groups: t.groups || [],
+      tournamentGames: t.tournament_games || {},
+      teamConfig: t.team_config,
+      status: t.status
+    }
+  };
+}
+
+export async function saveTournamentSetup(tournament) {
+  const { error } = await supabase.rpc('save_tournament', {
+    p_tournament: {
+      share_code: tournament.shareCode,
+      name: tournament.name,
+      date: tournament.date,
+      course: tournament.course,
+      tee_name: tournament.teeName,
+      groups: tournament.groups,
+      tournament_games: tournament.tournamentGames || {},
+      team_config: tournament.teamConfig || null
+    }
+  });
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+export async function startTournament(code) {
+  const { error } = await supabase.rpc('update_tournament_status', {
+    p_code: code, p_status: 'live'
+  });
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+export async function finishTournament(code) {
+  const { error } = await supabase.rpc('update_tournament_status', {
+    p_code: code, p_status: 'finished'
+  });
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+let scoreSaveTimeout = null;
+export async function updateTournamentScore(code, groupIdx, playerIdx, holeIdx, score) {
+  // Debounce the RPC call (500ms)
+  clearTimeout(scoreSaveTimeout);
+  scoreSaveTimeout = setTimeout(async () => {
+    await supabase.rpc('update_tournament_score', {
+      p_code: code, p_group_idx: groupIdx, p_player_idx: playerIdx,
+      p_hole_idx: holeIdx, p_score: score
+    });
+  }, 500);
+}

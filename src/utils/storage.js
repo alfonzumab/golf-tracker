@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { generateShareCode } from './tournamentStorage';
 
 // Local cache (instant UI, offline fallback)
 export const sv = (k, d) => { try { localStorage.setItem("gt3-" + k, JSON.stringify(d)); } catch {} };
@@ -19,11 +20,11 @@ export async function savePlayers(players) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: existing } = await supabase.from('players').select('id');
+  const { data: existing } = await supabase.from('players').select('id').eq('user_id', user.id);
   const existingIds = new Set((existing || []).map(p => p.id));
   const currentIds = new Set(players.map(p => p.id));
 
-  // Delete removed players
+  // Delete removed players (only own)
   for (const id of existingIds) {
     if (!currentIds.has(id)) await supabase.from('players').delete().eq('id', id);
   }
@@ -49,7 +50,7 @@ export async function saveCourses(courses) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: existing } = await supabase.from('courses').select('id');
+  const { data: existing } = await supabase.from('courses').select('id').eq('user_id', user.id);
   const existingIds = new Set((existing || []).map(c => c.id));
   const currentIds = new Set(courses.map(c => c.id));
 
@@ -67,7 +68,7 @@ export async function saveCourses(courses) {
 export async function loadRounds() {
   const { data, error } = await supabase.from('rounds').select('*').eq('is_current', false).order('created_at');
   if (error) return ld('rounds', []);
-  const rounds = data.map(r => ({ id: r.id, date: r.date, course: r.course, players: r.players, games: r.games }));
+  const rounds = data.map(r => ({ id: r.id, date: r.date, course: r.course, players: r.players, games: r.games, shareCode: r.share_code }));
   sv('rounds', rounds);
   return rounds;
 }
@@ -77,11 +78,11 @@ export async function saveRound(rounds) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Delete all non-current rounds, re-insert
+  // Delete all non-current rounds owned by this user, re-insert
   await supabase.from('rounds').delete().eq('is_current', false).eq('user_id', user.id);
   for (const r of rounds) {
     await supabase.from('rounds').insert({
-      id: r.id, user_id: user.id, date: r.date, course: r.course, players: r.players, games: r.games, is_current: false
+      id: r.id, user_id: user.id, date: r.date, course: r.course, players: r.players, games: r.games, is_current: false, share_code: r.shareCode || null
     });
   }
 }
@@ -90,7 +91,7 @@ export async function loadCurrentRound() {
   const { data, error } = await supabase.from('rounds').select('*').eq('is_current', true).limit(1);
   if (error || !data || data.length === 0) return ld('currentRound', null);
   const r = data[0];
-  const round = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games };
+  const round = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games, shareCode: r.share_code };
   sv('currentRound', round);
   return round;
 }
@@ -102,11 +103,27 @@ export async function saveCurrentRound(round) {
   clearTimeout(saveCurrentTimeout);
   saveCurrentTimeout = setTimeout(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !round) return;
 
-    // Delete old current round, insert new one
-    await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
-    if (round) {
+    if (round.shareCode) {
+      // Try UPDATE by share_code (works for both owner and participants)
+      const { data } = await supabase.from('rounds')
+        .update({ players: round.players, games: round.games })
+        .eq('share_code', round.shareCode)
+        .eq('is_current', true)
+        .select();
+
+      // If no row updated (first save), insert as owner
+      if (!data || data.length === 0) {
+        await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
+        await supabase.from('rounds').insert({
+          id: round.id, user_id: user.id, date: round.date, course: round.course,
+          players: round.players, games: round.games, is_current: true, share_code: round.shareCode
+        });
+      }
+    } else {
+      // Legacy flow (no share code)
+      await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
       await supabase.from('rounds').insert({
         id: round.id, user_id: user.id, date: round.date, course: round.course, players: round.players, games: round.games, is_current: true
       });
@@ -119,8 +136,25 @@ export async function clearCurrentRound() {
   clearTimeout(saveCurrentTimeout);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
+  // Only delete rounds owned by this user (don't delete if participant)
   await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
 }
+
+// Join a round by share code
+export async function joinRound(code) {
+  const { data, error } = await supabase.rpc('join_round', { p_code: code.toUpperCase() });
+  if (error) return { error: error.message };
+  if (!data) return { error: 'Round not found' };
+  if (data.error) return { error: data.error };
+  const round = {
+    id: data.id, date: data.date, course: data.course,
+    players: data.players, games: data.games, shareCode: data.share_code
+  };
+  sv('currentRound', round);
+  return { round };
+}
+
+export { generateShareCode };
 
 export async function loadSelectedCourse() {
   const { data, error } = await supabase.from('user_preferences').select('selected_course_id').limit(1);

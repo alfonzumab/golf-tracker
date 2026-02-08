@@ -12,7 +12,7 @@ import {
   importLocalData,
   joinRound, generateShareCode
 } from './utils/storage';
-import { createTournament, getTournament, startTournament, updateTournamentScore, updateGroupGames, saveActiveTournament, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
+import { createTournament, getTournament, startTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -97,7 +97,9 @@ export default function App() {
             const guest = loadGuestInfo();
             if (guest) setTournamentGuest(guest);
           }
-        } catch {}
+        } catch {
+          // Silently handle network errors
+        }
       }
     };
     load();
@@ -122,7 +124,9 @@ export default function App() {
             return null;
           });
         }
-      } catch {}
+      } catch {
+        // Silently handle network errors
+      }
     }, 10000);
     return () => clearInterval(id);
   }, [session]);
@@ -301,15 +305,20 @@ export default function App() {
             };
           });
         }
-      } catch {}
+      } catch {
+        // Silently handle network errors
+      }
     }, 10000);
     return () => clearInterval(id);
   }, [tournament?.shareCode, tournament?.status, tournamentGuest?.groupIdx]);
 
   // Auto-navigate to scoring when tournament goes live
   useEffect(() => {
-    if (tournament?.status === 'live' && pg === 'tlobby') go('tscore');
-  }, [tournament?.status]);
+    if (tournament?.status === 'live' && pg === 'tlobby') {
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => setPg('tscore'), 0);
+    }
+  }, [tournament, pg]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -380,7 +389,7 @@ export default function App() {
       {pg === "tboard" && tournament && <TournamentBoard tournament={tournament} />}
 
       {/* Nav: show tournament nav for tournament pages, regular nav otherwise */}
-      {["tlobby", "tscore", "tboard"].includes(pg) ? <TournamentNav pg={pg} go={go} isHost={isHost} /> : !isTournamentPg && <Nav pg={pg} go={go} hr={!!round} />}
+      {["tlobby", "tscore", "tboard"].includes(pg) ? <TournamentNav pg={pg} go={go} /> : !isTournamentPg && <Nav pg={pg} go={go} hr={!!round} />}
       {modal && <Mdl {...modal} />}
     </div>
   );

@@ -32,7 +32,9 @@ const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
           title: tournament.name,
           text: `Join my golf tournament! Code: ${tournament.shareCode}`,
         });
-      } catch {}
+      } catch {
+        // Fallback to copy if share fails
+      }
     } else {
       copyCode();
     }

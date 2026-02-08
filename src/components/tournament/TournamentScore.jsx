@@ -8,44 +8,34 @@ import Tog from '../Toggle';
 const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer, onUpdateGroupGames }) => {
   const teeData = tournament.course.tees?.find(t => t.name === tournament.teeName) || tournament.course.tees?.[0];
 
-  // Player picker if not yet identified
-  if (!playerInfo) {
-    return (
-      <div className="pg">
-        <div className="cd">
-          <div className="ct">Select Your Player</div>
-          <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>Tap your name to start scoring</p>
-          {tournament.groups.map((g, gi) => (
-            <div key={gi} className="t-grp">
-              <div className="t-grp-h">Group {gi + 1}</div>
-              {g.players.map((p, pi) => (
-                <div key={pi} className="t-grp-p" style={{ cursor: 'pointer', padding: '12px 10px', borderRadius: 8, marginBottom: 4, border: `1px solid ${T.bdr}` }}
-                  onClick={() => onSelectPlayer({ code: tournament.shareCode, groupIdx: gi, playerIdx: pi, playerName: p.name, tournamentName: tournament.name })}>
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{p.name}</span>
-                  <span style={{ fontSize: 13, color: T.dim, marginLeft: 8 }}>Index: {p.index}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!teeData) {
-    return <div className="pg"><div className="cd"><div className="ct">Missing tee data</div><p style={{ fontSize: 13, color: T.dim }}>This tournament was created before tee data was stored. Please create a new tournament.</p></div></div>;
-  }
-
-  const group = tournament.groups[playerInfo.groupIdx];
-  const pl = useMemo(() => group.players.map(p => enrichPlayer(p, teeData)), [group.players, teeData]);
+  // All hooks must be called at the top level, before any conditional returns
+  const group = playerInfo ? tournament.groups[playerInfo.groupIdx] : null;
+  const pl = useMemo(() => {
+    if (!group || !teeData) return [];
+    return group.players.map(p => enrichPlayer(p, teeData));
+  }, [group, teeData]);
   const n = pl.map(p => p.name.split(" ")[0]);
 
-  const [hole, setHole] = useState(() => { for (let h = 0; h < 18; h++) { if (!pl.every(p => p.scores[h] != null)) return h; } return 17; });
+  const [hole, setHole] = useState(() => {
+    if (!pl || !pl.length) return 0;
+    for (let h = 0; h < 18; h++) {
+      if (!pl.every(p => p.scores[h] != null)) return h;
+    }
+    return 17;
+  });
   const [view, setView] = useState("hole");
   const prevHole = useRef(hole);
 
+  // Group games state
+  const groupGames = group?.games || [];
+  const [editing, setEditing] = useState(false);
+  const [editGames, setEditGames] = useState(groupGames);
+  const [showAddGame, setShowAddGame] = useState(false);
+
   // Auto-advance hole
+  const currentHoleScores = pl.map(p => p.scores[hole]).join(",");
   useEffect(() => {
+    if (!pl.length) return;
     const navigated = hole !== prevHole.current;
     prevHole.current = hole;
     if (navigated) return;
@@ -56,7 +46,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
         return () => clearTimeout(t);
       }
     }
-  }, [pl.map(p => p.scores[hole]).join(","), hole]);
+  }, [currentHoleScores, hole, pl]);
 
   const HV = () => {
     const lb = pl.map((p, i) => {
@@ -164,12 +154,6 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
   const skinsConfig = tournament.tournamentGames?.find(g => g.type === 'skins');
   const has4 = pl.length === 4;
 
-  // Group games state
-  const groupGames = group.games || [];
-  const [editing, setEditing] = useState(false);
-  const [editGames, setEditGames] = useState(groupGames);
-  const [showAddGame, setShowAddGame] = useState(false);
-
   const startEdit = () => { setEditGames(groupGames.length > 0 ? [...groupGames] : []); setEditing(true); };
   const saveGroupGames = () => { onUpdateGroupGames(playerInfo.groupIdx, editGames); setEditing(false); };
   const addGame = t => {
@@ -237,7 +221,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                   {has4 && <>
                     <div className="il mb6">Format</div>
                     <div className="fx g6 mb10">
-                      <button className={`chip ${!g.team1 ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? rest : x)); }}>Individual</button>
+                      <button className={`chip ${!g.team1 ? "sel" : ""}`} onClick={() => { const { team1: _team1, team2: _team2, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? rest : x)); }}>Individual</button>
                       <button className={`chip ${g.team1 ? "sel" : ""}`} onClick={() => ug(g.id, { team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] })}>2v2 Teams</button>
                     </div>
                   </>}
@@ -262,8 +246,8 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                 {g.type === GT.MATCH && <>
                   <div className="il mb6">Format</div>
                   <div className="fx g6 mb10">
-                    <button className={`chip ${g.matchups ? "sel" : ""}`} onClick={() => { const { team1, team2, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? { ...rest, matchups: g.matchups || [[0, 1], [2, 3]] } : x)); }}>Individual</button>
-                    <button className={`chip ${!g.matchups ? "sel" : ""}`} onClick={() => { const { matchups, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? { ...rest, team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] } : x)); }}>2v2 Best Ball</button>
+                    <button className={`chip ${g.matchups ? "sel" : ""}`} onClick={() => { const { team1: _team1, team2: _team2, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? { ...rest, matchups: g.matchups || [[0, 1], [2, 3]] } : x)); }}>Individual</button>
+                    <button className={`chip ${!g.matchups ? "sel" : ""}`} onClick={() => { const { matchups: _matchups, ...rest } = g; setEditGames(editGames.map(x => x.id === g.id ? { ...rest, team1: g.team1 || [0, 1], team2: g.team2 || [2, 3] } : x)); }}>2v2 Best Ball</button>
                   </div>
                   {g.matchups ? <>
                     {g.matchups.map(([a, b], mi) => (
@@ -426,6 +410,34 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
 
   const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
   const showBets = skinsConfig || groupGames.length > 0 || has4 || isRC;
+
+  // Player picker if not yet identified
+  if (!playerInfo) {
+    return (
+      <div className="pg">
+        <div className="cd">
+          <div className="ct">Select Your Player</div>
+          <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>Tap your name to start scoring</p>
+          {tournament.groups.map((g, gi) => (
+            <div key={gi} className="t-grp">
+              <div className="t-grp-h">Group {gi + 1}</div>
+              {g.players.map((p, pi) => (
+                <div key={pi} className="t-grp-p" style={{ cursor: 'pointer', padding: '12px 10px', borderRadius: 8, marginBottom: 4, border: `1px solid ${T.bdr}` }}
+                  onClick={() => onSelectPlayer({ code: tournament.shareCode, groupIdx: gi, playerIdx: pi, playerName: p.name, tournamentName: tournament.name })}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{p.name}</span>
+                  <span style={{ fontSize: 13, color: T.dim, marginLeft: 8 }}>Index: {p.index}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!teeData) {
+    return <div className="pg"><div className="cd"><div className="ct">Missing tee data</div><p style={{ fontSize: 13, color: T.dim }}>This tournament was created before tee data was stored. Please create a new tournament.</p></div></div>;
+  }
 
   return (
     <div className="pg">

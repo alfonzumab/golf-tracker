@@ -1,4 +1,4 @@
-const TournamentNav = ({ pg, go, isHost }) => {
+const TournamentNav = ({ pg, go }) => {
   const items = [
     { id: 'tlobby', icon: '\uD83C\uDFC6', label: 'Lobby' },
     { id: 'tscore', icon: '\uD83C\uDFCC', label: 'Score' },

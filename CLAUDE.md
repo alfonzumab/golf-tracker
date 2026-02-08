@@ -24,7 +24,7 @@ Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-
 - `session === null` → render `<Auth />` (login/signup)
 - `session` truthy → render the app, load data from Supabase
 
-On login, `importLocalData()` migrates any existing localStorage data to Supabase (one-time). All subsequent data loads come from Supabase with localStorage as write-through cache.
+On login, `importLocalData()` migrates localStorage data to Supabase — but only if the user has zero players and zero courses in Supabase (true first-time migration). Once Supabase has data, `importLocalData` is a no-op. All subsequent data loads come from Supabase with localStorage as write-through cache.
 
 ### Persistence Pattern
 
@@ -34,8 +34,12 @@ Components never call storage functions directly. `App.jsx` provides wrapper fun
 3. Write to Supabase async (cloud persistence)
 
 Two storage modules:
-- `src/utils/storage.js` — regular rounds, players, courses, preferences. `saveCurrentRound()` has 1.5s debounce. `joinRound(code)` calls `join_round` RPC for share-code round joining.
+- `src/utils/storage.js` — regular rounds, players, courses, preferences. `saveCurrentRound()` has 1.5s debounce. `joinRound(code)` calls `join_round` RPC for share-code round joining. `loadCurrentRound()` only falls back to localStorage on network errors — if Supabase returns empty, it clears stale localStorage.
 - `src/utils/tournamentStorage.js` — tournament CRUD via Supabase RPCs (`get_tournament`, `save_tournament`, `update_tournament_status`, `update_tournament_score`). `updateTournamentScore()` has 500ms debounce. Also manages share code generation, guest identity, and active tournament localStorage.
+
+### Cross-Device Sync
+
+A 10-second poller in `App.jsx` syncs the active round across devices. When Supabase has an `is_current: true` round, the poller updates local state. When Supabase has no active round (finished/abandoned on another device), the poller clears local state and localStorage. **Critical invariant:** Supabase is always the source of truth — localStorage is only a cache and offline fallback. Never write stale localStorage data back to Supabase (this was a past bug that caused deleted players/courses to resurrect).
 
 ### State Management
 
@@ -121,7 +125,7 @@ A tournament has multiple groups, each with 2-4 players. Each tournament player 
 
 Installable via "Add to Home Screen" on Android/iOS. Launches fullscreen (`display: standalone`) with dark green status bar. Setup:
 - `public/manifest.json` — app metadata, icon references
-- `public/sw.js` — minimal service worker (skipWaiting + claim, no offline caching)
+- `public/sw.js` — service worker with fetch handler (required for PWA install), no offline caching
 - `public/icons/` — SVG + PNG icons (192/512, regular + maskable)
 - `src/main.jsx` — registers service worker on load
 - `index.html` — manifest link, apple-mobile-web-app meta tags, theme-color

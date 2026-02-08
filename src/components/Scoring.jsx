@@ -8,7 +8,9 @@ const Scoring = ({ round, updateScore }) => {
   const [view, setView] = useState("hole");
   const prevHole = useRef(hole);
   const pl = round.players, n = pl.map(p => p.name.split(" ")[0]);
-  const { balances, results } = useMemo(() => calcAll(round.games, pl), [round]);
+  const { balances, results } = useMemo(() => calcAll(round.games, pl), [round, pl]);
+
+  const currentHoleScores = pl.map(p => p.scores[hole]).join(",");
 
   useEffect(() => {
     const navigated = hole !== prevHole.current;
@@ -21,7 +23,7 @@ const Scoring = ({ round, updateScore }) => {
         return () => clearTimeout(t);
       }
     }
-  }, [pl.map(p => p.scores[hole]).join(","), hole]);
+  }, [currentHoleScores, hole, pl]);
 
   const HV = () => {
     const lb = pl.map((p, i) => {

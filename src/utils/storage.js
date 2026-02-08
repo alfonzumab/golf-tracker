@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { generateShareCode } from './tournamentStorage';
 
 // Local cache (instant UI, offline fallback)
-export const sv = (k, d) => { try { localStorage.setItem("gt3-" + k, JSON.stringify(d)); } catch {} };
+export const sv = (k, d) => { try { localStorage.setItem("gt3-" + k, JSON.stringify(d)); } catch { /* Silently handle localStorage errors */ } };
 export const ld = (k, f) => { try { const d = localStorage.getItem("gt3-" + k); return d ? JSON.parse(d) : f; } catch { return f; } };
 
 // --- Supabase CRUD ---

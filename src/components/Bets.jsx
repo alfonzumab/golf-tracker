@@ -5,7 +5,7 @@ import { fmt$ } from '../utils/golf';
 
 const Bets = ({ round }) => {
   const pl = round.players, n = pl.map(p => p.name.split(" ")[0]);
-  const { results, settlements, balances } = useMemo(() => calcAll(round.games, pl), [round]);
+  const { results, settlements, balances } = useMemo(() => calcAll(round.games, pl), [round, pl]);
   const [exp, setExp] = useState(null);
 
   const currentHole = (() => { for (let h = 0; h < 18; h++) { if (!pl.every(p => p.scores[h] != null)) return h; } return 17; })();

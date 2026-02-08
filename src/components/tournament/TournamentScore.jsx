@@ -153,13 +153,17 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
   // Tournament-wide skins config
   const skinsConfig = tournament.tournamentGames?.find(g => g.type === 'skins');
   const has4 = pl.length === 4;
+  const has2 = pl.length >= 2;
 
   const startEdit = () => { setEditGames(groupGames.length > 0 ? [...groupGames] : []); setEditing(true); };
   const saveGroupGames = () => { onUpdateGroupGames(playerInfo.groupIdx, editGames); setEditing(false); };
   const addGame = t => {
     const g = { type: t, id: Date.now() };
     if (t === GT.STROKE) Object.assign(g, { net: true, wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
-    else if (t === GT.MATCH) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
+    else if (t === GT.MATCH) {
+      if (pl.length === 2) Object.assign(g, { matchups: [[0, 1]], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
+      else Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
+    }
     else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: false, potPerPlayer: 20 });
     else Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
     setEditGames([...editGames, g]); setShowAddGame(false);
@@ -208,9 +212,9 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
             {showAddGame && <div className="cd"><div className="g2">
               <button className="btn bs" onClick={() => addGame(GT.STROKE)}>Stroke</button>
               <button className="btn bs" onClick={() => addGame(GT.SKINS)}>Skins</button>
-              <button className="btn bs" disabled={!has4} onClick={() => has4 && addGame(GT.MATCH)}>Match</button>
+              <button className="btn bs" disabled={!has2} onClick={() => has2 && addGame(GT.MATCH)}>Match</button>
               <button className="btn bs" disabled={!has4} onClick={() => has4 && addGame(GT.SIXES)}>6-6-6</button>
-            </div>{!has4 && <p style={{ fontSize: 12, color: T.dim, marginTop: 6 }}>Match/6-6-6 need 4 players</p>}</div>}
+            </div>{!has4 && <p style={{ fontSize: 12, color: T.dim, marginTop: 6 }}>6-6-6 needs 4 players</p>}</div>}
             {editGames.map(g => (
               <div key={g.id} className="cd">
                 <div className="fxb mb6">

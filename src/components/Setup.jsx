@@ -12,7 +12,7 @@ const Setup = ({ rp, course, onConfirm }) => {
     const g = { type: t, id: Date.now() };
     if (t === GT.STROKE) Object.assign(g, { net: true, wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
     else if (t === GT.MATCH) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
-    else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: false, potPerPlayer: 20 });
+    else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: false, skinsMode: "pot", potPerPlayer: 20 });
     else Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
     setGames([...games, g]); setSa(false);
   };
@@ -119,9 +119,14 @@ const Setup = ({ rp, course, onConfirm }) => {
             )}</div>
           </>}
           {g.type === GT.SKINS && <>
+            <div className="il mb6">Payment Mode</div>
+            <div className="fx g6 mb10">
+              <button className={`chip ${!g.skinsMode || g.skinsMode === "pot" ? "sel" : ""}`} onClick={() => u(g.id, { skinsMode: "pot" })}>Pot</button>
+              <button className={`chip ${g.skinsMode === "perSkin" ? "sel" : ""}`} onClick={() => u(g.id, { skinsMode: "perSkin" })}>Per Skin</button>
+            </div>
             <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
             <Tog label="Carry-over" v={g.carryOver} onChange={v => u(g.id, { carryOver: v })} />
-            <div><div className="il">Pot $/player</div><input className="inp" type="number" value={g.potPerPlayer} onChange={e => u(g.id, { potPerPlayer: parseFloat(e.target.value) || 0 })} /></div>
+            <div><div className="il">{g.skinsMode === "perSkin" ? "$/skin" : "Pot $/player"}</div><input className="inp" type="number" value={g.skinsMode === "perSkin" ? (g.amountPerSkin || 5) : (g.potPerPlayer || 20)} onChange={e => u(g.id, { [g.skinsMode === "perSkin" ? "amountPerSkin" : "potPerPlayer"]: parseFloat(e.target.value) || 0 })} /></div>
           </>}
           {g.type === GT.SIXES && <>
             <div className="il mb6">Format</div>

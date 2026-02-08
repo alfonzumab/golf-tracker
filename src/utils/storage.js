@@ -8,9 +8,12 @@ export const ld = (k, f) => { try { const d = localStorage.getItem("gt3-" + k); 
 // --- Supabase CRUD ---
 
 export async function loadPlayers() {
-  const { data, error } = await supabase.from('players').select('*').order('created_at');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return ld('players', []);
+
+  const { data, error } = await supabase.from('players').select('*').eq('user_id', user.id).order('created_at');
   if (error) return ld('players', []);
-  const players = data.map(p => ({ id: p.id, name: p.name, index: Number(p.index) }));
+  const players = data.map(p => ({ id: p.id, name: p.name, index: Number(p.index), favorite: p.favorite || false }));
   sv('players', players);
   return players;
 }
@@ -20,20 +23,72 @@ export async function savePlayers(players) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Clear and re-insert to guarantee deleted players stay deleted
-  const { error: delErr } = await supabase.from('players').delete().eq('user_id', user.id);
-  if (delErr) return; // Don't insert if delete failed — data still intact
-  if (players.length > 0) {
-    const { error: insErr } = await supabase.from('players').insert(
-      players.map(p => ({ id: p.id, user_id: user.id, name: p.name, index: p.index }))
-    );
-    // If insert fails, restore from localStorage on next load
-    if (insErr) console.error('savePlayers insert failed:', insErr.message);
+  try {
+    // Get existing players from database
+    const { data: existing, error: fetchErr } = await supabase
+      .from('players')
+      .select('id')
+      .eq('user_id', user.id);
+
+    if (fetchErr) {
+      console.error('savePlayers: Failed to fetch existing players:', fetchErr.message);
+      return;
+    }
+
+    const existingIds = new Set(existing?.map(p => p.id) || []);
+    const newIds = new Set(players.map(p => p.id));
+
+    // Only delete players that are actually removed (not just missing from current list)
+    const toDelete = [...existingIds].filter(id => !newIds.has(id));
+    const toUpsert = players.map(p => ({
+      id: p.id,
+      user_id: user.id,
+      name: p.name,
+      index: p.index,
+      favorite: p.favorite || false
+    }));
+
+    // Safety check: Don't delete more than 50 players at once (prevents mass deletion bugs)
+    if (toDelete.length > 50) {
+      console.error(`savePlayers: Refusing to delete ${toDelete.length} players. This looks like a bug.`);
+      return;
+    }
+
+    // Delete removed players
+    if (toDelete.length > 0) {
+      const { error: delErr } = await supabase
+        .from('players')
+        .delete()
+        .eq('user_id', user.id)
+        .in('id', toDelete);
+
+      if (delErr) {
+        console.error('savePlayers: Failed to delete players:', delErr.message);
+        return;
+      }
+    }
+
+    // Upsert current players
+    if (toUpsert.length > 0) {
+      const { error: upsertErr } = await supabase
+        .from('players')
+        .upsert(toUpsert, { onConflict: 'id' });
+
+      if (upsertErr) {
+        console.error('savePlayers: Failed to upsert players:', upsertErr.message);
+      }
+    }
+
+  } catch (e) {
+    console.error('savePlayers: Unexpected error:', e);
   }
 }
 
 export async function loadCourses() {
-  const { data, error } = await supabase.from('courses').select('*').order('created_at');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return ld('courses', []);
+
+  const { data, error } = await supabase.from('courses').select('*').eq('user_id', user.id).order('created_at');
   if (error) return ld('courses', []);
   const courses = data.map(c => ({ id: c.id, name: c.name, city: c.city, tees: c.tees }));
   sv('courses', courses);
@@ -45,17 +100,72 @@ export async function saveCourses(courses) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Clear and re-insert to guarantee deleted courses stay deleted
-  await supabase.from('courses').delete().eq('user_id', user.id);
-  if (courses.length > 0) {
-    await supabase.from('courses').insert(
-      courses.map(c => ({ id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees }))
-    );
+  try {
+    // Get existing courses from database
+    const { data: existing, error: fetchErr } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('user_id', user.id);
+
+    if (fetchErr) {
+      console.error('saveCourses: Failed to fetch existing courses:', fetchErr.message);
+      return;
+    }
+
+    const existingIds = new Set(existing?.map(c => c.id) || []);
+    const newIds = new Set(courses.map(c => c.id));
+
+    // Only delete courses that are actually removed
+    const toDelete = [...existingIds].filter(id => !newIds.has(id));
+    const toUpsert = courses.map(c => ({
+      id: c.id,
+      user_id: user.id,
+      name: c.name,
+      city: c.city,
+      tees: c.tees
+    }));
+
+    // Safety check: Don't delete more than 20 courses at once
+    if (toDelete.length > 20) {
+      console.error(`saveCourses: Refusing to delete ${toDelete.length} courses. This looks like a bug.`);
+      return;
+    }
+
+    // Delete removed courses
+    if (toDelete.length > 0) {
+      const { error: delErr } = await supabase
+        .from('courses')
+        .delete()
+        .eq('user_id', user.id)
+        .in('id', toDelete);
+
+      if (delErr) {
+        console.error('saveCourses: Failed to delete courses:', delErr.message);
+        return;
+      }
+    }
+
+    // Upsert current courses
+    if (toUpsert.length > 0) {
+      const { error: upsertErr } = await supabase
+        .from('courses')
+        .upsert(toUpsert, { onConflict: 'id' });
+
+      if (upsertErr) {
+        console.error('saveCourses: Failed to upsert courses:', upsertErr.message);
+      }
+    }
+
+  } catch (e) {
+    console.error('saveCourses: Unexpected error:', e);
   }
 }
 
 export async function loadRounds() {
-  const { data, error } = await supabase.from('rounds').select('*').eq('is_current', false).order('created_at');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return ld('rounds', []);
+
+  const { data, error } = await supabase.from('rounds').select('*').eq('user_id', user.id).eq('is_current', false).order('created_at');
   if (error) return ld('rounds', []);
   const rounds = data.map(r => ({ id: r.id, date: r.date, course: r.course, players: r.players, games: r.games, shareCode: r.share_code }));
   sv('rounds', rounds);
@@ -67,17 +177,77 @@ export async function saveRound(rounds) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Delete all non-current rounds owned by this user, re-insert
-  await supabase.from('rounds').delete().eq('is_current', false).eq('user_id', user.id);
-  for (const r of rounds) {
-    await supabase.from('rounds').insert({
-      id: r.id, user_id: user.id, date: r.date, course: r.course, players: r.players, games: r.games, is_current: false, share_code: r.shareCode || null
-    });
+  try {
+    // Get existing non-current rounds from database
+    const { data: existing, error: fetchErr } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_current', false);
+
+    if (fetchErr) {
+      console.error('saveRound: Failed to fetch existing rounds:', fetchErr.message);
+      return;
+    }
+
+    const existingIds = new Set(existing?.map(r => r.id) || []);
+    const newIds = new Set(rounds.map(r => r.id));
+
+    // Only delete rounds that are actually removed
+    const toDelete = [...existingIds].filter(id => !newIds.has(id));
+    const toUpsert = rounds.map(r => ({
+      id: r.id,
+      user_id: user.id,
+      date: r.date,
+      course: r.course,
+      players: r.players,
+      games: r.games,
+      is_current: false,
+      share_code: r.shareCode || null
+    }));
+
+    // Safety check: Don't delete more than 50 rounds at once
+    if (toDelete.length > 50) {
+      console.error(`saveRound: Refusing to delete ${toDelete.length} rounds. This looks like a bug.`);
+      return;
+    }
+
+    // Delete removed rounds
+    if (toDelete.length > 0) {
+      const { error: delErr } = await supabase
+        .from('rounds')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('is_current', false)
+        .in('id', toDelete);
+
+      if (delErr) {
+        console.error('saveRound: Failed to delete rounds:', delErr.message);
+        return;
+      }
+    }
+
+    // Upsert current rounds
+    if (toUpsert.length > 0) {
+      const { error: upsertErr } = await supabase
+        .from('rounds')
+        .upsert(toUpsert, { onConflict: 'id' });
+
+      if (upsertErr) {
+        console.error('saveRound: Failed to upsert rounds:', upsertErr.message);
+      }
+    }
+
+  } catch (e) {
+    console.error('saveRound: Unexpected error:', e);
   }
 }
 
 export async function loadCurrentRound() {
-  const { data, error } = await supabase.from('rounds').select('*').eq('is_current', true).limit(1);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return ld('currentRound', null);
+
+  const { data, error } = await supabase.from('rounds').select('*').eq('user_id', user.id).eq('is_current', true).limit(1);
   if (error) return ld('currentRound', null); // Network error: use localStorage fallback
   if (!data || data.length === 0) {
     sv('currentRound', null); // Supabase says no round — clear stale localStorage
@@ -150,7 +320,10 @@ export async function joinRound(code) {
 export { generateShareCode };
 
 export async function loadSelectedCourse() {
-  const { data, error } = await supabase.from('user_preferences').select('selected_course_id').limit(1);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return ld('selectedCourse', null);
+
+  const { data, error } = await supabase.from('user_preferences').select('selected_course_id').eq('user_id', user.id).limit(1);
   if (error || !data || data.length === 0) return ld('selectedCourse', null);
   sv('selectedCourse', data[0].selected_course_id);
   return data[0].selected_course_id;

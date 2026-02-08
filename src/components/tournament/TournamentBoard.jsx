@@ -44,6 +44,10 @@ const TournamentBoard = ({ tournament }) => {
       <div className="cd" style={{ textAlign: 'center' }}>
         <div className="ct">{tournament.name}</div>
         <p style={{ fontSize: 14, color: T.dim }}>{tournament.course.name} | {tournament.teeName} tees</p>
+        <div style={{ marginTop: 8, padding: '8px 16px', background: T.mut + '22', borderRadius: 8, display: 'inline-block' }}>
+          <div style={{ fontSize: 12, color: T.dim, marginBottom: 4 }}>Share Code</div>
+          <div style={{ fontFamily: "'DM Sans', monospace", fontSize: 16, fontWeight: 600, color: T.accB }}>{tournament.shareCode}</div>
+        </div>
       </div>
 
       {/* Ryder Cup: Team Scoreboard + Match Results */}

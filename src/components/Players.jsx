@@ -5,12 +5,13 @@ const Players = ({ players, setPlayers }) => {
   const [sa, setSa] = useState(false);
   const [nm, setNm] = useState("");
   const [ix, setIx] = useState("");
+  const [fv, setFv] = useState(false);
   const [edit, setEdit] = useState(null);
 
   const add = () => {
     if (!nm.trim()) return;
-    const up = [...players, { id: crypto.randomUUID(), name: nm.trim(), index: parseFloat(ix) || 0 }];
-    setPlayers(up); setNm(""); setIx(""); setSa(false);
+    const up = [...players, { id: crypto.randomUUID(), name: nm.trim(), index: parseFloat(ix) || 0, favorite: fv }];
+    setPlayers(up); setNm(""); setIx(""); setFv(false); setSa(false);
   };
 
   const rm = (id, name) => {
@@ -19,11 +20,18 @@ const Players = ({ players, setPlayers }) => {
     setPlayers(up);
   };
 
+  const togFav = (id) => {
+    const up = players.map(p => p.id === id ? { ...p, favorite: !p.favorite } : p);
+    setPlayers(up);
+  };
+
   const saveEdit = () => {
     if (!edit || !edit.name.trim()) return;
-    const up = players.map(p => p.id === edit.id ? { ...p, name: edit.name.trim(), index: parseFloat(edit.index) || 0 } : p);
+    const up = players.map(p => p.id === edit.id ? { ...p, name: edit.name.trim(), index: parseFloat(edit.index) || 0, favorite: edit.favorite || false } : p);
     setPlayers(up); setEdit(null);
   };
+
+
 
   return (
     <div className="pg">
@@ -40,9 +48,15 @@ const Players = ({ players, setPlayers }) => {
         <div className="mb10"><div className="il">Handicap Index</div>
           <input className="inp" type="number" step="0.1" placeholder="12.5" value={ix} onChange={e => setIx(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} />
         </div>
+        <div className="mb10">
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <input type="checkbox" checked={fv} onChange={e => setFv(e.target.checked)} />
+            <span style={{ fontSize: 14 }}>Add to favorites</span>
+          </label>
+        </div>
         <div className="fx g6">
           <button className="btn bp" onClick={add}>Add Player</button>
-          <button className="btn bs" onClick={() => { setSa(false); setNm(""); setIx(""); }}>Cancel</button>
+          <button className="btn bs" onClick={() => { setSa(false); setNm(""); setIx(""); setFv(false); }}>Cancel</button>
         </div>
       </div>}
 
@@ -50,14 +64,19 @@ const Players = ({ players, setPlayers }) => {
         <div className="empty">
           <div className="empty-i">{"\uD83D\uDC65"}</div>
           <div className="empty-t">No players yet</div>
-          <div style={{ fontSize: 14, color: T.dim, marginTop: 8 }}>Add players to start tracking rounds</div>
+          <div style={{ fontSize: 14, color: T.dim, marginTop: 8, marginBottom: 16 }}>Add players to start tracking rounds</div>
         </div>
       )}
 
       {players.map(p => (
         <div key={p.id} className="prow">
           <div style={{ flex: 1 }}>
-            <div className="prow-n">{p.name}</div>
+            <div className="prow-n" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span onClick={() => togFav(p.id)} style={{ cursor: "pointer", fontSize: 16 }}>
+                {p.favorite ? "⭐" : "☆"}
+              </span>
+              {p.name}
+            </div>
             <div className="prow-i">Index: {p.index}</div>
           </div>
           <button className="bg" onClick={() => setEdit({ ...p })}>Edit</button>
@@ -73,6 +92,12 @@ const Players = ({ players, setPlayers }) => {
           </div>
           <div className="mb10"><div className="il">Handicap Index</div>
             <input className="inp" type="number" step="0.1" value={edit.index} onChange={e => setEdit({ ...edit, index: e.target.value })} />
+          </div>
+          <div className="mb10">
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={edit.favorite || false} onChange={e => setEdit({ ...edit, favorite: e.target.checked })} />
+              <span style={{ fontSize: 14 }}>Favorite player</span>
+            </label>
           </div>
           <div className="fx g8">
             <button className="btn bs" onClick={() => setEdit(null)}>Cancel</button>

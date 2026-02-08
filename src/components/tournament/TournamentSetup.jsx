@@ -15,6 +15,8 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   const [tPlayers, setTPlayers] = useState([]);
   const [newName, setNewName] = useState('');
   const [newIdx, setNewIdx] = useState('');
+  const [editingPlayer, setEditingPlayer] = useState(null); // null | player object
+  const [playerSearch, setPlayerSearch] = useState('');
 
   // Step 3 (standard): Groups
   const [groups, setGroups] = useState([]);
@@ -29,16 +31,21 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   const [matches, setMatches] = useState([]);
   const [addingMatch, setAddingMatch] = useState(null); // null | { type, t1: [], t2: [] }
 
+  // Foursomes (Ryder Cup only - step 5)
+  const [foursomes, setFoursomes] = useState([]); // Array of { players: [playerIndices] }
+
   // Skins (last step for both formats)
   const [skinsOn, setSkinsOn] = useState(false);
   const [skinsNet, setSkinsNet] = useState(true);
   const [skinsCarry, setSkinsCarry] = useState(false);
+  const [skinsMode, setSkinsMode] = useState("pot");
   const [skinsPot, setSkinsPot] = useState(20);
+  const [skinsAmount, setSkinsAmount] = useState(5);
 
   const course = courses.find(c => c.id === courseId) || courses[0];
   const teeName = course?.tees?.[0]?.name || '';
   const isRC = format === 'rydercup';
-  const totalSteps = isRC ? 5 : 4;
+  const totalSteps = isRC ? 6 : 4;
 
   // Step 1 validation
   const step1Valid = name.trim() && course;
@@ -60,6 +67,20 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
     setTPlayers(tPlayers.filter(p => p.id !== id));
     setTeamA(teamA.filter(p => p.id !== id));
     setTeamB(teamB.filter(p => p.id !== id));
+  };
+
+  const toggleFavorite = (id) => {
+    setTPlayers(tPlayers.map(p => p.id === id ? { ...p, favorite: !p.favorite } : p));
+  };
+
+  const startEditPlayer = (player) => {
+    setEditingPlayer({ ...player });
+  };
+
+  const saveEditPlayer = () => {
+    if (!editingPlayer || !editingPlayer.name.trim()) return;
+    setTPlayers(tPlayers.map(p => p.id === editingPlayer.id ? { ...editingPlayer, name: editingPlayer.name.trim(), index: parseFloat(editingPlayer.index) || 0 } : p));
+    setEditingPlayer(null);
   };
 
   const step2Valid = isRC ? tPlayers.length >= 4 && tPlayers.length % 2 === 0 : tPlayers.length >= 4;
@@ -113,6 +134,10 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   // Step 4 (rydercup): Matches
   const startAddMatch = (type) => setAddingMatch({ type, t1: [], t2: [] });
 
+  const isPlayerAssigned = (teamSide, playerIdx) => {
+    return matches.some(m => m.t1.includes(playerIdx) || m.t2.includes(playerIdx));
+  };
+
   const toggleMatchPlayer = (teamSide, playerIdx) => {
     if (!addingMatch) return;
     const key = teamSide === 1 ? 't1' : 't2';
@@ -120,7 +145,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
     const cur = addingMatch[key];
     if (cur.includes(playerIdx)) {
       setAddingMatch({ ...addingMatch, [key]: cur.filter(i => i !== playerIdx) });
-    } else if (cur.length < max) {
+    } else if (cur.length < max && !isPlayerAssigned(teamSide, playerIdx)) {
       setAddingMatch({ ...addingMatch, [key]: [...cur, playerIdx] });
     }
   };
@@ -129,6 +154,21 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
     if (!addingMatch) return;
     const need = addingMatch.type === 'singles' ? 1 : 2;
     if (addingMatch.t1.length !== need || addingMatch.t2.length !== need) return;
+
+    // For singles matches, both players must be in the same foursome
+    if (addingMatch.type === 'singles' && foursomes.length > 0) {
+      const player1Idx = addingMatch.t1[0];
+      const player2Idx = addingMatch.t2[0];
+
+      const player1Foursome = foursomes.find(f => f.players.includes(player1Idx));
+      const player2Foursome = foursomes.find(f => f.players.includes(player2Idx));
+
+      if (!player1Foursome || !player2Foursome || player1Foursome !== player2Foursome) {
+        alert('For singles matches, both players must be in the same foursome.');
+        return;
+      }
+    }
+
     setMatches([...matches, { ...addingMatch }]);
     setAddingMatch(null);
   };
@@ -139,19 +179,34 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
 
   // Build final data
   const buildRyderCupGroups = () => {
-    return matches.map(m => {
-      const t1Players = m.t1.map(i => teamA[i]);
-      const t2Players = m.t2.map(i => teamB[i]);
-      return {
-        players: [...t1Players, ...t2Players].map(p => ({
-          id: p.id, name: p.name, index: p.index, scores: Array(18).fill(null)
-        }))
-      };
-    });
+    if (foursomes.length > 0) {
+      // Use manually assigned foursomes
+      return foursomes.map(f => ({
+        players: f.players.map(playerIdx => {
+          const player = [...teamA, ...teamB][playerIdx];
+          return {
+            id: player.id, name: player.name, index: player.index, scores: Array(18).fill(null)
+          };
+        })
+      }));
+    } else {
+      // Default: one group per match
+      return matches.map(m => {
+        const t1Players = m.t1.map(i => teamA[i]);
+        const t2Players = m.t2.map(i => teamB[i]);
+        return {
+          players: [...t1Players, ...t2Players].map(p => ({
+            id: p.id, name: p.name, index: p.index, scores: Array(18).fill(null)
+          }))
+        };
+      });
+    }
   };
 
-  const skinsStep = isRC ? 5 : 4;
-  const prevSkinsStep = isRC ? 4 : 3;
+  const foursomeStep = isRC ? 5 : null;
+  const skinsStep = isRC ? 6 : 4;
+  const prevSkinsStep = isRC ? 5 : 3;
+  const prevFoursomeStep = isRC ? 4 : null;
 
   return (
     <div className="pg">
@@ -215,17 +270,23 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
             {savedPlayers.length > 0 && (
               <div className="mb10">
                 <div className="il mb6">Quick Add from Saved</div>
-                <div className="fx fw g6">
-                  {savedPlayers.map(p => {
-                    const added = tPlayers.find(tp => tp.id === p.id);
-                    return (
-                      <button key={p.id} className={`chip ${added ? 'sel' : ''}`}
-                        onClick={() => added ? removePlayer(p.id) : addSavedPlayer(p)}
-                        style={added ? { opacity: 0.6 } : {}}>
-                        {p.name} ({p.index})
-                      </button>
-                    );
-                  })}
+                {savedPlayers.length > 10 && (
+                  <input className="inp mb8" placeholder="Search players..." value={playerSearch}
+                    onChange={e => setPlayerSearch(e.target.value)} />
+                )}
+                <div className="fx fw g6" style={{ maxHeight: savedPlayers.length > 20 ? '200px' : 'auto', overflowY: savedPlayers.length > 20 ? 'auto' : 'visible' }}>
+                  {savedPlayers
+                    .filter(p => playerSearch === '' || p.name.toLowerCase().includes(playerSearch.toLowerCase()))
+                    .map(p => {
+                      const added = tPlayers.find(tp => tp.id === p.id);
+                      return (
+                        <button key={p.id} className={`chip ${added ? 'sel' : ''}`}
+                          onClick={() => added ? removePlayer(p.id) : addSavedPlayer(p)}
+                          style={added ? { opacity: 0.6 } : {}}>
+                          {p.name} ({p.index})
+                        </button>
+                      );
+                    })}
                 </div>
               </div>
             )}
@@ -246,8 +307,14 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
                 {tPlayers.map((p, i) => (
                   <div key={p.id} className="t-player-row">
                     <span style={{ color: T.dim, fontSize: 13, width: 20 }}>{i + 1}</span>
-                    <span className="prow-n" style={{ flex: 1 }}>{p.name}</span>
+                    <span className="prow-n" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span onClick={() => toggleFavorite(p.id)} style={{ cursor: 'pointer', fontSize: 14 }}>
+                        {p.favorite ? "⭐" : "☆"}
+                      </span>
+                      {p.name}
+                    </span>
                     <span style={{ fontSize: 13, color: T.dim }}>Idx {p.index}</span>
+                    <button className="bg" onClick={() => startEditPlayer(p)}>Edit</button>
                     <button style={{ background: 'none', border: 'none', color: T.red, cursor: 'pointer', padding: 4, fontSize: 16 }}
                       onClick={() => removePlayer(p.id)}>x</button>
                   </div>
@@ -414,25 +481,49 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
                   <div style={{ fontSize: 12, color: TT.a, fontWeight: 700, marginBottom: 6 }}>
                     {teamAName} — pick {addingMatch.type === 'singles' ? 1 : 2}
                   </div>
-                  {teamA.map((p, i) => (
-                    <button key={p.id} className={`chip ${addingMatch.t1.includes(i) ? 'sel' : ''}`}
-                      style={{ display: 'block', width: '100%', marginBottom: 4, textAlign: 'left' }}
-                      onClick={() => toggleMatchPlayer(1, i)}>
-                      {p.name}
-                    </button>
-                  ))}
+                  {teamA.map((p, i) => {
+                    const assigned = isPlayerAssigned(1, i);
+                    return (
+                      <button key={p.id} className={`chip ${addingMatch.t1.includes(i) ? 'sel' : ''}`}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          marginBottom: 4,
+                          textAlign: 'left',
+                          opacity: assigned ? 0.5 : 1,
+                          cursor: assigned ? 'not-allowed' : 'pointer'
+                        }}
+                        disabled={assigned}
+                        onClick={() => toggleMatchPlayer(1, i)}
+                        title={assigned ? 'Already assigned to another match' : ''}>
+                        {p.name}{assigned ? ' (in match)' : ''}
+                      </button>
+                    );
+                  })}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, color: TT.b, fontWeight: 700, marginBottom: 6 }}>
                     {teamBName} — pick {addingMatch.type === 'singles' ? 1 : 2}
                   </div>
-                  {teamB.map((p, i) => (
-                    <button key={p.id} className={`chip ${addingMatch.t2.includes(i) ? 'sel' : ''}`}
-                      style={{ display: 'block', width: '100%', marginBottom: 4, textAlign: 'left' }}
-                      onClick={() => toggleMatchPlayer(2, i)}>
-                      {p.name}
-                    </button>
-                  ))}
+                  {teamB.map((p, i) => {
+                    const assigned = isPlayerAssigned(2, i);
+                    return (
+                      <button key={p.id} className={`chip ${addingMatch.t2.includes(i) ? 'sel' : ''}`}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          marginBottom: 4,
+                          textAlign: 'left',
+                          opacity: assigned ? 0.5 : 1,
+                          cursor: assigned ? 'not-allowed' : 'pointer'
+                        }}
+                        disabled={assigned}
+                        onClick={() => toggleMatchPlayer(2, i)}
+                        title={assigned ? 'Already assigned to another match' : ''}>
+                        {p.name}{assigned ? ' (in match)' : ''}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -485,14 +576,137 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
         </div>
       )}
 
-      {/* Skins step (step 4 standard, step 5 rydercup) */}
+      {/* Foursome assignment step (step 5 rydercup only) */}
+      {step === foursomeStep && (() => {
+        const allPlayers = [...teamA, ...teamB];
+        const assignedPlayers = new Set(foursomes.flatMap(f => f.players));
+        const availablePlayers = allPlayers.map((_, i) => i).filter(i => !assignedPlayers.has(i));
+
+        return (
+          <div>
+            <div className="t-step">Step {foursomeStep} of {totalSteps}</div>
+            <div className="t-step-title">Assign Foursomes (Optional)</div>
+            <p style={{ fontSize: 13, color: T.dim, marginBottom: 16 }}>
+              Group players into foursomes for side games. Players in the same foursome can play Stroke, Skins, or Match games together.
+              If you skip this, each match becomes its own group.
+            </p>
+
+            <div className="fx g6 mb12">
+              <button className="btn bg" disabled={availablePlayers.length < 2} onClick={() => {
+                if (availablePlayers.length >= 2) {
+                  // Smart foursome assignment considering singles matches
+                  const singlesPairs = new Map();
+
+                  // Find all singles match pairs
+                  matches.forEach(match => {
+                    if (match.type === 'singles') {
+                      const player1 = match.t1[0];
+                      const player2 = match.t2[0];
+                      singlesPairs.set(player1, player2);
+                      singlesPairs.set(player2, player1);
+                    }
+                  });
+
+                  // Group players by their singles match relationships
+                  const groups = [];
+                  const processed = new Set();
+
+                  availablePlayers.forEach(playerIdx => {
+                    if (processed.has(playerIdx)) return;
+
+                    const group = [playerIdx];
+                    processed.add(playerIdx);
+
+                    // If this player has a singles partner, add them
+                    const partner = singlesPairs.get(playerIdx);
+                    if (partner && availablePlayers.includes(partner) && !processed.has(partner)) {
+                      group.push(partner);
+                      processed.add(partner);
+                    }
+
+                    // Fill the group up to 4 players
+                    availablePlayers.forEach(otherIdx => {
+                      if (!processed.has(otherIdx) && group.length < 4) {
+                        group.push(otherIdx);
+                        processed.add(otherIdx);
+                      }
+                    });
+
+                    if (group.length >= 2) {
+                      groups.push(group);
+                    }
+                  });
+
+                  // Create foursomes from the groups
+                  const newFoursomes = groups.map(group => ({ players: group }));
+                  setFoursomes([...foursomes, ...newFoursomes]);
+                }
+              }}>Add Foursome</button>
+              <button className="btn bs" onClick={() => setFoursomes([])}>Clear All</button>
+            </div>
+
+            {foursomes.map((f, fi) => (
+              <div key={fi} className="cd mb8">
+                <div className="fxb mb6">
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Foursome {fi + 1}</span>
+                  <button style={{ background: 'none', border: 'none', color: T.red, cursor: 'pointer', fontSize: 14, padding: 4 }}
+                    onClick={() => setFoursomes(foursomes.filter((_, i) => i !== fi))}>x</button>
+                </div>
+                <div className="fx fw g6">
+                  {f.players.map(playerIdx => {
+                    const player = allPlayers[playerIdx];
+                    return (
+                      <div key={playerIdx} className="chip sel" style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          // Remove player from foursome
+                          const newPlayers = f.players.filter(p => p !== playerIdx);
+                          if (newPlayers.length > 0) {
+                            setFoursomes(foursomes.map((f, i) => i === fi ? { ...f, players: newPlayers } : f));
+                          } else {
+                            setFoursomes(foursomes.filter((_, i) => i !== fi));
+                          }
+                        }}>
+                        {player.name}
+                      </div>
+                    );
+                  })}
+                  {f.players.length < 4 && (
+                    <select style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${T.bdr}` }}
+                      onChange={e => {
+                        const newPlayerIdx = parseInt(e.target.value);
+                        if (newPlayerIdx >= 0 && !f.players.includes(newPlayerIdx)) {
+                          setFoursomes(foursomes.map((f, i) => i === fi ? { ...f, players: [...f.players, newPlayerIdx] } : f));
+                        }
+                        e.target.value = '';
+                      }}>
+                      <option value="">Add player...</option>
+                      {allPlayers.map((p, i) => (
+                        !assignedPlayers.has(i) || f.players.includes(i) ? (
+                          <option key={i} value={i}>{p.name}</option>
+                        ) : null
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <div className="fx g6">
+              <button className="btn bs" onClick={() => setStep(prevFoursomeStep)}>Back</button>
+              <button className="btn bp" onClick={() => setStep(skinsStep)}>Continue</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Skins step (step 4 standard, step 6 rydercup) */}
       {step === skinsStep && (() => {
         const finalGroups = isRC ? buildRyderCupGroups() : groups;
         const totalPlayers = finalGroups.reduce((sum, g) => sum + g.players.length, 0);
 
         const createTournament = () => {
           const fmtDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-          const tGames = skinsOn ? [{ type: 'skins', net: skinsNet, carryOver: skinsCarry, potPerPlayer: skinsPot }] : [];
+          const tGames = skinsOn ? [{ type: 'skins', net: skinsNet, carryOver: skinsCarry, skinsMode: skinsMode, potPerPlayer: skinsPot, amountPerSkin: skinsAmount }] : [];
 
           const builtGroups = isRC ? buildRyderCupGroups() : groups.map(g => ({
             players: g.players.map(p => ({
@@ -534,14 +748,22 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
               <Tog label="Enable Tournament Skins" v={skinsOn} onChange={setSkinsOn} />
 
               {skinsOn && <>
+                <div className="il mb6">Payment Mode</div>
+                <div className="fx g6 mb10">
+                  <button className={`chip ${skinsMode === "pot" ? "sel" : ""}`} onClick={() => setSkinsMode("pot")}>Pot</button>
+                  <button className={`chip ${skinsMode === "perSkin" ? "sel" : ""}`} onClick={() => setSkinsMode("perSkin")}>Per Skin</button>
+                </div>
                 <Tog label="Net (use handicap)" v={skinsNet} onChange={setSkinsNet} />
                 <Tog label="Carry-over" v={skinsCarry} onChange={setSkinsCarry} />
                 <div className="mt8">
-                  <div className="il">Pot $/player</div>
-                  <input className="inp" type="number" value={skinsPot} onChange={e => setSkinsPot(parseFloat(e.target.value) || 0)} />
+                  <div className="il">{skinsMode === "perSkin" ? "$/skin" : "Pot $/player"}</div>
+                  <input className="inp" type="number" value={skinsMode === "perSkin" ? skinsAmount : skinsPot} onChange={e => skinsMode === "perSkin" ? setSkinsAmount(parseFloat(e.target.value) || 0) : setSkinsPot(parseFloat(e.target.value) || 0)} />
                 </div>
                 <div style={{ fontSize: 13, color: T.accB, marginTop: 8 }}>
-                  Total pot: ${skinsPot * totalPlayers} ({totalPlayers} players x ${skinsPot})
+                  {skinsMode === "perSkin"
+                    ? `Example: With 6 skins, a player could lose up to $${skinsAmount * 6} (${skinsAmount}/skin × 6 skins)`
+                    : `Total pot: $${skinsPot * totalPlayers} (${totalPlayers} players × $${skinsPot})`
+                  }
                 </div>
               </>}
             </div>
@@ -563,6 +785,33 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
           </div>
         );
       })()}
+
+      {/* Edit Player Modal */}
+      {editingPlayer && (
+        <div className="mbg" onClick={() => setEditingPlayer(null)}>
+          <div className="mdl" onClick={e => e.stopPropagation()}>
+            <div className="mdt">Edit Player</div>
+            <div className="mb8">
+              <div className="il">Name</div>
+              <input className="inp" value={editingPlayer.name} onChange={e => setEditingPlayer({ ...editingPlayer, name: e.target.value })} />
+            </div>
+            <div className="mb8">
+              <div className="il">Handicap Index</div>
+              <input className="inp" type="number" step="0.1" value={editingPlayer.index} onChange={e => setEditingPlayer({ ...editingPlayer, index: e.target.value })} />
+            </div>
+            <div className="mb10">
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input type="checkbox" checked={editingPlayer.favorite || false} onChange={e => setEditingPlayer({ ...editingPlayer, favorite: e.target.checked })} />
+                <span style={{ fontSize: 14 }}>Tournament favorite</span>
+              </label>
+            </div>
+            <div className="fx g8">
+              <button className="btn bs" onClick={() => setEditingPlayer(null)}>Cancel</button>
+              <button className="btn bp" onClick={saveEditPlayer}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

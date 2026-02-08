@@ -61,6 +61,7 @@ export default function App() {
 
   // Load data from Supabase when logged in (once per sign-in, skip token refreshes)
   const dataLoaded = useRef(false);
+  const tournamentStartedRef = useRef(false);
   useEffect(() => {
     if (!session) { dataLoaded.current = false; return; }
     if (dataLoaded.current) return;
@@ -94,6 +95,7 @@ export default function App() {
           const { tournament: t } = await getTournament(activeCode);
           if (t) {
             setTournament(t);
+            tournamentStartedRef.current = t.status === 'live';
             const guest = loadGuestInfo();
             if (guest) setTournamentGuest(guest);
           }
@@ -212,6 +214,7 @@ export default function App() {
       }
       if (t) {
         setTournament(t);
+        tournamentStartedRef.current = t.status === 'live';
         go('tlobby');
       } else {
         setModal({ title: 'Error', text: 'Tournament created but could not be loaded. Check Supabase RPC.', onOk: () => setModal(null) });
@@ -228,6 +231,7 @@ export default function App() {
 
   const handleJoined = (t, guestInfo) => {
     setTournament(t);
+    tournamentStartedRef.current = t.status === 'live';
     setTournamentGuest(guestInfo);
     go('tlobby');
   };
@@ -312,9 +316,10 @@ export default function App() {
     return () => clearInterval(id);
   }, [tournament?.shareCode, tournament?.status, tournamentGuest?.groupIdx]);
 
-  // Auto-navigate to scoring when tournament goes live
+  // Auto-navigate to scoring when tournament first goes live (but allow manual navigation to lobby)
   useEffect(() => {
-    if (tournament?.status === 'live' && pg === 'tlobby') {
+    if (tournament?.status === 'live' && pg === 'tlobby' && !tournamentStartedRef.current) {
+      tournamentStartedRef.current = true;
       // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => setPg('tscore'), 0);
     }

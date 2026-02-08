@@ -40,20 +40,42 @@ export function calcTournamentSkins(config, players) {
   }
 
   const totalSkins = cnt.reduce((a, b) => a + b, 0);
-  const pot = config.potPerPlayer * n;
-  const perSkin = totalSkins > 0 ? pot / totalSkins : 0;
+  let pot = 0, perSkin = 0, playerResults;
 
-  const playerResults = players.map((p, i) => {
-    const earnings = cnt[i] * perSkin;
-    return {
-      name: p.name,
-      groupIdx: p.groupIdx,
-      skins: cnt[i],
-      earnings,
-      netPL: earnings - config.potPerPlayer,
-      netPLStr: fmt$(earnings - config.potPerPlayer)
-    };
-  }).sort((a, b) => b.skins - a.skins || b.earnings - a.earnings);
+  if (config.skinsMode === "perSkin") {
+    const aps = config.amountPerSkin || 5;
+    perSkin = aps;
+    pot = totalSkins * aps * n; // Total payout needed
+
+    playerResults = players.map((p, i) => {
+      const earnings = cnt[i] * aps * (n - 1); // Each skin won earns from each other player
+      return {
+        name: p.name,
+        groupIdx: p.groupIdx,
+        skins: cnt[i],
+        earnings,
+        netPL: earnings - (totalSkins * aps), // Each player paid aps for each skin awarded
+        netPLStr: fmt$(earnings - (totalSkins * aps))
+      };
+    });
+  } else {
+    pot = config.potPerPlayer * n;
+    perSkin = totalSkins > 0 ? pot / totalSkins : 0;
+
+    playerResults = players.map((p, i) => {
+      const earnings = cnt[i] * perSkin;
+      return {
+        name: p.name,
+        groupIdx: p.groupIdx,
+        skins: cnt[i],
+        earnings,
+        netPL: earnings - config.potPerPlayer,
+        netPLStr: fmt$(earnings - config.potPerPlayer)
+      };
+    });
+  }
+
+  playerResults.sort((a, b) => b.skins - a.skins || b.earnings - a.earnings);
 
   return { holeResults: hr, skinCounts: cnt, totalSkins, pot, perSkin, playerResults, carry };
 }

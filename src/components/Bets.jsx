@@ -24,7 +24,7 @@ const Bets = ({ round }) => {
 
       {results.filter(r => r.title.includes("6-6-6") && r.segmentScores).map((r, ri) => (
         <div key={ri} className="cd">
-          <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
+          <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager.replace('/pl', '/player').replace('/seg', '/segment').replace(/^\$([^/]+)\/\$([^/]+)\/\$([^/]+)$/, 'F:$$$1 B:$$$2 O:$$$3')}</span>}</div>
           {r.segmentScores.map((seg, si) => {
             const isActive = currentHole >= (seg.range === "1-6" ? 0 : seg.range === "7-12" ? 6 : 12) && currentHole <= (seg.range === "1-6" ? 5 : seg.range === "7-12" ? 11 : 17);
             return (
@@ -60,10 +60,18 @@ const Bets = ({ round }) => {
       </div>}
       {results.map((r, ri) => (
         <div key={ri} className="cd" style={{ cursor: "pointer" }} onClick={() => setExp(exp === ri ? null : ri)}>
-          <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
+          <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager.replace('/pl', '/player').replace('/seg', '/segment').replace(/^\$([^/]+)\/\$([^/]+)\/\$([^/]+)$/, 'F:$$$1 B:$$$2 O:$$$3')}</span>}</div>
           {r.status && <div style={{ fontSize: 14, fontWeight: 700, color: T.accB, marginBottom: 6 }}>{r.status}</div>}
           {exp === ri && <div style={{ marginTop: 8 }}>
             {r.details?.map((d, j) => <div key={j} style={{ fontSize: 13, color: T.dim, marginBottom: 4, lineHeight: 1.4 }}>{d}</div>)}
+            {r.payouts && r.payouts.length > 0 && <div className="mt8">
+              <div className="il mb6">Payouts</div>
+              {r.payouts.map((p, j) => (
+                <div key={j} style={{ fontSize: 13, marginBottom: 4 }}>
+                  <span className={`pc${p.f}`} style={{ fontWeight: 600 }}>{n[p.f]}</span> → <span className={`pc${p.t}`} style={{ fontWeight: 600 }}>{n[p.t]}</span>: <span style={{ fontWeight: 700 }}>{fmt$(p.a)}</span>
+                </div>
+              ))}
+            </div>}
             {r.holeResults && <div className="mt8">
               <div className="il mb6">Skins by Hole</div>
               {[{ l: "Front 9", s: 0, e: 9 }, { l: "Back 9", s: 9, e: 18 }].map(nine => (

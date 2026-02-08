@@ -83,11 +83,15 @@ const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
 
           <div className="fxb mb8 mt10"><span className="pg-title">Matches</span></div>
           {tournament.teamConfig.matches.map((m, mi) => {
-            const g = tournament.groups[m.groupIdx];
-            if (!g) return null;
-            const pl = g.players;
-            const t1Names = m.type === 'singles' ? pl[0]?.name : (pl[0]?.name.split(' ')[0] + ' & ' + pl[1]?.name.split(' ')[0]);
-            const t2Names = m.type === 'singles' ? pl[pl.length - 1]?.name : (pl[2]?.name.split(' ')[0] + ' & ' + pl[3]?.name.split(' ')[0]);
+            const teamA = tournament.groups.flatMap(g => g.players).filter(p => tournament.teamConfig.teams[0].playerIds.includes(p.id));
+            const teamB = tournament.groups.flatMap(g => g.players).filter(p => tournament.teamConfig.teams[1].playerIds.includes(p.id));
+
+            const t1Players = m.t1.map(i => teamA[i]);
+            const t2Players = m.t2.map(i => teamB[i]);
+
+            const t1Names = m.type === 'singles' ? t1Players[0]?.name : (t1Players[0]?.name.split(' ')[0] + ' & ' + t1Players[1]?.name.split(' ')[0]);
+            const t2Names = m.type === 'singles' ? t2Players[0]?.name : (t2Players[0]?.name.split(' ')[0] + ' & ' + t2Players[1]?.name.split(' ')[0]);
+
             return (
               <div key={mi} className="cd">
                 <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: T.mut + '33', color: T.dim, marginRight: 8 }}>

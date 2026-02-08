@@ -2,8 +2,9 @@ import { GT } from '../theme';
 import { sixPairs } from './golf';
 
 export function calcAll(games, players) {
-  if (!games || !players || players.length < 4) return { results: [], settlements: [], balances: [0,0,0,0] };
-  const res = [], led = Array.from({ length: 4 }, () => Array(4).fill(0));
+  if (!games || !players || players.length < 2) return { results: [], settlements: [], balances: Array(players.length).fill(0) };
+  const n = players.length;
+  const res = [], led = Array.from({ length: n }, () => Array(n).fill(0));
   const pay = (f, t, a) => { if (f !== t && a > 0.005) led[f][t] += a; };
   for (const g of games) {
     let r;
@@ -13,10 +14,10 @@ export function calcAll(games, players) {
     else if (g.type === GT.SIXES) r = cSixes(g, players);
     if (r) { res.push(r); (r.payouts || []).forEach(p => pay(p.f, p.t, p.a)); }
   }
-  const bal = Array(4).fill(0);
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if (i !== j) bal[i] += led[i][j] - led[j][i];
+  const bal = Array(n).fill(0);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (i !== j) bal[i] += led[i][j] - led[j][i];
   const sett = [], deb = [], crd = [];
-  for (let i = 0; i < 4; i++) { if (bal[i] > 0.01) deb.push({ i, a: bal[i] }); else if (bal[i] < -0.01) crd.push({ i, a: -bal[i] }); }
+  for (let i = 0; i < n; i++) { if (bal[i] > 0.01) deb.push({ i, a: bal[i] }); else if (bal[i] < -0.01) crd.push({ i, a: -bal[i] }); }
   deb.sort((a, b) => b.a - a.a); crd.sort((a, b) => b.a - a.a);
   let di = 0, ci = 0;
   while (di < deb.length && ci < crd.length) {
@@ -180,7 +181,7 @@ function cMatch(g, pl) {
 }
 
 function cSkins(g, pl) {
-  const n = pl.map(p => p.name.split(" ")[0]), cnt = [0, 0, 0, 0], hr = [];
+  const n = pl.map(p => p.name.split(" ")[0]), cnt = Array(pl.length).fill(0), hr = [];
   let carry = 0;
   for (let h = 0; h < 18; h++) {
     if (!pl.every(p => p.scores[h] != null)) { hr.push({ h: h + 1, r: "--", w: null, v: 0 }); continue; }
@@ -189,16 +190,34 @@ function cSkins(g, pl) {
     if (wins.length === 1) { const v = 1 + carry; cnt[wins[0].i] += v; hr.push({ h: h + 1, r: n[wins[0].i], w: wins[0].i, v }); carry = 0; }
     else { if (g.carryOver) { carry++; hr.push({ h: h + 1, r: "C", w: null, v: 0 }); } else hr.push({ h: h + 1, r: "P", w: null, v: 0 }); }
   }
-  const ts = cnt.reduce((a, b) => a + b, 0), pot = g.potPerPlayer * 4, ps = ts > 0 ? pot / ts : 0;
+  const ts = cnt.reduce((a, b) => a + b, 0);
   const pay = [];
-  if (ts > 0) {
-    const earn = cnt.map(c => c * ps), ne = earn.map(e => e - g.potPerPlayer);
-    const tw = ne.filter(x => x > 0).reduce((a, b) => a + b, 0);
-    if (tw > 0) for (let i = 0; i < 4; i++) { if (ne[i] >= 0) continue; for (let j = 0; j < 4; j++) { if (ne[j] <= 0) continue; const sh = (ne[j] / tw) * Math.abs(ne[i]); if (sh > 0.01) pay.push({ f: i, t: j, a: sh }); } }
+  let det, wager;
+  if (g.skinsMode === "perSkin") {
+    const aps = g.amountPerSkin || 5;
+    // Each skin won earns the fixed amount from each other player
+    for (let i = 0; i < pl.length; i++) {
+      if (cnt[i] > 0) {
+        for (let j = 0; j < pl.length; j++) {
+          if (i !== j) pay.push({ f: j, t: i, a: cnt[i] * aps });
+        }
+      }
+    }
+    det = [ts + " skin" + (ts !== 1 ? "s" : "") + (ts > 0 ? " | $" + aps + "/skin" : ""),
+      ...pl.map((_, i) => n[i] + ": " + cnt[i] + " ($" + (cnt[i] * aps * (pl.length - 1)).toFixed(2) + ")")];
+    wager = "$" + aps + "/skin";
+  } else {
+    const pot = g.potPerPlayer * pl.length, ps = ts > 0 ? pot / ts : 0;
+    if (ts > 0) {
+      const earn = cnt.map(c => c * ps), ne = earn.map(e => e - g.potPerPlayer);
+      const tw = ne.filter(x => x > 0).reduce((a, b) => a + b, 0);
+      if (tw > 0) for (let i = 0; i < pl.length; i++) { if (ne[i] >= 0) continue; for (let j = 0; j < pl.length; j++) { if (ne[j] <= 0) continue; const sh = (ne[j] / tw) * Math.abs(ne[i]); if (sh > 0.01) pay.push({ f: i, t: j, a: sh }); } }
+    }
+    det = ["Pot: $" + pot + " | " + ts + " skin" + (ts !== 1 ? "s" : "") + (ts > 0 ? " | $" + ps.toFixed(2) + "/skin" : ""),
+      ...pl.map((_, i) => n[i] + ": " + cnt[i] + " ($" + (cnt[i] * ps).toFixed(2) + ")")];
+    wager = "$" + g.potPerPlayer + "/pl";
   }
-  const det = ["Pot: $" + pot + " | " + ts + " skin" + (ts !== 1 ? "s" : "") + (ts > 0 ? " | $" + ps.toFixed(2) + "/skin" : ""),
-    ...n.map((nm, i) => nm + ": " + cnt[i] + " ($" + (cnt[i] * ps).toFixed(2) + ")")];
-  return { title: "Skins (" + (g.net ? "Net" : "Gross") + (g.carryOver ? ", Carry" : "") + ")", details: det, status: carry > 0 ? carry + " carrying" : null, payouts: pay, holeResults: hr, wager: "$" + g.potPerPlayer + "/pl" };
+  return { title: "Skins (" + (g.net ? "Net" : "Gross") + (g.carryOver ? ", Carry" : "") + ")", details: det, status: carry > 0 ? carry + " carrying" : null, payouts: pay, holeResults: hr, wager };
 }
 
 function cSixes(g, pl) {

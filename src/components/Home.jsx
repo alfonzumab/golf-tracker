@@ -10,6 +10,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [search, setSearch] = useState('');
 
   const course = courses.find(c => c.id === selectedCourseId) || courses[0];
 
@@ -22,6 +23,29 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
   };
 
   const rdy = course && course.tees.some(t => t.rating > 0 && t.slope > 0);
+
+  const renderPlayer = (p) => {
+    const s = sel.includes(p.id), ci = sel.indexOf(p.id);
+    return (
+      <div key={p.id} onClick={() => tog(p.id)} style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 4, cursor: "pointer",
+        background: s ? PC[ci] + "12" : "transparent", border: `1.5px solid ${s ? PC[ci] + "44" : T.bdr}`,
+        transition: "all .15s"
+      }}>
+        <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+            {p.favorite && <span style={{ fontSize: 14 }}>⭐</span>}
+            {p.name}
+          </div>
+          <div style={{ fontSize: 13, color: T.dim }}>Index: {p.index}</div>
+        </div>
+        {s && course && <select className="inp ism" style={{ width: 90 }} value={tees[p.id] || course.tees[0]?.name} onChange={e => { e.stopPropagation(); setTees({ ...tees, [p.id]: e.target.value }); }}>
+          {course.tees.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+        </select>}
+      </div>
+    );
+  };
 
   const copyCode = async (code) => {
     try {
@@ -98,25 +122,34 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
           {showPlayers && (
             <>
               <div className="il mb6">Select 4 Players</div>
-              {players.map(p => {
-                const s = sel.includes(p.id), ci = sel.indexOf(p.id);
+              <input
+                className="inp mb8"
+                placeholder="Search players..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              {(() => {
+                const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+                const sorted = [...filtered].sort((a, b) => {
+                  if (a.favorite && !b.favorite) return -1;
+                  if (!a.favorite && b.favorite) return 1;
+                  return a.name.localeCompare(b.name);
+                });
+                const favorites = sorted.filter(p => p.favorite);
+                const others = sorted.filter(p => !p.favorite);
                 return (
-                  <div key={p.id} onClick={() => tog(p.id)} style={{
-                    display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 4, cursor: "pointer",
-                    background: s ? PC[ci] + "12" : "transparent", border: `1.5px solid ${s ? PC[ci] + "44" : T.bdr}`,
-                    transition: "all .15s"
-                  }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600 }}>{p.name}</div>
-                      <div style={{ fontSize: 13, color: T.dim }}>Index: {p.index}</div>
-                    </div>
-                    {s && course && <select className="inp ism" style={{ width: 90 }} value={tees[p.id] || course.tees[0]?.name} onChange={e => { e.stopPropagation(); setTees({ ...tees, [p.id]: e.target.value }); }}>
-                      {course.tees.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                    </select>}
-                  </div>
+                  <>
+                    {favorites.length > 0 && (
+                      <>
+                        <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>⭐ Favorites</div>
+                        {favorites.map(p => renderPlayer(p))}
+                        {others.length > 0 && <div style={{ fontSize: 13, color: T.dim, margin: "12px 0 8px", fontWeight: 600 }}>All Players</div>}
+                      </>
+                    )}
+                    {others.map(p => renderPlayer(p))}
+                  </>
                 );
-              })}
+              })()}
             </>
           )}
         </div>

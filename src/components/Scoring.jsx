@@ -77,35 +77,32 @@ const Scoring = ({ round, updateScore }) => {
           <button className="bg" disabled={hole === 17} onClick={() => setHole(hole + 1)}>Next {">"}</button>
         </div>
 
-        {/* Player Scoring - Single column for mobile compatibility */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
-          {pl.map((p, pi) => {
+        {pl.map((p, pi) => {
             const par = p.teeData.pars[hole], str = p.strokeHoles[hole], sc = p.scores[hole];
             const lo = Math.max(1, par - 2), hi = par + 3;
             const range = []; for (let v = lo; v <= hi; v++) range.push(v);
             return (
-              <div key={p.id} className={`sec pb${pi}`} style={{ padding: '12px', margin: 0 }}>
-                <div className="fxb mb8">
+              <div key={pi} className={`sec pb${pi}`}>
+                <div className="fxb mb6">
                   <div className="fx g6">
-                    <span className={`pc${pi}`} style={{ fontWeight: 700, fontSize: 14 }}>{n[pi]}</span>
-                    {str > 0 && <span className="tag ty" style={{ fontSize: '10px' }}>{str > 1 ? str + "x" : "1x"}</span>}
+                    <span className={`pc${pi}`} style={{ fontWeight: 700, fontSize: 15 }}>{n[pi]}</span>
+                    {str > 0 && <span className="tag ty">{str > 1 ? str + "x" : "1 str"}</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: T.dim, textAlign: 'right' }}>
-                    Par {par} | HCP {p.teeData.handicaps[hole]}
-                    {sc != null && str > 0 && <div style={{ color: T.gold, fontWeight: 600 }}>Net: {sc - str}</div>}
+                  <div className="fx g6" style={{ alignItems: 'center' }}>
+                    {sc != null && str > 0 && <span style={{ fontSize: 13, color: T.gold, fontWeight: 600 }}>Net: {sc - str}</span>}
+                    <span style={{ fontSize: 12, color: T.dim }}>Par {par} | HCP {p.teeData.handicaps[hole]}</span>
                   </div>
                 </div>
-                <div className="snr" style={{ gap: '4px' }}>
+                <div className="snr">
                   {range.map(v => (
-                    <button key={v} className={`snb${v === par ? " par" : ""}${sc === v ? " sel " + scoreClass(v, par) : ""}`} onClick={() => updateScore(pi, hole, v)} style={{ minWidth: '32px', height: '32px', fontSize: '13px' }}>{v}</button>
+                    <button key={v} className={`snb${v === par ? " par" : ""}${sc === v ? " sel " + scoreClass(v, par) : ""}`} onClick={() => updateScore(pi, hole, v)}>{v}</button>
                   ))}
-                  <button className={`snb more${sc != null && sc > hi ? " sel " + scoreClass(sc, par) : ""}`} onClick={() => updateScore(pi, hole, sc != null && sc >= hi + 1 ? sc + 1 : hi + 1)} style={{ minWidth: '40px', height: '32px', fontSize: '11px' }}>{sc != null && sc > hi ? sc : `${hi + 1}+`}</button>
-                  <button className="snx" onClick={() => updateScore(pi, hole, null)} style={{ visibility: sc != null ? "visible" : "hidden", width: '24px', height: '32px', fontSize: '12px' }}>×</button>
+                  <button className={`snb more${sc != null && sc > hi ? " sel " + scoreClass(sc, par) : ""}`} onClick={() => updateScore(pi, hole, sc != null && sc >= hi + 1 ? sc + 1 : hi + 1)}>{sc != null && sc > hi ? sc : `${hi + 1}+`}</button>
+                  <button className="snx" onClick={() => updateScore(pi, hole, null)} style={{ visibility: sc != null ? "visible" : "hidden" }}>×</button>
                 </div>
               </div>
             );
           })}
-        </div>
 
         <div className="hs">{Array.from({ length: 18 }, (_, i) => {
           const done = pl.every(p => p.scores[i] != null);

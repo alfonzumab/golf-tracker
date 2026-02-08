@@ -10,9 +10,10 @@ import {
   loadCurrentRound, saveCurrentRound, clearCurrentRound,
   loadSelectedCourse, saveSelectedCourse,
   loadProfile,
-  joinRound, generateShareCode
+  joinRound, generateShareCode,
+  finishRound, registerRoundParticipant, reopenRound
 } from './utils/storage';
-import { createTournament, getTournament, startTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
+import { createTournament, getTournament, startTournament, finishTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo, registerTournamentParticipant, loadTournamentHistory, reopenTournament } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -50,6 +51,11 @@ export default function App() {
   const [tournament, setTournament] = useState(null);
   const [tournamentGuest, setTournamentGuest] = useState(null);
   const [joinCode, setJoinCode] = useState(null);
+  const [tournamentHistory, setTournamentHistory] = useState([]);
+  const [viewingFinishedTournament, setViewingFinishedTournament] = useState(false);
+
+  // Track when local scores were last updated to avoid poll overwriting them
+  const lastScoreUpdate = useRef(0);
 
   // Computed values
   const isAdmin = profile?.role === 'admin';
@@ -113,6 +119,10 @@ export default function App() {
           // Silently handle network errors
         }
       }
+
+      // Load tournament history
+      const th = await loadTournamentHistory();
+      setTournamentHistory(th);
     };
     load();
   }, [session]);
@@ -127,12 +137,34 @@ export default function App() {
         if (data && data.length > 0) {
           const r = data[0];
           const cr = { id: r.id, date: r.date, course: r.course, players: r.players, games: r.games, shareCode: r.share_code };
-          setRound(cr);
-          sv('currentRound', cr);
-        } else if (data && data.length === 0) {
-          // Round was finished/abandoned on another device — clear local state
+          // If a local score was just entered, skip this poll to avoid overwriting it
+          // (saveCurrentRound debounces writes by 1500ms, so give 3s buffer)
+          const timeSinceLastUpdate = Date.now() - lastScoreUpdate.current;
+          if (timeSinceLastUpdate < 3000) return;
           setRound(prev => {
-            if (prev) sv('currentRound', null);
+            if (!prev) return cr;
+            // Merge: keep local player scores if they have more data than remote
+            // This prevents stale poll data from reverting a just-entered score
+            const mergedPlayers = cr.players.map((rp, i) => {
+              if (!prev.players[i]) return rp;
+              const localScored = prev.players[i].scores.filter(s => s != null).length;
+              const remoteScored = rp.scores.filter(s => s != null).length;
+              // If local has same or more scores, keep local scores
+              if (localScored >= remoteScored) return { ...rp, scores: prev.players[i].scores };
+              return rp;
+            });
+            const merged = { ...cr, players: mergedPlayers };
+            sv('currentRound', merged);
+            return merged;
+          });
+        } else if (data && data.length === 0) {
+          // Round was finished/abandoned on another device — clear local state and reload history
+          setRound(prev => {
+            if (prev) {
+              sv('currentRound', null);
+              // Reload history to pick up the finished round
+              loadRounds().then(r => { setRounds(r); sv('rounds', r); });
+            }
             return null;
           });
         }
@@ -191,6 +223,7 @@ export default function App() {
   const handleSetSelectedCourse = (id) => { setSelectedCourseId(id); sv("selectedCourse", id); saveSelectedCourse(id); };
 
   const us = (pi, hi, v) => {
+    lastScoreUpdate.current = Date.now();
     setRound(prev => {
       const u = { ...prev, players: prev.players.map((p, i) => { if (i !== pi) return p; const s = [...p.scores]; s[hi] = v; return { ...p, scores: s }; }) };
       sv("currentRound", u);
@@ -210,11 +243,18 @@ export default function App() {
     setModal({
       title: "Finish Round?",
       text: summary + winText + "\n\nSave to history?",
-      onOk: () => {
-        const up = [...rounds, round];
-        setRounds(up); sv("rounds", up); saveRound(up);
-        setRound(null); clearCurrentRound();
-        setModal(null); go("home");
+      onOk: async () => {
+        try {
+          // Call finish_round RPC to save copies for all participants
+          await finishRound(round.id, round.shareCode);
+          // Update local state immediately for instant UI
+          const up = [...rounds, round];
+          setRounds(up); sv("rounds", up); saveRound(up);
+          setRound(null); clearCurrentRound();
+          setModal(null); go("home");
+        } catch (error) {
+          setModal({ title: 'Error', text: 'Failed to finish round: ' + error.message, onOk: () => setModal(null) });
+        }
       },
       onNo: () => setModal(null)
     });
@@ -263,7 +303,10 @@ export default function App() {
       }
       if (t) {
         setTournament(t);
+        setViewingFinishedTournament(false);
         tournamentStartedRef.current = t.status === 'live';
+        // Register host as participant
+        registerTournamentParticipant(t.id);
         go('tlobby');
       } else {
         setModal({ title: 'Error', text: 'Tournament created but could not be loaded. Check Supabase RPC.', onOk: () => setModal(null) });
@@ -280,8 +323,11 @@ export default function App() {
 
   const handleJoined = (t, guestInfo) => {
     setTournament(t);
+    setViewingFinishedTournament(false);
     tournamentStartedRef.current = t.status === 'live';
     setTournamentGuest(guestInfo);
+    // Register participant
+    registerTournamentParticipant(t.id, guestInfo?.groupIdx, guestInfo?.playerIdx);
     go('tlobby');
   };
 
@@ -300,6 +346,7 @@ export default function App() {
     setTournament(null);
     setTournamentGuest(null);
     setJoinCode(null);
+    setViewingFinishedTournament(false);
     clearActiveTournament();
     clearGuestInfo();
     go('home');
@@ -339,6 +386,71 @@ export default function App() {
     saveGuestInfo(info);
   };
 
+  // Reopen a finished round
+  const handleReopenRound = async (r) => {
+    try {
+      await reopenRound(r.id);
+      // Set as active round
+      setRound({ ...r });
+      sv('currentRound', r);
+      saveCurrentRound(r);
+      // Remove from local history
+      const filtered = rounds.filter(rd => rd.id !== r.id);
+      setRounds(filtered);
+      sv('rounds', filtered);
+      saveRound(filtered);
+      go('score');
+    } catch (error) {
+      setModal({ title: 'Error', text: 'Failed to reopen round: ' + error.message, onOk: () => setModal(null) });
+    }
+  };
+
+  // Finish active tournament
+  const handleFinishTournament = () => {
+    if (!tournament) return;
+    const { balances } = calcAll(tournament.groups[0]?.games || [], tournament.groups[0]?.players || []);
+    setModal({
+      title: 'Finish Tournament?',
+      text: `${tournament.name}\n\nThis will end the tournament for all participants and move it to history.`,
+      onOk: async () => {
+        try {
+          await finishTournament(tournament.shareCode);
+          // Move to history
+          setTournamentHistory(prev => [...prev, tournament]);
+          // Clear active tournament
+          setTournament(null);
+          setTournamentGuest(null);
+          setViewingFinishedTournament(false);
+          clearActiveTournament();
+          clearGuestInfo();
+          setModal(null);
+          go('home');
+        } catch (error) {
+          setModal({ title: 'Error', text: 'Failed to finish tournament: ' + error.message, onOk: () => setModal(null) });
+        }
+      },
+      onNo: () => setModal(null)
+    });
+  };
+
+  // Reopen a finished tournament
+  const handleReopenTournament = async (t) => {
+    try {
+      await reopenTournament(t.shareCode);
+      // Set as active tournament
+      setTournament({ ...t, status: 'live' });
+      setViewingFinishedTournament(false);
+      // Remove from tournament history
+      const filtered = tournamentHistory.filter(th => th.id !== t.id);
+      setTournamentHistory(filtered);
+      // Save active tournament code
+      sv('active-tournament', t.shareCode);
+      go('tscore');
+    } catch (error) {
+      setModal({ title: 'Error', text: 'Failed to reopen tournament: ' + error.message, onOk: () => setModal(null) });
+    }
+  };
+
   // Poll tournament data every 10s when live
   useEffect(() => {
     if (!tournament || tournament.status !== 'live') return;
@@ -349,6 +461,15 @@ export default function App() {
       try {
         const { tournament: fresh } = await getTournament(code);
         if (fresh) {
+          // If tournament was finished by host, move to history
+          if (fresh.status === 'finished') {
+            setTournamentHistory(prev => [...prev, fresh]);
+            setTournament(null);
+            setTournamentGuest(null);
+            clearActiveTournament();
+            clearGuestInfo();
+            return;
+          }
           setTournament(prev => {
             if (!prev) return fresh;
             // Keep local scores for user's group, update others from server
@@ -428,11 +549,21 @@ export default function App() {
           shareCode: generateShareCode()
         };
         setRound(r); sv("currentRound", r); saveCurrentRound(r);
+        // Register host as participant
+        registerRoundParticipant(r.id);
         setSetup(null); setSetupCourse(null); go("score");
       }} />}
       {pg === "score" && round && <Scoring round={round} updateScore={us} />}
       {pg === "bets" && round && <Bets round={round} />}
-      {pg === "hist" && <Hist rounds={rounds} onLoad={r => { setRound({ ...r }); sv("currentRound", r); go("bets"); }} />}
+      {pg === "hist" && <Hist
+        rounds={rounds}
+        tournamentHistory={tournamentHistory}
+        onLoad={r => { setRound({ ...r }); sv("currentRound", r); go("bets"); }}
+        onReopenRound={handleReopenRound}
+        onReopenTournament={handleReopenTournament}
+        isHost={(t) => t && session && t.hostUserId === session.user.id}
+        onViewTournament={(t) => { setTournament(t); setViewingFinishedTournament(true); go('tboard'); }}
+      />}
 
       {/* Tournament pages */}
       {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}
@@ -440,7 +571,7 @@ export default function App() {
       {pg === "tlobby" && <TournamentLobby tournament={tournament} isHost={isHost} onStart={handleStartTournament} onBack={leaveTournament} />}
       {pg === "tjoin" && joinCode && <TournamentJoin code={joinCode} onJoined={handleJoined} onBack={() => go('thub')} />}
       {pg === "tscore" && tournament && <TournamentScore tournament={tournament} playerInfo={tournamentGuest} onUpdateScore={handleTournamentScoreUpdate} onSelectPlayer={handleSelectTournamentPlayer} onUpdateGroupGames={handleUpdateGroupGames} />}
-      {pg === "tboard" && tournament && <TournamentBoard tournament={tournament} />}
+      {pg === "tboard" && tournament && <TournamentBoard tournament={tournament} isHost={isHost} onFinish={handleFinishTournament} readOnly={viewingFinishedTournament} />}
 
       {/* Nav: show tournament nav for tournament pages, regular nav otherwise */}
       {["tlobby", "tscore", "tboard"].includes(pg) ? <TournamentNav pg={pg} go={go} /> : !isTournamentPg && <Nav pg={pg} go={go} hr={!!round} />}

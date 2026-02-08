@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { T } from '../theme';
+import { supabase } from '../lib/supabase';
 
 const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
   const c = courses.find(x => x.id === courseId);
@@ -113,8 +114,25 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
   );
 };
 
-const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId }) => {
+const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId, isAdmin }) => {
   const [edit, setEdit] = useState(null);
+  const [inactive, setInactive] = useState([]);
+
+  // Load inactive courses for admin view
+  useEffect(() => {
+    if (!isAdmin) return;
+    const loadInactive = async () => {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('is_active', false)
+        .order('name');
+      if (!error && data) {
+        setInactive(data.map(c => ({ id: c.id, name: c.name, city: c.city, tees: c.tees })));
+      }
+    };
+    loadInactive();
+  }, [isAdmin]);
 
   const addCourse = () => {
     const newC = {
@@ -128,9 +146,16 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId })
     setEdit(newC.id);
   };
 
-  const deleteCourse = id => {
+  const deleteCourse = async id => {
+    // Soft delete: set is_active = false
+    const { error } = await supabase.from('courses').update({ is_active: false }).eq('id', id);
+    if (error) {
+      console.error('Failed to delete course:', error);
+      return;
+    }
     const up = courses.filter(c => c.id !== id);
     setCourses(up);
+    setInactive([...inactive, courses.find(c => c.id === id)]);
     if (selectedCourseId === id) { setSelectedCourseId(up[0]?.id || null); }
   };
 
@@ -138,7 +163,7 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId })
     <div className="pg">
       <div className="fxb mb10">
         <span className="pg-title">Courses</span>
-        <button className="btn bp bsm" onClick={addCourse}>+ Add Course</button>
+        {isAdmin && <button className="btn bp bsm" onClick={addCourse}>+ Add Course</button>}
       </div>
 
       {courses.length === 0 && (
@@ -155,10 +180,39 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId })
             <div className="prow-n">{c.name}</div>
             <div className="prow-i">{c.city} {"\u00B7"} {c.tees.length} tee{c.tees.length !== 1 ? "s" : ""}</div>
           </div>
-          <button className="bg" onClick={() => setEdit(c.id)}>Edit</button>
-          <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => deleteCourse(c.id)}>Delete</button>
+          {isAdmin && (
+            <>
+              <button className="bg" onClick={() => setEdit(c.id)}>Edit</button>
+              <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => deleteCourse(c.id)}>Delete</button>
+            </>
+          )}
         </div>
       ))}
+
+      {isAdmin && inactive.length > 0 && (
+        <>
+          <div className="dvd" />
+          <div className="mb10" style={{ fontSize: 14, color: T.dim, fontWeight: 600 }}>Inactive Courses</div>
+          {inactive.map(c => (
+            <div key={c.id} className="prow" style={{ opacity: 0.6 }}>
+              <div style={{ flex: 1 }}>
+                <div className="prow-n">{c.name}</div>
+                <div className="prow-i">{c.city} {"\u00B7"} {c.tees.length} tee{c.tees.length !== 1 ? "s" : ""}</div>
+              </div>
+              <button className="btn bg bsm" onClick={async () => {
+                await supabase.from('courses').update({ is_active: true }).eq('id', c.id);
+                setInactive(inactive.filter(ic => ic.id !== c.id));
+                // Reload active courses
+                const { data } = await supabase.from('courses').select('*').eq('is_active', true).order('name');
+                if (data) {
+                  const activeCourses = data.map(ac => ({ id: ac.id, name: ac.name, city: ac.city, tees: ac.tees }));
+                  setCourses(activeCourses);
+                }
+              }}>Restore</button>
+            </div>
+          ))}
+        </>
+      )}
 
       {edit && <CourseEditor courseId={edit} courses={courses} setCourses={setCourses} onClose={() => setEdit(null)} />}
     </div>

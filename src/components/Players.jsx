@@ -1,12 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { T } from '../theme';
+import { supabase } from '../lib/supabase';
 
-const Players = ({ players, setPlayers }) => {
+const Players = ({ players, setPlayers, isAdmin }) => {
   const [sa, setSa] = useState(false);
   const [nm, setNm] = useState("");
   const [ix, setIx] = useState("");
   const [fv, setFv] = useState(false);
   const [edit, setEdit] = useState(null);
+  const [inactive, setInactive] = useState([]);
+
+  // Load inactive players for admin view
+  useEffect(() => {
+    if (!isAdmin) return;
+    const loadInactive = async () => {
+      const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('is_active', false)
+        .order('name');
+      if (!error && data) {
+        setInactive(data.map(p => ({ id: p.id, name: p.name, index: Number(p.index), favorite: false })));
+      }
+    };
+    loadInactive();
+  }, [isAdmin]);
 
   const add = () => {
     if (!nm.trim()) return;
@@ -14,10 +32,17 @@ const Players = ({ players, setPlayers }) => {
     setPlayers(up); setNm(""); setIx(""); setFv(false); setSa(false);
   };
 
-  const rm = (id, name) => {
-    if (!window.confirm(`Delete ${name}?`)) return;
+  const rm = async (id, name) => {
+    if (!window.confirm(`Delete ${name}? This will hide the player from all users.`)) return;
+    // Soft delete: set is_active = false
+    const { error } = await supabase.from('players').update({ is_active: false }).eq('id', id);
+    if (error) {
+      console.error('Failed to delete player:', error);
+      return;
+    }
     const up = players.filter(p => p.id !== id);
     setPlayers(up);
+    setInactive([...inactive, players.find(p => p.id === id)]);
   };
 
   const togFav = (id) => {
@@ -37,7 +62,7 @@ const Players = ({ players, setPlayers }) => {
     <div className="pg">
       <div className="fxb mb10">
         <span className="pg-title">Players</span>
-        <button className="btn bp bsm" onClick={() => setSa(true)}>+ Add</button>
+        {isAdmin && <button className="btn bp bsm" onClick={() => setSa(true)}>+ Add</button>}
       </div>
 
       {sa && <div className="cd">
@@ -79,10 +104,39 @@ const Players = ({ players, setPlayers }) => {
             </div>
             <div className="prow-i">Index: {p.index}</div>
           </div>
-          <button className="bg" onClick={() => setEdit({ ...p })}>Edit</button>
-          <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id, p.name)}>Delete</button>
+          {isAdmin && (
+            <>
+              <button className="bg" onClick={() => setEdit({ ...p })}>Edit</button>
+              <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id, p.name)}>Delete</button>
+            </>
+          )}
         </div>
       ))}
+
+      {isAdmin && inactive.length > 0 && (
+        <>
+          <div className="dvd" />
+          <div className="mb10" style={{ fontSize: 14, color: T.dim, fontWeight: 600 }}>Inactive Players</div>
+          {inactive.map(p => (
+            <div key={p.id} className="prow" style={{ opacity: 0.6 }}>
+              <div style={{ flex: 1 }}>
+                <div className="prow-n">{p.name}</div>
+                <div className="prow-i">Index: {p.index}</div>
+              </div>
+              <button className="btn bg bsm" onClick={async () => {
+                await supabase.from('players').update({ is_active: true }).eq('id', p.id);
+                setInactive(inactive.filter(ip => ip.id !== p.id));
+                // Reload active players
+                const { data } = await supabase.from('players').select('*').eq('is_active', true).order('name');
+                if (data) {
+                  const activePlayers = data.map(ap => ({ id: ap.id, name: ap.name, index: Number(ap.index), favorite: false }));
+                  setPlayers(activePlayers);
+                }
+              }}>Restore</button>
+            </div>
+          ))}
+        </>
+      )}
 
       {edit && <div className="mbg" onClick={() => setEdit(null)}>
         <div className="mdl" onClick={e => e.stopPropagation()}>

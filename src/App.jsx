@@ -4,12 +4,12 @@ import { T } from './theme';
 import { supabase } from './lib/supabase';
 import {
   sv, ld,
-  loadPlayers, savePlayers,
-  loadCourses, saveCourses,
+  loadPlayers, savePlayersFavorites, adminSavePlayers,
+  loadCourses, adminSaveCourses,
   loadRounds, saveRound,
   loadCurrentRound, saveCurrentRound, clearCurrentRound,
   loadSelectedCourse, saveSelectedCourse,
-  importLocalData,
+  loadProfile,
   joinRound, generateShareCode
 } from './utils/storage';
 import { createTournament, getTournament, startTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo } from './utils/tournamentStorage';
@@ -35,6 +35,7 @@ import TournamentBoard from './components/tournament/TournamentBoard';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = logged out
+  const [profile, setProfile] = useState(null);
   const [pg, setPg] = useState("home");
   const [players, setPlayers] = useState(() => ld("players", []));
   const [courses, setCourses] = useState(() => ld("courses", []));
@@ -50,12 +51,19 @@ export default function App() {
   const [tournamentGuest, setTournamentGuest] = useState(null);
   const [joinCode, setJoinCode] = useState(null);
 
+  // Computed values
+  const isAdmin = profile?.role === 'admin';
+
   // Listen for auth changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -67,10 +75,10 @@ export default function App() {
     if (dataLoaded.current) return;
     dataLoaded.current = true;
     const load = async () => {
-      await importLocalData();
-      const [p, c, r, cr, sc] = await Promise.all([
-        loadPlayers(), loadCourses(), loadRounds(), loadCurrentRound(), loadSelectedCourse()
+      const [prof, p, c, r, cr, sc] = await Promise.all([
+        loadProfile(), loadPlayers(), loadCourses(), loadRounds(), loadCurrentRound(), loadSelectedCourse()
       ]);
+      setProfile(prof);
       setPlayers(p);
       setCourses(c);
       setRounds(r);
@@ -133,12 +141,43 @@ export default function App() {
     return () => clearInterval(id);
   }, [session]);
 
+  // Poll for global player/course changes every 60s (for non-admin users)
+  useEffect(() => {
+    if (!session || isAdmin) return; // Admins see changes immediately via their edits
+    const id = setInterval(async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const [p, c] = await Promise.all([loadPlayers(), loadCourses()]);
+        setPlayers(p);
+        setCourses(c);
+      } catch {
+        // Silently handle network errors
+      }
+    }, 60000);
+    return () => clearInterval(id);
+  }, [session, isAdmin]);
+
   const go = p => setPg(p);
   const isTournamentPg = pg.startsWith('t');
-
-  // Wrappers that save to both localStorage and Supabase
-  const handleSetPlayers = (up) => { setPlayers(up); sv("players", up); savePlayers(up); };
-  const handleSetCourses = (up) => { setCourses(up); sv("courses", up); saveCourses(up); };
+  const handleSetPlayers = (up) => {
+    setPlayers(up);
+    sv("players", up);
+    if (isAdmin) {
+      adminSavePlayers(up);
+    } else {
+      // For regular users, only update favorites
+      const favoriteIds = up.filter(p => p.favorite).map(p => p.id);
+      savePlayersFavorites(favoriteIds);
+    }
+  };
+  const handleSetCourses = (up) => {
+    setCourses(up);
+    sv("courses", up);
+    if (isAdmin) {
+      adminSaveCourses(up);
+    }
+    // Regular users can't modify courses
+  };
   const handleSetSelectedCourse = (id) => { setSelectedCourseId(id); sv("selectedCourse", id); saveSelectedCourse(id); };
 
   const us = (pi, hi, v) => {
@@ -368,8 +407,8 @@ export default function App() {
         </div>
       </div>
       {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
-      {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} />}
-      {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} />}
+      {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} isAdmin={isAdmin} />}
+      {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} isAdmin={isAdmin} />}
       {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={games => {
         const r = {
           id: Date.now().toString(),

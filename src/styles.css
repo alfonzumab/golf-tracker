@@ -189,6 +189,12 @@ select.inp{appearance:none;cursor:pointer;background-image:url("data:image/svg+x
 .auth-card{background:#0f2518;border:1px solid #1a3a25;border-radius:16px;padding:24px}
 .auth-err{background:#ef444418;color:#ef4444;padding:12px;border-radius:10px;font-size:14px;margin-bottom:16px}
 .auth-msg{background:#1a7a4222;color:#4ade80;padding:12px;border-radius:10px;font-size:14px;margin-bottom:16px}
+.auth-divider{position:relative;text-align:center;margin:20px 0;color:#6b9b7a;font-size:14px}
+.auth-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:#1a3a25}
+.auth-divider span{background:#0b1a10;padding:0 12px}
+.google-btn{background:#fff;color:#333;border:1px solid #dadce0;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:500;margin-top:8px}
+.google-btn:hover{background:#f8f9fa}
+.google-btn svg{flex-shrink:0}
 
 /* === PAGE TITLE === */
 .pg-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#4ade80}

@@ -22,7 +22,8 @@
       "Bash(npm run build:*)",
       "Bash(git status:*)",
       "Bash(qlmanage -t -s 512 -o:*)",
-      "Bash(sips:*)"
+      "Bash(sips:*)",
+      "Bash(ls:*)"
     ]
   }
 }

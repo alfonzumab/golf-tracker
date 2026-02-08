@@ -11,59 +11,128 @@ export async function loadPlayers() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return ld('players', []);
 
-  const { data, error } = await supabase.from('players').select('*').eq('user_id', user.id).order('created_at');
-  if (error) return ld('players', []);
-  const players = data.map(p => ({ id: p.id, name: p.name, index: Number(p.index), favorite: p.favorite || false }));
+  // Load all active players
+  const { data: playersData, error: playersError } = await supabase
+    .from('players')
+    .select('*')
+    .eq('is_active', true)
+    .order('name');
+
+  if (playersError) return ld('players', []);
+
+  // Load user's favorites
+  const { data: favoritesData, error: favoritesError } = await supabase
+    .from('user_favorites')
+    .select('player_id')
+    .eq('user_id', user.id);
+
+  if (favoritesError) {
+    console.error('loadPlayers: Failed to load favorites:', favoritesError.message);
+  }
+
+  const favoriteIds = new Set(favoritesData?.map(f => f.player_id) || []);
+
+  const players = playersData.map(p => ({
+    id: p.id,
+    name: p.name,
+    index: Number(p.index),
+    favorite: favoriteIds.has(p.id)
+  }));
+
   sv('players', players);
   return players;
 }
 
-export async function savePlayers(players) {
-  sv('players', players);
+export async function savePlayersFavorites(favoritePlayerIds) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
   try {
-    // Get existing players from database
+    // Get existing favorites
     const { data: existing, error: fetchErr } = await supabase
-      .from('players')
-      .select('id')
+      .from('user_favorites')
+      .select('player_id')
       .eq('user_id', user.id);
 
     if (fetchErr) {
-      console.error('savePlayers: Failed to fetch existing players:', fetchErr.message);
+      console.error('savePlayersFavorites: Failed to fetch existing favorites:', fetchErr.message);
+      return;
+    }
+
+    const existingIds = new Set(existing?.map(f => f.player_id) || []);
+    const newIds = new Set(favoritePlayerIds);
+
+    const toDelete = [...existingIds].filter(id => !newIds.has(id));
+    const toInsert = [...newIds].filter(id => !existingIds.has(id));
+
+    // Delete removed favorites
+    if (toDelete.length > 0) {
+      const { error: delErr } = await supabase
+        .from('user_favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .in('player_id', toDelete);
+
+      if (delErr) {
+        console.error('savePlayersFavorites: Failed to delete favorites:', delErr.message);
+      }
+    }
+
+    // Insert new favorites
+    if (toInsert.length > 0) {
+      const { error: insErr } = await supabase
+        .from('user_favorites')
+        .insert(toInsert.map(id => ({ user_id: user.id, player_id: id })));
+
+      if (insErr) {
+        console.error('savePlayersFavorites: Failed to insert favorites:', insErr.message);
+      }
+    }
+
+  } catch (e) {
+    console.error('savePlayersFavorites: Unexpected error:', e);
+  }
+}
+
+export async function adminSavePlayers(players) {
+  try {
+    // Get existing players from database (global)
+    const { data: existing, error: fetchErr } = await supabase
+      .from('players')
+      .select('id');
+
+    if (fetchErr) {
+      console.error('adminSavePlayers: Failed to fetch existing players:', fetchErr.message);
       return;
     }
 
     const existingIds = new Set(existing?.map(p => p.id) || []);
     const newIds = new Set(players.map(p => p.id));
 
-    // Only delete players that are actually removed (not just missing from current list)
-    const toDelete = [...existingIds].filter(id => !newIds.has(id));
+    // Only delete players that are actually removed (soft delete by setting is_active = false)
+    const toSoftDelete = [...existingIds].filter(id => !newIds.has(id));
     const toUpsert = players.map(p => ({
       id: p.id,
-      user_id: user.id,
       name: p.name,
       index: p.index,
-      favorite: p.favorite || false
+      is_active: true
     }));
 
-    // Safety check: Don't delete more than 50 players at once (prevents mass deletion bugs)
-    if (toDelete.length > 50) {
-      console.error(`savePlayers: Refusing to delete ${toDelete.length} players. This looks like a bug.`);
+    // Safety check: Don't delete more than 50 players at once
+    if (toSoftDelete.length > 50) {
+      console.error(`adminSavePlayers: Refusing to soft-delete ${toSoftDelete.length} players. This looks like a bug.`);
       return;
     }
 
-    // Delete removed players
-    if (toDelete.length > 0) {
+    // Soft delete removed players
+    if (toSoftDelete.length > 0) {
       const { error: delErr } = await supabase
         .from('players')
-        .delete()
-        .eq('user_id', user.id)
-        .in('id', toDelete);
+        .update({ is_active: false })
+        .in('id', toSoftDelete);
 
       if (delErr) {
-        console.error('savePlayers: Failed to delete players:', delErr.message);
+        console.error('adminSavePlayers: Failed to soft-delete players:', delErr.message);
         return;
       }
     }
@@ -75,12 +144,12 @@ export async function savePlayers(players) {
         .upsert(toUpsert, { onConflict: 'id' });
 
       if (upsertErr) {
-        console.error('savePlayers: Failed to upsert players:', upsertErr.message);
+        console.error('adminSavePlayers: Failed to upsert players:', upsertErr.message);
       }
     }
 
   } catch (e) {
-    console.error('savePlayers: Unexpected error:', e);
+    console.error('adminSavePlayers: Unexpected error:', e);
   }
 }
 
@@ -88,59 +157,58 @@ export async function loadCourses() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return ld('courses', []);
 
-  const { data, error } = await supabase.from('courses').select('*').eq('user_id', user.id).order('created_at');
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .eq('is_active', true)
+    .order('name');
+
   if (error) return ld('courses', []);
   const courses = data.map(c => ({ id: c.id, name: c.name, city: c.city, tees: c.tees }));
   sv('courses', courses);
   return courses;
 }
 
-export async function saveCourses(courses) {
-  sv('courses', courses);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-
+export async function adminSaveCourses(courses) {
   try {
-    // Get existing courses from database
+    // Get existing courses from database (global)
     const { data: existing, error: fetchErr } = await supabase
       .from('courses')
-      .select('id')
-      .eq('user_id', user.id);
+      .select('id');
 
     if (fetchErr) {
-      console.error('saveCourses: Failed to fetch existing courses:', fetchErr.message);
+      console.error('adminSaveCourses: Failed to fetch existing courses:', fetchErr.message);
       return;
     }
 
     const existingIds = new Set(existing?.map(c => c.id) || []);
     const newIds = new Set(courses.map(c => c.id));
 
-    // Only delete courses that are actually removed
-    const toDelete = [...existingIds].filter(id => !newIds.has(id));
+    // Only delete courses that are actually removed (soft delete)
+    const toSoftDelete = [...existingIds].filter(id => !newIds.has(id));
     const toUpsert = courses.map(c => ({
       id: c.id,
-      user_id: user.id,
       name: c.name,
       city: c.city,
-      tees: c.tees
+      tees: c.tees,
+      is_active: true
     }));
 
     // Safety check: Don't delete more than 20 courses at once
-    if (toDelete.length > 20) {
-      console.error(`saveCourses: Refusing to delete ${toDelete.length} courses. This looks like a bug.`);
+    if (toSoftDelete.length > 20) {
+      console.error(`adminSaveCourses: Refusing to soft-delete ${toSoftDelete.length} courses. This looks like a bug.`);
       return;
     }
 
-    // Delete removed courses
-    if (toDelete.length > 0) {
+    // Soft delete removed courses
+    if (toSoftDelete.length > 0) {
       const { error: delErr } = await supabase
         .from('courses')
-        .delete()
-        .eq('user_id', user.id)
-        .in('id', toDelete);
+        .update({ is_active: false })
+        .in('id', toSoftDelete);
 
       if (delErr) {
-        console.error('saveCourses: Failed to delete courses:', delErr.message);
+        console.error('adminSaveCourses: Failed to soft-delete courses:', delErr.message);
         return;
       }
     }
@@ -152,12 +220,12 @@ export async function saveCourses(courses) {
         .upsert(toUpsert, { onConflict: 'id' });
 
       if (upsertErr) {
-        console.error('saveCourses: Failed to upsert courses:', upsertErr.message);
+        console.error('adminSaveCourses: Failed to upsert courses:', upsertErr.message);
       }
     }
 
   } catch (e) {
-    console.error('saveCourses: Unexpected error:', e);
+    console.error('adminSaveCourses: Unexpected error:', e);
   }
 }
 
@@ -336,45 +404,36 @@ export async function saveSelectedCourse(courseId) {
   await supabase.from('user_preferences').upsert({ user_id: user.id, selected_course_id: courseId });
 }
 
-// Import local data on first login — only runs if user has no data in Supabase yet
-export async function importLocalData() {
+export async function loadProfile() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error('loadProfile: Failed to load profile:', error.message);
+    return null;
+  }
+
+  return data;
+}
+
+export async function saveProfile(updates) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Only migrate if user has ZERO data in Supabase (true first-time setup)
-  const { count } = await supabase.from('players').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
-  const { count: cCount } = await supabase.from('courses').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
-  if ((count || 0) > 0 || (cCount || 0) > 0) return;
+  const { error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', user.id);
 
-  const localPlayers = ld('players', []);
-  const localCourses = ld('courses', []);
-  const localRounds = ld('rounds', []);
-  const localCurrent = ld('currentRound', null);
-
-  // Skip if localStorage has nothing to import
-  const hasLocalData = localPlayers.length > 0 || localCourses.length > 0 || localRounds.length > 0 || localCurrent;
-  if (!hasLocalData) return;
-
-  if (localPlayers.length > 0) {
-    await supabase.from('players').upsert(
-      localPlayers.map(p => ({ id: p.id, user_id: user.id, name: p.name, index: p.index })),
-      { onConflict: 'id' }
-    );
-  }
-
-  if (localCourses.length > 0) {
-    await supabase.from('courses').upsert(
-      localCourses.map(c => ({ id: c.id, user_id: user.id, name: c.name, city: c.city, tees: c.tees })),
-      { onConflict: 'id' }
-    );
-  }
-
-  if (localRounds.length > 0) {
-    for (const r of localRounds) {
-      await supabase.from('rounds').upsert({ id: r.id, user_id: user.id, date: r.date, course: r.course, players: r.players, games: r.games, is_current: false });
-    }
-  }
-  if (localCurrent) {
-    await supabase.from('rounds').upsert({ id: localCurrent.id, user_id: user.id, date: localCurrent.date, course: localCurrent.course, players: localCurrent.players, games: localCurrent.games, is_current: true });
+  if (error) {
+    console.error('saveProfile: Failed to save profile:', error.message);
   }
 }
+
+

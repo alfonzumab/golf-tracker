@@ -11,6 +11,10 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
   const [copied, setCopied] = useState(false);
   const [joining, setJoining] = useState(false);
   const [search, setSearch] = useState('');
+  const [showGuestForm, setShowGuestForm] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestIndex, setGuestIndex] = useState('');
+  const [hcpOverrides, setHcpOverrides] = useState({});
 
   const course = courses.find(c => c.id === selectedCourseId) || courses[0];
 
@@ -20,6 +24,17 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
       setSel([...sel, id]);
       if (!tees[id] && course) setTees({ ...tees, [id]: course.tees[0]?.name || "" });
     }
+  };
+
+  const addGuest = () => {
+    if (!guestName.trim() || sel.length >= 4) return;
+    const guestId = 'guest-' + crypto.randomUUID();
+    // Add guest to selection (will be included in round but not saved to DB)
+    setSel([...sel, guestId]);
+    if (course) setTees({ ...tees, [guestId]: course.tees[0]?.name || "" });
+    setGuestName('');
+    setGuestIndex('');
+    setShowGuestForm(false);
   };
 
   const rdy = course && course.tees.some(t => t.rating > 0 && t.slope > 0);
@@ -37,6 +52,7 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
           <div style={{ fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
             {p.favorite && <span style={{ fontSize: 14 }}>⭐</span>}
             {p.name}
+            {p.isGuest && <span style={{ fontSize: 11, background: T.blue + "22", color: T.blue, padding: "2px 6px", borderRadius: 4 }}>Guest</span>}
           </div>
           <div style={{ fontSize: 13, color: T.dim }}>Index: {p.index}</div>
         </div>
@@ -122,12 +138,33 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
           {showPlayers && (
             <>
               <div className="il mb6">Select 4 Players</div>
-              <input
-                className="inp mb8"
-                placeholder="Search players..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+              <div className="fxb mb8">
+                <input
+                  className="inp"
+                  style={{ flex: 1 }}
+                  placeholder="Search players..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                <button className="btn bg bsm" onClick={() => setShowGuestForm(true)}>+ Guest</button>
+              </div>
+
+              {showGuestForm && (
+                <div className="cd mb10">
+                  <div className="ct">Add Guest Player</div>
+                  <div className="mb8"><div className="il">Name</div>
+                    <input className="inp" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} />
+                  </div>
+                  <div className="mb10"><div className="il">Handicap Index</div>
+                    <input className="inp" type="number" step="0.1" placeholder="12.5" value={guestIndex} onChange={e => setGuestIndex(e.target.value)} />
+                  </div>
+                  <div className="fx g6">
+                    <button className="btn bp" onClick={addGuest}>Add Guest</button>
+                    <button className="btn bs" onClick={() => { setShowGuestForm(false); setGuestName(''); setGuestIndex(''); }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
               {(() => {
                 const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
                 const sorted = [...filtered].sort((a, b) => {
@@ -152,15 +189,54 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
               })()}
             </>
           )}
+
+          {sel.length > 0 && (
+            <div className="mb10">
+              <div style={{ fontSize: 14, color: T.dim, marginBottom: 8, fontWeight: 600 }}>Selected Players</div>
+              {sel.map((id, i) => {
+                const p = [...players].find(x => x.id === id);
+                if (!p) return null;
+                return (
+                  <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: PC[i] + "08", borderRadius: 8, marginBottom: 6 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, background: PC[i], color: T.bg }}>{i + 1}</div>
+                    <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{p.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 12, color: T.dim }}>HCP:</span>
+                      <input
+                        className="inp ism"
+                        type="number"
+                        step="0.1"
+                        value={hcpOverrides[id] !== undefined ? hcpOverrides[id] : p.index}
+                        onChange={e => setHcpOverrides({ ...hcpOverrides, [id]: e.target.value })}
+                        style={{ width: 60 }}
+                      />
+                    </div>
+                    <button className="bg bsm" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => {
+                      setSel(sel.filter(s => s !== id));
+                      const newTees = { ...tees };
+                      delete newTees[id];
+                      setTees(newTees);
+                      const newOverrides = { ...hcpOverrides };
+                      delete newOverrides[id];
+                      setHcpOverrides(newOverrides);
+                    }}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
         {sel.length === 4 && rdy && course && <button className="btn bp" style={{ fontSize: 16, padding: 16 }} onClick={() => {
+          // Use the current players list which may include guests
+          const currentPlayers = [...players];
           const rp = sel.map((id, i) => {
-            const p = players.find(x => x.id === id);
+            const p = currentPlayers.find(x => x.id === id);
+            const overrideIndex = hcpOverrides[id] !== undefined ? parseFloat(hcpOverrides[id]) : p.index;
             const tn = tees[id] || course.tees[0]?.name;
             const tee = course.tees.find(t => t.name === tn) || course.tees[0];
             const tp = tee.pars.reduce((a, b) => a + b, 0);
-            const ch = calcCH(p.index, tee.slope, tee.rating, tp);
-            return { ...p, tee: tn, teeData: tee, courseHandicap: ch, strokeHoles: getStrokes(ch, tee.handicaps), scores: Array(18).fill(null), colorIdx: i };
+            const ch = calcCH(overrideIndex, tee.slope, tee.rating, tp);
+            return { ...p, index: overrideIndex, tee: tn, teeData: tee, courseHandicap: ch, strokeHoles: getStrokes(ch, tee.handicaps), scores: Array(18).fill(null), colorIdx: i };
           });
           onStart(rp, course);
         }}>Set Up Games {">"}</button>}

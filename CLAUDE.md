@@ -11,7 +11,7 @@ npm run lint     # ESLint (flat config, v9+)
 npm run preview  # Preview production build
 ```
 
-No test framework is configured. Production deploys automatically via Vercel on push to `main`.
+No test framework is configured. Production deploys automatically via Vercel on push to `main` (configured in `vercel.json`).
 
 ## Architecture
 
@@ -21,25 +21,26 @@ Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-
 
 `src/App.jsx` manages the auth lifecycle:
 - `session === undefined` → loading spinner
-- `session === null` → render `<Auth />` (login/signup)
+- `session === null` → render `<Auth />` (login/signup with email/password + Google OAuth)
 - `session` truthy → render the app, load data from Supabase
 
-On login, `importLocalData()` migrates localStorage data to Supabase — but only if the user has zero players and zero courses in Supabase (true first-time migration). Once Supabase has data, `importLocalData` is a no-op. All subsequent data loads come from Supabase with localStorage as write-through cache.
+On login, data loads from Supabase with localStorage as write-through cache. Players and courses are now **global shared data** protected by admin-only write access via RLS. Regular users can only modify their personal favorites. Guest players exist only for the current round session.
 
 ### Persistence Pattern
 
-Components never call storage functions directly. `App.jsx` provides wrapper functions (`handleSetPlayers`, `handleSetCourses`, `handleSetSelectedCourse`) that:
+Components never call storage functions directly. `App.jsx` provides wrapper functions that:
 1. Update React state
 2. Write to localStorage via `sv()` (instant UI)
 3. Write to Supabase async (cloud persistence)
 
-Two storage modules:
-- `src/utils/storage.js` — regular rounds, players, courses, preferences. `saveCurrentRound()` has 1.5s debounce. `joinRound(code)` calls `join_round` RPC for share-code round joining. `loadCurrentRound()` only falls back to localStorage on network errors — if Supabase returns empty, it clears stale localStorage.
-- `src/utils/tournamentStorage.js` — tournament CRUD via Supabase RPCs (`get_tournament`, `save_tournament`, `update_tournament_status`, `update_tournament_score`). `updateTournamentScore()` has 500ms debounce. Also manages share code generation, guest identity, and active tournament localStorage.
+Three storage modules:
+- `src/utils/storage.js` — rounds, global players/courses (admin-only writes), user favorites, profile. `saveCurrentRound()` has 1.5s debounce. `joinRound(code)` calls `join_round` RPC. Admin functions use global queries; user functions only modify favorites.
+- `src/utils/tournamentStorage.js` — tournament CRUD via Supabase RPCs. Same as before.
+- **Global Data Model**: Players and courses are shared across all users. Admin users can add/edit/delete via `adminSavePlayers()`/`adminSaveCourses()`. Regular users see read-only lists and can toggle favorites via `savePlayersFavorites()`. Soft deletes use `is_active = false`.
 
 ### Cross-Device Sync
 
-A 10-second poller in `App.jsx` syncs the active round across devices. When Supabase has an `is_current: true` round, the poller updates local state. When Supabase has no active round (finished/abandoned on another device), the poller clears local state and localStorage. **Critical invariant:** Supabase is always the source of truth — localStorage is only a cache and offline fallback. Never write stale localStorage data back to Supabase (this was a past bug that caused deleted players/courses to resurrect).
+A 10-second poller syncs active rounds. A 60-second poller syncs global players/courses for non-admin users. **Critical invariant:** Supabase is always the source of truth. Admin changes to players/courses propagate via polling. Regular users cannot accidentally delete global data.
 
 ### State Management
 
@@ -53,7 +54,7 @@ Convention: tournament pages start with `t`. The expression `pg.startsWith('t')`
 
 ### Tournament Mode
 
-Multi-group tournament system with cross-device sync via Supabase:
+Multi-group tournament system with cross-device sync via Supabase. All tournament components live in `src/components/tournament/`.
 
 - **TournamentHub** — entry point: create new or join with 6-char share code
 - **TournamentSetup** — multi-step wizard with two flows:
@@ -91,11 +92,15 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 
 ### Supabase Schema
 
-**User-scoped tables** (RLS — each user sees only their own data):
-- `players` — id (TEXT PK), user_id, name, index
-- `courses` — id (TEXT PK), user_id, name, city, tees (JSONB)
+**Global tables** (RLS — all authenticated users can read, admin-only write):
+- `players` — id (TEXT PK), name, index, is_active (BOOLEAN, default true)
+- `courses` — id (TEXT PK), name, city, tees (JSONB), is_active (BOOLEAN, default true)
+
+**User-scoped tables**:
 - `rounds` — composite PK (id, user_id), date, course (JSONB), players (JSONB), games (JSONB), is_current (BOOLEAN), share_code (TEXT, unique)
 - `user_preferences` — user_id (PK), selected_course_id
+- `user_favorites` — user_id, player_id (composite PK) — replaces per-player favorite flags
+- `profiles` — id (UUID FK to auth.users), email, display_name, role ('user'|'admin')
 
 **Shared table** (cross-user, RLS allows read by share code):
 - `tournaments` — id (UUID PK), share_code (TEXT, unique), host_user_id, name, date, course (JSONB), tee_name, groups (JSONB), tournament_games (JSONB), team_config (JSONB), format (TEXT: 'standard'|'rydercup'), status (TEXT: 'setup'|'live'|'finished')
@@ -105,7 +110,7 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 ### Theme & Styling
 
 - `src/theme.js` exports `T` (color tokens), `GT` (game type enum), `PC` (4 player colors), `TT` (team colors: `a`/`aD` = blue Team A, `b`/`bD` = pink Team B)
-- `src/styles.css` is static CSS with hardcoded hex values (originally a JS template literal resolved against `T`)
+- `src/styles.css` is static CSS with hardcoded hex values (originally a JS template literal resolved against `T`). Note: `src/App.css` and `src/index.css` are unused Vite scaffold files (not imported anywhere).
 - Components use both CSS classes and inline styles referencing `T` object
 - Fonts: Playfair Display (headings), DM Sans (body) — loaded via `index.html`
 - CSS class convention: short abbreviated names (`.cd` = card, `.pg` = page, `.bp` = button primary, `.fx` = flex, `.mb10` = margin-bottom 10px)
@@ -113,7 +118,7 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 
 ### Round Data Model
 
-A round always has exactly 4 players. Each round-player is enriched with: `tee`, `teeData` (pars/handicaps/rating/slope), `courseHandicap`, `strokeHoles` (18-element stroke allocation array), `scores` (18-element array, null = not scored). Course tee data is JSONB with arrays of 18 values for pars and handicaps. Rounds have a `shareCode` for cross-device sync.
+A round has exactly 4 players (can include guest players). Each round-player is enriched with: `tee`, `teeData`, `courseHandicap`, `strokeHoles`, `scores`. Handicap index can be overridden at round setup (temporary, doesn't modify global player data). Guest players (`isGuest: true`) exist only in the round's `players` JSON and are not saved globally.
 
 ### Tournament Data Model
 
@@ -137,4 +142,5 @@ Requires `.env.local` with:
 VITE_SUPABASE_URL=<supabase project url>
 VITE_SUPABASE_ANON_KEY=<supabase publishable key>
 ```
-Same vars are set in Vercel Environment Variables for production.
+
+**Database Migration**: Run `migration-global-db.sql` in Supabase SQL Editor to set up global players/courses with admin RLS. Manually set admin role: `UPDATE public.profiles SET role = 'admin' WHERE email = 'YOUR_EMAIL';`

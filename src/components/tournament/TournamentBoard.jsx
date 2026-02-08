@@ -3,7 +3,7 @@ import { T, TT } from '../../theme';
 import { enrichPlayer } from '../../utils/golf';
 import { calcTournamentSkins, calcRyderCupStandings } from '../../utils/tournamentCalc';
 
-const TournamentBoard = ({ tournament }) => {
+const TournamentBoard = ({ tournament, isHost, onFinish, readOnly = false }) => {
   const teeData = tournament.course.tees?.find(t => t.name === tournament.teeName) || tournament.course.tees?.[0];
   const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
 
@@ -178,6 +178,11 @@ const TournamentBoard = ({ tournament }) => {
           })}
         </div>
       ))}
+
+      {/* Finish Tournament Button (host only, when tournament is live and not in read-only mode) */}
+      {isHost && tournament.status === 'live' && !readOnly && (
+        <button className="btn bp mt10" onClick={onFinish}>Finish Tournament</button>
+      )}
     </div>
   );
 };

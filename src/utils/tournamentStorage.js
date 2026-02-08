@@ -129,3 +129,63 @@ export async function updateGroupGames(code, groupIdx, games) {
   if (error) return { error: error.message };
   return { ok: true };
 }
+
+// ========== Tournament History RPCs ==========
+
+export async function registerTournamentParticipant(tournamentId, groupIdx = null, playerIdx = null) {
+  const { data, error } = await supabase.rpc('register_tournament_participant', {
+    p_tournament_id: tournamentId,
+    p_group_idx: groupIdx,
+    p_player_idx: playerIdx
+  });
+
+  if (error) {
+    console.error('registerTournamentParticipant: Failed to register:', error.message);
+    return { error: error.message };
+  }
+
+  return data;
+}
+
+export async function loadTournamentHistory() {
+  const { data, error } = await supabase.rpc('load_tournament_history');
+
+  if (error) {
+    console.error('loadTournamentHistory: Failed to load:', error.message);
+    return [];
+  }
+
+  if (!data || data.length === 0) return [];
+
+  // Convert snake_case to camelCase
+  return data.map(t => ({
+    id: t.id,
+    shareCode: t.share_code,
+    hostUserId: t.host_user_id,
+    name: t.name,
+    date: t.date,
+    course: t.course,
+    teeName: t.tee_name,
+    groups: t.groups || [],
+    tournamentGames: Array.isArray(t.tournament_games) ? t.tournament_games : [],
+    teamConfig: t.team_config,
+    format: t.format || 'standard',
+    status: t.status,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at
+  }));
+}
+
+export async function reopenTournament(code) {
+  const { error } = await supabase.rpc('update_tournament_status', {
+    p_code: code,
+    p_status: 'live'
+  });
+
+  if (error) {
+    console.error('reopenTournament: Failed to reopen:', error.message);
+    return { error: error.message };
+  }
+
+  return { ok: true };
+}

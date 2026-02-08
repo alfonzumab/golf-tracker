@@ -9,6 +9,7 @@ const Players = ({ players, setPlayers, isAdmin }) => {
   const [fv, setFv] = useState(false);
   const [edit, setEdit] = useState(null);
   const [inactive, setInactive] = useState([]);
+  const [search, setSearch] = useState("");
 
   // Load inactive players for admin view
   useEffect(() => {
@@ -58,11 +59,25 @@ const Players = ({ players, setPlayers, isAdmin }) => {
 
 
 
+  // Filter and sort players: favorites first, then others, filtered by search
+  const filteredPlayers = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const sortedPlayers = [...filteredPlayers].sort((a, b) => {
+    if (a.favorite && !b.favorite) return -1;
+    if (!a.favorite && b.favorite) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const filteredInactive = inactive.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+
   return (
     <div className="pg">
       <div className="fxb mb10">
         <span className="pg-title">Players</span>
         {isAdmin && <button className="btn bp bsm" onClick={() => setSa(true)}>+ Add</button>}
+      </div>
+
+      <div className="mb10">
+        <input className="inp" placeholder="Search players..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {sa && <div className="cd">
@@ -85,7 +100,7 @@ const Players = ({ players, setPlayers, isAdmin }) => {
         </div>
       </div>}
 
-      {players.length === 0 && !sa && (
+      {sortedPlayers.length === 0 && !sa && search === "" && (
         <div className="empty">
           <div className="empty-i">{"\uD83D\uDC65"}</div>
           <div className="empty-t">No players yet</div>
@@ -95,7 +110,7 @@ const Players = ({ players, setPlayers, isAdmin }) => {
 
       {/* Player Grid - 2 columns for better space usage */}
       <div className="g2" style={{ gap: '8px' }}>
-        {players.map(p => (
+        {sortedPlayers.map(p => (
           <div key={p.id} className="cd" style={{ padding: '12px', margin: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span onClick={() => togFav(p.id)} style={{ cursor: "pointer", fontSize: 16 }}>
@@ -123,7 +138,7 @@ const Players = ({ players, setPlayers, isAdmin }) => {
           <div className="dvd" />
           <div className="mb10" style={{ fontSize: 14, color: T.dim, fontWeight: 600 }}>Inactive Players</div>
           <div className="g2" style={{ gap: '8px' }}>
-            {inactive.map(p => (
+            {filteredInactive.map(p => (
               <div key={p.id} className="cd" style={{ padding: '12px', margin: 0, opacity: 0.6 }}>
                 <div style={{ marginBottom: 8 }}>
                   <div className="prow-n" style={{ fontSize: '14px', fontWeight: 600 }}>{p.name}</div>

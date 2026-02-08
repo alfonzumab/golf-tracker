@@ -303,7 +303,7 @@ export async function saveRound(rounds) {
     if (toUpsert.length > 0) {
       const { error: upsertErr } = await supabase
         .from('rounds')
-        .upsert(toUpsert, { onConflict: 'id' });
+        .upsert(toUpsert, { onConflict: 'id,user_id' });
 
       if (upsertErr) {
         console.error('saveRound: Failed to upsert rounds:', upsertErr.message);
@@ -438,6 +438,48 @@ export async function saveProfile(updates) {
   if (error) {
     console.error('saveProfile: Failed to save profile:', error.message);
   }
+}
+
+// ========== Round History RPCs ==========
+
+export async function finishRound(roundId, shareCode) {
+  const { data, error } = await supabase.rpc('finish_round', {
+    p_round_id: roundId,
+    p_share_code: shareCode
+  });
+
+  if (error) {
+    console.error('finishRound: Failed to finish round:', error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function registerRoundParticipant(roundId) {
+  const { data, error } = await supabase.rpc('register_round_participant', {
+    p_round_id: roundId
+  });
+
+  if (error) {
+    console.error('registerRoundParticipant: Failed to register:', error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function reopenRound(roundId) {
+  const { data, error } = await supabase.rpc('reopen_round', {
+    p_round_id: roundId
+  });
+
+  if (error) {
+    console.error('reopenRound: Failed to reopen round:', error.message);
+    throw error;
+  }
+
+  return data;
 }
 
 

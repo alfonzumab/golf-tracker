@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { T, GT, PC } from '../theme';
-import { sixPairs } from '../utils/golf';
+import { sixPairs, calcCH, getStrokes } from '../utils/golf';
 import Tog from './Toggle';
 
 const Setup = ({ rp, course, onConfirm }) => {
   const [games, setGames] = useState([]);
   const [sa, setSa] = useState(true);
-  const n = rp.map(p => p.name.split(" ")[0]);
+  const [players, setPlayers] = useState(rp);
+  const n = players.map(p => p.name.split(" ")[0]);
 
   const add = t => {
     const g = { type: t, id: Date.now() };
@@ -18,25 +19,75 @@ const Setup = ({ rp, course, onConfirm }) => {
   };
   const u = (id, up) => setGames(games.map(g => g.id === id ? { ...g, ...up } : g));
 
+  const updatePlayerTee = (playerId, newTeeName) => {
+    const tee = course.tees.find(t => t.name === newTeeName) || course.tees[0];
+    const tp = tee.pars.reduce((a, b) => a + b, 0);
+    const ch = calcCH(players.find(p => p.id === playerId).index, tee.slope, tee.rating, tp);
+    setPlayers(players.map(p =>
+      p.id === playerId
+        ? { ...p, tee: newTeeName, teeData: tee, courseHandicap: ch, strokeHoles: getStrokes(ch, tee.handicaps) }
+        : p
+    ));
+  };
+
   return (
     <div className="pg">
       <div className="cd">
         <div className="ct">Foursome</div>
-        <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>{course.name}</div>
-        {rp.map((p, i) => (
-          <div key={p.id} className="fxb" style={{ padding: "6px 0" }}>
-            <div className="fx g6"><span className={`pc${i}`} style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</span><span className="tag tg">{p.tee}</span></div>
-            <span style={{ fontSize: 13, color: T.dim }}>Idx {p.index} {">"} CH {p.courseHandicap}</span>
-          </div>
-        ))}
+        <div style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>{course.name}</div>
+
+        {/* Player Grid - 2 columns for better space usage */}
+        <div className="g2 force-2" style={{ gap: "8px", marginBottom: 12 }}>
+          {players.map((p, i) => (
+            <div key={p.id} className="cd" style={{ padding: "12px", margin: 0, background: T.bg2 }}>
+              <div className="fxb" style={{ marginBottom: 8 }}>
+                <span className={`pc${i}`} style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</span>
+                <select
+                  className="inp ism"
+                  style={{ fontSize: "11px", width: "80px", padding: "2px 6px" }}
+                  value={p.tee}
+                  onChange={e => updatePlayerTee(p.id, e.target.value)}
+                >
+                  {course.tees.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                </select>
+              </div>
+              <div style={{ fontSize: 12, color: T.dim }}>
+                Index: {p.index} → Course HCP: {p.courseHandicap}
+              </div>
+            </div>
+          ))}
+        </div>
         <div className="dvd" />
         <div className="il mb6">Stroke Allocation</div>
-        <div className="sw"><table className="sct"><thead><tr><th style={{ minWidth: 44, textAlign: "left", paddingLeft: 4 }}>Hole</th>
-          {Array.from({ length: 18 }, (_, i) => <th key={i} className="hn">{i + 1}</th>)}</tr></thead><tbody>
-          <tr style={{ color: T.mut, fontSize: 11 }}><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 11 }}>HCP</td>{rp[0].teeData.handicaps.map((h, i) => <td key={i}>{h}</td>)}</tr>
-          {rp.map((p, pi) => <tr key={pi}><td style={{ textAlign: "left", paddingLeft: 4 }}><span className={`pc${pi}`} style={{ fontWeight: 600, fontSize: 12 }}>{n[pi]}</span></td>
-            {p.strokeHoles.map((s, i) => <td key={i} style={{ color: s > 0 ? T.gold : T.mut, fontWeight: s > 0 ? 700 : 400, fontSize: 12 }}>{s > 0 ? (s > 1 ? s : "*") : "|"}</td>)}</tr>)}
-        </tbody></table></div>
+        <div className="sw" style={{ marginBottom: 16 }}>
+          {/* Compact stroke allocation display */}
+          <div style={{ display: 'grid', gap: '8px' }}>
+            {players.map((p, pi) => (
+              <div key={pi} className="fxb" style={{ padding: '8px', background: T.bg2, borderRadius: '8px' }}>
+                <span className={`pc${pi}`} style={{ fontWeight: 600, fontSize: 13, minWidth: '60px' }}>{n[pi]}</span>
+                <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
+                  {p.strokeHoles.map((s, i) => (
+                    <span key={i} style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '2px',
+                      background: s > 0 ? T.gold : 'transparent',
+                      border: `1px solid ${s > 0 ? T.gold : T.mut}`,
+                      color: s > 0 ? '#000' : T.mut,
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {s > 1 ? s : s > 0 ? '*' : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="fxb mb10">
@@ -144,7 +195,7 @@ const Setup = ({ rp, course, onConfirm }) => {
           </>}
         </div>
       ))}
-      {games.length > 0 && <button className="btn bp" style={{ fontSize: 16, padding: 16 }} onClick={() => onConfirm(games)}>Start Round {">"}</button>}
+      {games.length > 0 && <button className="btn bp" style={{ fontSize: 16, padding: 16 }} onClick={() => onConfirm(games, players)}>Start Round {">"}</button>}
     </div>
   );
 };

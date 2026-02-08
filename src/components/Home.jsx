@@ -43,22 +43,21 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
     const s = sel.includes(p.id), ci = sel.indexOf(p.id);
     return (
       <div key={p.id} onClick={() => tog(p.id)} style={{
-        display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 4, cursor: "pointer",
-        background: s ? PC[ci] + "12" : "transparent", border: `1.5px solid ${s ? PC[ci] + "44" : T.bdr}`,
-        transition: "all .15s"
+        display: "flex", flexDirection: "column", gap: 8, padding: "12px", borderRadius: 10, cursor: "pointer",
+        background: s ? PC[ci] + "12" : T.bg2, border: `1.5px solid ${s ? PC[ci] + "44" : T.bdr}`,
+        transition: "all .15s", minHeight: "80px"
       }}>
-        <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-            {p.favorite && <span style={{ fontSize: 14 }}>⭐</span>}
-            {p.name}
-            {p.isGuest && <span style={{ fontSize: 11, background: T.blue + "22", color: T.blue, padding: "2px 6px", borderRadius: 4 }}>Guest</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: s ? PC[ci] : T.mut, color: T.bg }}>{s ? ci + 1 : ""}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {p.favorite && <span style={{ fontSize: 12 }}>⭐</span>}
+              {p.name}
+              {p.isGuest && <span style={{ fontSize: 9, background: T.blue + "22", color: T.blue, padding: "1px 4px", borderRadius: 3 }}>Guest</span>}
+            </div>
+            <div style={{ fontSize: 11, color: T.dim }}>Idx: {p.index}</div>
           </div>
-          <div style={{ fontSize: 13, color: T.dim }}>Index: {p.index}</div>
         </div>
-        {s && course && <select className="inp ism" style={{ width: 90 }} value={tees[p.id] || course.tees[0]?.name} onChange={e => { e.stopPropagation(); setTees({ ...tees, [p.id]: e.target.value }); }}>
-          {course.tees.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-        </select>}
       </div>
     );
   };
@@ -179,11 +178,15 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
                     {favorites.length > 0 && (
                       <>
                         <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>⭐ Favorites</div>
-                        {favorites.map(p => renderPlayer(p))}
+                        <div className="g2" style={{ gap: '6px', marginBottom: favorites.length > 0 && others.length > 0 ? '16px' : '0' }}>
+                          {favorites.map(p => renderPlayer(p))}
+                        </div>
                         {others.length > 0 && <div style={{ fontSize: 13, color: T.dim, margin: "12px 0 8px", fontWeight: 600 }}>All Players</div>}
                       </>
                     )}
-                    {others.map(p => renderPlayer(p))}
+                    <div className="g2" style={{ gap: '6px' }}>
+                      {others.map(p => renderPlayer(p))}
+                    </div>
                   </>
                 );
               })()}

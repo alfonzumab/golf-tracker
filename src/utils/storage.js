@@ -96,6 +96,8 @@ export async function savePlayersFavorites(favoritePlayerIds) {
 
 export async function adminSavePlayers(players) {
   try {
+    console.log('adminSavePlayers called with', players.length, 'players');
+
     // Get existing players from database (global)
     const { data: existing, error: fetchErr } = await supabase
       .from('players')
@@ -115,7 +117,8 @@ export async function adminSavePlayers(players) {
       id: p.id,
       name: p.name,
       index: p.index,
-      is_active: true
+      is_active: true,
+      user_id: null // Global players don't belong to a specific user
     }));
 
     // Safety check: Don't delete more than 50 players at once
@@ -191,7 +194,8 @@ export async function adminSaveCourses(courses) {
       name: c.name,
       city: c.city,
       tees: c.tees,
-      is_active: true
+      is_active: true,
+      user_id: null // Global courses don't belong to a specific user
     }));
 
     // Safety check: Don't delete more than 20 courses at once

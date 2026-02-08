@@ -53,6 +53,8 @@ export default function App() {
 
   // Computed values
   const isAdmin = profile?.role === 'admin';
+  console.log('Current user profile:', profile);
+  console.log('Is admin:', isAdmin);
 
   // Listen for auth changes
   useEffect(() => {
@@ -159,12 +161,20 @@ export default function App() {
 
   const go = p => setPg(p);
   const isTournamentPg = pg.startsWith('t');
-  const handleSetPlayers = (up) => {
+  const handleSetPlayers = async (up) => {
     setPlayers(up);
     sv("players", up);
     if (isAdmin) {
-      adminSavePlayers(up);
+      console.log('Saving players to Supabase as admin...');
+      try {
+        await adminSavePlayers(up);
+        console.log('Players saved successfully');
+      } catch (error) {
+        console.error('Failed to save players:', error);
+        alert('Failed to save players to database. Please check console for details.');
+      }
     } else {
+      console.log('User is not admin, only saving favorites locally');
       // For regular users, only update favorites
       const favoriteIds = up.filter(p => p.favorite).map(p => p.id);
       savePlayersFavorites(favoriteIds);
@@ -409,12 +419,12 @@ export default function App() {
       {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
       {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} isAdmin={isAdmin} />}
       {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} isAdmin={isAdmin} />}
-      {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={games => {
+      {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={(games, updatedPlayers) => {
         const r = {
           id: Date.now().toString(),
           date: new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
           course: { name: setupCourse.name, city: setupCourse.city },
-          players: setup, games,
+          players: updatedPlayers || setup, games,
           shareCode: generateShareCode()
         };
         setRound(r); sv("currentRound", r); saveCurrentRound(r);

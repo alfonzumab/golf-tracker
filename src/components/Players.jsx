@@ -93,48 +93,57 @@ const Players = ({ players, setPlayers, isAdmin }) => {
         </div>
       )}
 
-      {players.map(p => (
-        <div key={p.id} className="prow">
-          <div style={{ flex: 1 }}>
-            <div className="prow-n" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {/* Player Grid - 2 columns for better space usage */}
+      <div className="g2" style={{ gap: '8px' }}>
+        {players.map(p => (
+          <div key={p.id} className="cd" style={{ padding: '12px', margin: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span onClick={() => togFav(p.id)} style={{ cursor: "pointer", fontSize: 16 }}>
                 {p.favorite ? "⭐" : "☆"}
               </span>
-              {p.name}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="prow-n" style={{ fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {p.name}
+                </div>
+                <div className="prow-i" style={{ fontSize: '12px', color: T.dim }}>Index: {p.index}</div>
+              </div>
             </div>
-            <div className="prow-i">Index: {p.index}</div>
+            {isAdmin && (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button className="btn bg bsm" onClick={() => setEdit({ ...p })}>Edit</button>
+                <button className="btn bg bsm" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id, p.name)}>Delete</button>
+              </div>
+            )}
           </div>
-          {isAdmin && (
-            <>
-              <button className="bg" onClick={() => setEdit({ ...p })}>Edit</button>
-              <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id, p.name)}>Delete</button>
-            </>
-          )}
-        </div>
-      ))}
+        ))}
+      </div>
 
       {isAdmin && inactive.length > 0 && (
         <>
           <div className="dvd" />
           <div className="mb10" style={{ fontSize: 14, color: T.dim, fontWeight: 600 }}>Inactive Players</div>
-          {inactive.map(p => (
-            <div key={p.id} className="prow" style={{ opacity: 0.6 }}>
-              <div style={{ flex: 1 }}>
-                <div className="prow-n">{p.name}</div>
-                <div className="prow-i">Index: {p.index}</div>
+          <div className="g2" style={{ gap: '8px' }}>
+            {inactive.map(p => (
+              <div key={p.id} className="cd" style={{ padding: '12px', margin: 0, opacity: 0.6 }}>
+                <div style={{ marginBottom: 8 }}>
+                  <div className="prow-n" style={{ fontSize: '14px', fontWeight: 600 }}>{p.name}</div>
+                  <div className="prow-i" style={{ fontSize: '12px', color: T.dim }}>Index: {p.index}</div>
+                </div>
+                <div>
+                  <button className="btn bg bsm" onClick={async () => {
+                    await supabase.from('players').update({ is_active: true }).eq('id', p.id);
+                    setInactive(inactive.filter(ip => ip.id !== p.id));
+                    // Reload active players
+                    const { data } = await supabase.from('players').select('*').eq('is_active', true).order('name');
+                    if (data) {
+                      const activePlayers = data.map(ap => ({ id: ap.id, name: ap.name, index: Number(ap.index), favorite: false }));
+                      setPlayers(activePlayers);
+                    }
+                  }}>Restore</button>
+                </div>
               </div>
-              <button className="btn bg bsm" onClick={async () => {
-                await supabase.from('players').update({ is_active: true }).eq('id', p.id);
-                setInactive(inactive.filter(ip => ip.id !== p.id));
-                // Reload active players
-                const { data } = await supabase.from('players').select('*').eq('is_active', true).order('name');
-                if (data) {
-                  const activePlayers = data.map(ap => ({ id: ap.id, name: ap.name, index: Number(ap.index), favorite: false }));
-                  setPlayers(activePlayers);
-                }
-              }}>Restore</button>
-            </div>
-          ))}
+            ))}
+          </div>
         </>
       )}
 

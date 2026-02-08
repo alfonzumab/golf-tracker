@@ -95,6 +95,9 @@ BEGIN
   END IF;
 END $$;
 
+-- Make user_id nullable since players are now global
+ALTER TABLE public.players ALTER COLUMN user_id DROP NOT NULL;
+
 -- Drop old RLS policies on players (they filter by user_id)
 DO $$
 DECLARE
@@ -134,6 +137,9 @@ BEGIN
     ALTER TABLE public.courses ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
   END IF;
 END $$;
+
+-- Make user_id nullable since courses are now global
+ALTER TABLE public.courses ALTER COLUMN user_id DROP NOT NULL;
 
 -- Drop old RLS policies on courses
 DO $$

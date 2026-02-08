@@ -13,6 +13,8 @@ npm run preview  # Preview production build
 
 No test framework is configured. Production deploys automatically via Vercel on push to `main` (configured in `vercel.json`).
 
+ESLint flat config (v9+) allows unused variables matching `^[A-Z_]` (so `GT`, `PC`, `TT` constants won't trigger errors). Run `npm run lint` before pushing.
+
 ## Architecture
 
 Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-time betting/settlement and multi-group tournament mode. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage. PWA-enabled (installable via Add to Home Screen).
@@ -42,6 +44,10 @@ Three storage modules:
 
 A 10-second poller syncs active rounds. A 60-second poller syncs global players/courses for non-admin users. **Critical invariant:** Supabase is always the source of truth. Admin changes to players/courses propagate via polling. Regular users cannot accidentally delete global data.
 
+### Round Sharing
+
+Rounds have a 6-char `shareCode`. Other users can join a shared round via `joinRound(code)` RPC, which copies the round into their own `rounds` table. Same character set as tournament codes (`ABCDEFGHJKMNPQRSTUVWXYZ23456789`).
+
 ### State Management
 
 All app state lives in `src/App.jsx` via `useState` hooks. No context/Redux — props drilled to children. The component tree is shallow (max 3 levels).
@@ -59,7 +65,7 @@ Multi-group tournament system with cross-device sync via Supabase. All tournamen
 - **TournamentHub** — entry point: create new or join with 6-char share code
 - **TournamentSetup** — multi-step wizard with two flows:
   - **Standard** (4 steps): basics → players (min 4) → groups (2-4 per group, min 2 groups) → skins
-  - **Ryder Cup** (5 steps): basics + format → players (even count) → team assignment → match creation → skins
+  - **Ryder Cup** (6 steps): basics + format → players (even count) → team assignment → match creation → foursome assignment → skins
 - **TournamentJoin** — fetches tournament by code, user picks their group/player
 - **TournamentLobby** — share code display, group roster, host starts tournament
 - **TournamentScore** — group scorecard (hole view + card view), mirrors `Scoring.jsx` patterns. Player picker shown if `playerInfo` is null.
@@ -143,4 +149,11 @@ VITE_SUPABASE_URL=<supabase project url>
 VITE_SUPABASE_ANON_KEY=<supabase publishable key>
 ```
 
-**Database Migration**: Run `migration-global-db.sql` in Supabase SQL Editor to set up global players/courses with admin RLS. Manually set admin role: `UPDATE public.profiles SET role = 'admin' WHERE email = 'YOUR_EMAIL';`
+**Database Migrations** (run in Supabase SQL Editor):
+- `migration-global-db.sql` — global players/courses with admin RLS, profiles table, user_favorites
+- `tournament-schema.sql` — tournaments table, RPC functions with row locking
+- `protected-db-migration.sql` — placeholder (empty)
+
+After migration, manually set admin role: `UPDATE public.profiles SET role = 'admin' WHERE email = 'YOUR_EMAIL';`
+
+**Legacy files** (outdated, do not use as reference): `PROJECT.md`, `CLAUDE-CODE-PROMPT.md` — describe the pre-migration single-file monolith.

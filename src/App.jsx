@@ -416,7 +416,7 @@ export default function App() {
           <button className="bg" onClick={logout} style={{ fontSize: 12, color: T.dim }}>Logout</button>
         </div>
       </div>
-      {pg === "home" && <Home courses={courses} players={players} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
+      {pg === "home" && <Home courses={courses} players={players} rounds={rounds} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
       {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} isAdmin={isAdmin} />}
       {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} isAdmin={isAdmin} />}
       {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={(games, updatedPlayers) => {

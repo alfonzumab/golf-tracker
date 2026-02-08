@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { T, PC } from '../theme';
 import { calcCH, getStrokes } from '../utils/golf';
 
-const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart, round, go, onJoinRound, tournament, onLeaveTournament }) => {
+const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId, onStart, round, go, onJoinRound, tournament, onLeaveTournament }) => {
   const [sel, setSel] = useState([]);
   const [tees, setTees] = useState({});
   const [showNewRound, setShowNewRound] = useState(false);
@@ -165,30 +165,50 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
               )}
 
               {(() => {
-                const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-                const sorted = [...filtered].sort((a, b) => {
-                  if (a.favorite && !b.favorite) return -1;
-                  if (!a.favorite && b.favorite) return 1;
-                  return a.name.localeCompare(b.name);
+                // Calculate recent players from the last few rounds
+                const recentPlayerIds = new Set();
+                rounds.slice(-5).reverse().forEach(r => {
+                  r.players.forEach(p => {
+                    if (!p.isGuest) recentPlayerIds.add(p.id);
+                  });
                 });
-                const favorites = sorted.filter(p => p.favorite);
-                const others = sorted.filter(p => !p.favorite);
-                return (
-                  <>
-                    {favorites.length > 0 && (
-                      <>
-                        <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>⭐ Favorites</div>
-                        <div className="g2" style={{ gap: '6px', marginBottom: favorites.length > 0 && others.length > 0 ? '16px' : '0' }}>
-                          {favorites.map(p => renderPlayer(p))}
-                        </div>
-                        {others.length > 0 && <div style={{ fontSize: 13, color: T.dim, margin: "12px 0 8px", fontWeight: 600 }}>All Players</div>}
-                      </>
-                    )}
-                    <div className="g2" style={{ gap: '6px' }}>
-                      {others.map(p => renderPlayer(p))}
-                    </div>
-                  </>
-                );
+                const recentPlayers = players.filter(p => recentPlayerIds.has(p.id) && !p.favorite);
+                const favorites = players.filter(p => p.favorite);
+
+                if (search.trim()) {
+                  // Show search results
+                  const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+                  return (
+                    <>
+                      <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>Search Results</div>
+                      <div className="g2" style={{ gap: '6px' }}>
+                        {filtered.map(p => renderPlayer(p))}
+                      </div>
+                    </>
+                  );
+                } else {
+                  // Show favorites and recents
+                  return (
+                    <>
+                      {favorites.length > 0 && (
+                        <>
+                          <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>⭐ Favorites</div>
+                          <div className="g2" style={{ gap: '6px', marginBottom: '16px' }}>
+                            {favorites.map(p => renderPlayer(p))}
+                          </div>
+                        </>
+                      )}
+                      {recentPlayers.length > 0 && (
+                        <>
+                          <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>Recent</div>
+                          <div className="g2" style={{ gap: '6px' }}>
+                            {recentPlayers.map(p => renderPlayer(p))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  );
+                }
               })()}
             </>
           )}
@@ -198,18 +218,24 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
               <div style={{ fontSize: 14, color: T.dim, marginBottom: 8, fontWeight: 600 }}>Selected Players</div>
               {sel.map((id, i) => {
                 const p = [...players].find(x => x.id === id);
-                if (!p) return null;
+                const isGuest = id.startsWith('guest-');
+                const guestPlayer = isGuest ? { id, name: 'Guest', index: 0, isGuest: true } : null;
+                const player = p || guestPlayer;
+                if (!player) return null;
                 return (
                   <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: PC[i] + "08", borderRadius: 8, marginBottom: 6 }}>
                     <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, background: PC[i], color: T.bg }}>{i + 1}</div>
-                    <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{p.name}</div>
+                    <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>
+                      {player.name}
+                      {player.isGuest && <span style={{ fontSize: 10, background: T.blue + "22", color: T.blue, padding: "1px 4px", borderRadius: 3, marginLeft: 6 }}>Guest</span>}
+                    </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ fontSize: 12, color: T.dim }}>HCP:</span>
                       <input
                         className="inp ism"
                         type="number"
                         step="0.1"
-                        value={hcpOverrides[id] !== undefined ? hcpOverrides[id] : p.index}
+                        value={hcpOverrides[id] !== undefined ? hcpOverrides[id] : player.index}
                         onChange={e => setHcpOverrides({ ...hcpOverrides, [id]: e.target.value })}
                         style={{ width: 60 }}
                       />
@@ -234,12 +260,14 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
           const currentPlayers = [...players];
           const rp = sel.map((id, i) => {
             const p = currentPlayers.find(x => x.id === id);
-            const overrideIndex = hcpOverrides[id] !== undefined ? parseFloat(hcpOverrides[id]) : p.index;
+            const isGuest = id.startsWith('guest-');
+            const player = p || (isGuest ? { id, name: 'Guest', index: 0, isGuest: true } : null);
+            const overrideIndex = hcpOverrides[id] !== undefined ? parseFloat(hcpOverrides[id]) : player.index;
             const tn = tees[id] || course.tees[0]?.name;
             const tee = course.tees.find(t => t.name === tn) || course.tees[0];
             const tp = tee.pars.reduce((a, b) => a + b, 0);
             const ch = calcCH(overrideIndex, tee.slope, tee.rating, tp);
-            return { ...p, index: overrideIndex, tee: tn, teeData: tee, courseHandicap: ch, strokeHoles: getStrokes(ch, tee.handicaps), scores: Array(18).fill(null), colorIdx: i };
+            return { ...player, index: overrideIndex, tee: tn, teeData: tee, courseHandicap: ch, strokeHoles: getStrokes(ch, tee.handicaps), scores: Array(18).fill(null), colorIdx: i };
           });
           onStart(rp, course);
         }}>Set Up Games {">"}</button>}
@@ -312,18 +340,18 @@ const Home = ({ courses, players, selectedCourseId, setSelectedCourseId, onStart
         </div>
       )}
 
-      {/* Tournament button */}
-      {!tournament && (
-        <button className="btn bs mb10" style={{ fontSize: 15 }} onClick={() => go("thub")}>
-          Tournament Mode
-        </button>
-      )}
-
       {/* New round section — always available */}
       {round && !showNewRound ? (
         <button className="btn bg" onClick={() => setShowNewRound(true)}>Start a Different Round</button>
       ) : (
         renderNewRound()
+      )}
+
+      {/* Tournament button */}
+      {!tournament && (
+        <button className="btn bs mb10" style={{ fontSize: 15 }} onClick={() => go("thub")}>
+          Tournament Mode
+        </button>
       )}
     </div>
   );

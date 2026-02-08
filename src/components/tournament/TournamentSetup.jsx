@@ -1,22 +1,23 @@
 import { useState } from 'react';
-import { T, TT } from '../../theme';
+import { T, TT, PC } from '../../theme';
 import Tog from '../Toggle';
 
 const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onComplete }) => {
   const [step, setStep] = useState(1);
 
   // Step 1: Basics
-  const [name, setName] = useState('');
+  const [name, setName] = useState('New Tournament');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [courseId, setCourseId] = useState(selectedCourseId || (courses[0]?.id ?? ''));
   const [format, setFormat] = useState('standard');
 
   // Step 2: Players
   const [tPlayers, setTPlayers] = useState([]);
-  const [newName, setNewName] = useState('');
-  const [newIdx, setNewIdx] = useState('');
-  const [editingPlayer, setEditingPlayer] = useState(null); // null | player object
+  const [selectedPlayers, setSelectedPlayers] = useState([]);
   const [playerSearch, setPlayerSearch] = useState('');
+  const [showGuestForm, setShowGuestForm] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestIndex, setGuestIndex] = useState('');
 
   // Step 3 (standard): Groups
   const [groups, setGroups] = useState([]);
@@ -51,39 +52,37 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   const step1Valid = name.trim() && course;
 
   // Step 2 actions
-  const addPlayer = () => {
-    if (!newName.trim()) return;
-    setTPlayers([...tPlayers, { id: crypto.randomUUID(), name: newName.trim(), index: parseFloat(newIdx) || 0 }]);
-    setNewName('');
-    setNewIdx('');
+  const togglePlayerSelection = (player) => {
+    const isSelected = selectedPlayers.find(sp => sp.id === player.id);
+    if (isSelected) {
+      setSelectedPlayers(selectedPlayers.filter(sp => sp.id !== player.id));
+    } else if (selectedPlayers.length < (isRC ? 100 : 100)) { // Allow more for tournaments
+      setSelectedPlayers([...selectedPlayers, { ...player }]);
+    }
   };
 
-  const addSavedPlayer = (p) => {
-    if (tPlayers.find(tp => tp.id === p.id)) return;
-    setTPlayers([...tPlayers, { ...p }]);
+  const addGuestPlayer = () => {
+    if (!guestName.trim()) return;
+    const guestId = 'guest-' + crypto.randomUUID();
+    const guestPlayer = {
+      id: guestId,
+      name: guestName.trim(),
+      index: parseFloat(guestIndex) || 0,
+      isGuest: true
+    };
+    setSelectedPlayers([...selectedPlayers, guestPlayer]);
+    setGuestName('');
+    setGuestIndex('');
+    setShowGuestForm(false);
   };
 
-  const removePlayer = (id) => {
-    setTPlayers(tPlayers.filter(p => p.id !== id));
-    setTeamA(teamA.filter(p => p.id !== id));
-    setTeamB(teamB.filter(p => p.id !== id));
+  const removeSelectedPlayer = (id) => {
+    setSelectedPlayers(selectedPlayers.filter(sp => sp.id !== id));
   };
 
-  const toggleFavorite = (id) => {
-    setTPlayers(tPlayers.map(p => p.id === id ? { ...p, favorite: !p.favorite } : p));
-  };
 
-  const startEditPlayer = (player) => {
-    setEditingPlayer({ ...player });
-  };
 
-  const saveEditPlayer = () => {
-    if (!editingPlayer || !editingPlayer.name.trim()) return;
-    setTPlayers(tPlayers.map(p => p.id === editingPlayer.id ? { ...editingPlayer, name: editingPlayer.name.trim(), index: parseFloat(editingPlayer.index) || 0 } : p));
-    setEditingPlayer(null);
-  };
-
-  const step2Valid = isRC ? tPlayers.length >= 4 && tPlayers.length % 2 === 0 : tPlayers.length >= 4;
+  const step2Valid = isRC ? selectedPlayers.length >= 4 && selectedPlayers.length % 2 === 0 : selectedPlayers.length >= 4;
 
   // Step 3 (standard): Groups
   const autoGroup = () => {
@@ -262,78 +261,166 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
         <div>
           <div className="cd">
             <div className="t-step">Step 2 of {totalSteps}</div>
-            <div className="t-step-title">Players ({tPlayers.length})</div>
+            <div className="t-step-title">Select Players ({selectedPlayers.length})</div>
             <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
-              Add at least 4 players{isRC ? ' (must be even for equal teams)' : ''}. You can pick from saved players or add new ones.
+              Select at least 4 players{isRC ? ' (must be even for equal teams)' : ''}. Tap players to add/remove them.
             </p>
 
             {savedPlayers.length > 0 && (
               <div className="mb10">
-                <div className="il mb6">Quick Add from Saved</div>
-                {savedPlayers.length > 10 && (
-                  <input className="inp mb8" placeholder="Search players..." value={playerSearch}
-                    onChange={e => setPlayerSearch(e.target.value)} />
-                )}
-                <div className="fx fw g6" style={{ maxHeight: savedPlayers.length > 20 ? '200px' : 'auto', overflowY: savedPlayers.length > 20 ? 'auto' : 'visible' }}>
-                  {savedPlayers
-                    .filter(p => playerSearch === '' || p.name.toLowerCase().includes(playerSearch.toLowerCase()))
-                    .map(p => {
-                      const added = tPlayers.find(tp => tp.id === p.id);
-                      return (
-                        <button key={p.id} className={`chip ${added ? 'sel' : ''}`}
-                          onClick={() => added ? removePlayer(p.id) : addSavedPlayer(p)}
-                          style={added ? { opacity: 0.6 } : {}}>
-                          {p.name} ({p.index})
-                        </button>
-                      );
-                    })}
-                </div>
+                <div className="il mb6">Players</div>
+                <input className="inp mb8" placeholder="Search players..." value={playerSearch}
+                  onChange={e => setPlayerSearch(e.target.value)} />
+                {(() => {
+                  const favorites = savedPlayers.filter(p => p.favorite);
+
+                  if (playerSearch.trim()) {
+                    // Show search results (all players matching search)
+                    const filtered = savedPlayers.filter(p => p.name.toLowerCase().includes(playerSearch.toLowerCase()));
+                    return (
+                      <>
+                        <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>Search Results</div>
+                        <div className="g2" style={{ gap: '8px' }}>
+                          {filtered.map(p => {
+                            const isSelected = selectedPlayers.find(sp => sp.id === p.id);
+                            const selectedIndex = selectedPlayers.findIndex(sp => sp.id === p.id);
+                            return (
+                              <div key={p.id} onClick={() => togglePlayerSelection(p)} style={{
+                                display: "flex", flexDirection: "column", gap: 8, padding: "12px", borderRadius: 10, cursor: "pointer",
+                                background: isSelected ? PC[selectedIndex % 4] + "12" : T.bg2,
+                                border: `1.5px solid ${isSelected ? PC[selectedIndex % 4] + "44" : T.bdr}`,
+                                transition: "all .15s", minHeight: "80px"
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <div style={{
+                                    width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: 11, fontWeight: 700, background: isSelected ? PC[selectedIndex % 4] : T.mut, color: T.bg
+                                  }}>
+                                    {isSelected ? selectedIndex + 1 : ""}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {p.favorite && <span style={{ fontSize: 12 }}>⭐</span>}
+                                      {p.name}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: T.dim }}>Idx: {p.index}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  } else {
+                    // Show only favorites
+                    return (
+                      <>
+                        {favorites.length > 0 && (
+                          <>
+                            <div style={{ fontSize: 13, color: T.dim, marginBottom: 8, fontWeight: 600 }}>⭐ Favorites</div>
+                            <div className="g2" style={{ gap: '6px' }}>
+                              {favorites.map(p => {
+                                const isSelected = selectedPlayers.find(sp => sp.id === p.id);
+                                const selectedIndex = selectedPlayers.findIndex(sp => sp.id === p.id);
+                                return (
+                                  <div key={p.id} onClick={() => togglePlayerSelection(p)} style={{
+                                    display: "flex", flexDirection: "column", gap: 8, padding: "12px", borderRadius: 10, cursor: "pointer",
+                                    background: isSelected ? PC[selectedIndex % 4] + "12" : T.bg2,
+                                    border: `1.5px solid ${isSelected ? PC[selectedIndex % 4] + "44" : T.bdr}`,
+                                    transition: "all .15s", minHeight: "80px"
+                                  }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      <div style={{
+                                        width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                                        fontSize: 11, fontWeight: 700, background: isSelected ? PC[selectedIndex % 4] : T.mut, color: T.bg
+                                      }}>
+                                        {isSelected ? selectedIndex + 1 : ""}
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                          {p.favorite && <span style={{ fontSize: 12 }}>⭐</span>}
+                                          {p.name}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: T.dim }}>Idx: {p.index}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                        {favorites.length === 0 && (
+                          <div style={{ fontSize: 13, color: T.dim, textAlign: 'center', padding: '20px' }}>
+                            No favorite players. Search to find players or add a guest.
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+                })()}
               </div>
             )}
 
             <div className="dvd" />
 
-            <div className="il mb6">Add New Player</div>
-            <div className="fx g6 mb8">
-              <input className="inp" style={{ flex: 2 }} value={newName} onChange={e => setNewName(e.target.value)}
-                placeholder="Player name" onKeyDown={e => e.key === 'Enter' && addPlayer()} />
-              <input className="inp ism" style={{ width: 70 }} type="number" value={newIdx}
-                onChange={e => setNewIdx(e.target.value)} placeholder="Idx" />
-              <button className="btn bp bsm" style={{ flexShrink: 0 }} onClick={addPlayer}>+</button>
+            <div className="fx g8 mb10">
+              <button className="btn bg" onClick={() => setShowGuestForm(true)}>Add Guest Player</button>
             </div>
 
-            {tPlayers.length > 0 && (
+            {selectedPlayers.length > 0 && (
               <div className="mt8">
-                {tPlayers.map((p, i) => (
+                <div className="il mb6">Selected Players</div>
+                {selectedPlayers.map((p, i) => (
                   <div key={p.id} className="t-player-row">
-                    <span style={{ color: T.dim, fontSize: 13, width: 20 }}>{i + 1}</span>
+                    <span style={{ color: PC[i % 4], fontSize: 13, width: 20, fontWeight: 600 }}>{i + 1}</span>
                     <span className="prow-n" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span onClick={() => toggleFavorite(p.id)} style={{ cursor: 'pointer', fontSize: 14 }}>
-                        {p.favorite ? "⭐" : "☆"}
-                      </span>
+                      {p.favorite && <span style={{ fontSize: 14 }}>⭐</span>}
                       {p.name}
+                      {p.isGuest && <span style={{ fontSize: 9, background: T.blue + "22", color: T.blue, padding: "1px 4px", borderRadius: 3, marginLeft: 4 }}>Guest</span>}
                     </span>
                     <span style={{ fontSize: 13, color: T.dim }}>Idx {p.index}</span>
-                    <button className="bg" onClick={() => startEditPlayer(p)}>Edit</button>
                     <button style={{ background: 'none', border: 'none', color: T.red, cursor: 'pointer', padding: 4, fontSize: 16 }}
-                      onClick={() => removePlayer(p.id)}>x</button>
+                      onClick={() => removeSelectedPlayer(p.id)}>×</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
+          {/* Guest Player Modal */}
+          {showGuestForm && (
+            <div className="mbg" onClick={() => setShowGuestForm(false)}>
+              <div className="mdl" onClick={e => e.stopPropagation()}>
+                <div className="mdt">Add Guest Player</div>
+                <div className="mb8">
+                  <div className="il">Name</div>
+                  <input className="inp" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} onKeyDown={e => e.key === "Enter" && addGuestPlayer()} />
+                </div>
+                <div className="mb10">
+                  <div className="il">Handicap Index</div>
+                  <input className="inp" type="number" step="0.1" placeholder="12.5" value={guestIndex} onChange={e => setGuestIndex(e.target.value)} onKeyDown={e => e.key === "Enter" && addGuestPlayer()} />
+                </div>
+                <div className="fx g8">
+                  <button className="btn bs" onClick={() => { setShowGuestForm(false); setGuestName(''); setGuestIndex(''); }}>Cancel</button>
+                  <button className="btn bp" onClick={addGuestPlayer}>Add Guest</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="fx g8">
             <button className="btn bs" style={{ flex: 1 }} onClick={() => setStep(1)}>{"<"} Back</button>
             <button className="btn bp" style={{ flex: 2 }} disabled={!step2Valid}
-              onClick={() => { if (!isRC && groups.length === 0) autoGroup(); setStep(3); }}>
+              onClick={() => { setTPlayers(selectedPlayers); if (!isRC && groups.length === 0) autoGroup(); setStep(3); }}>
               {isRC ? 'Next: Teams' : 'Next: Groups'} {">"}
             </button>
           </div>
-          {tPlayers.length > 0 && !step2Valid && (
+          {selectedPlayers.length > 0 && !step2Valid && (
             <p style={{ fontSize: 13, color: T.dim, textAlign: 'center', marginTop: 8 }}>
-              {tPlayers.length < 4 ? `Need ${4 - tPlayers.length} more player${4 - tPlayers.length !== 1 ? 's' : ''} (minimum 4)` :
-               isRC && tPlayers.length % 2 !== 0 ? 'Need an even number for equal teams' : ''}
+              {selectedPlayers.length < 4 ? `Need ${4 - selectedPlayers.length} more player${4 - selectedPlayers.length !== 1 ? 's' : ''} (minimum 4)` :
+               isRC && selectedPlayers.length % 2 !== 0 ? 'Need an even number for equal teams' : ''}
             </p>
           )}
         </div>
@@ -786,32 +873,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
         );
       })()}
 
-      {/* Edit Player Modal */}
-      {editingPlayer && (
-        <div className="mbg" onClick={() => setEditingPlayer(null)}>
-          <div className="mdl" onClick={e => e.stopPropagation()}>
-            <div className="mdt">Edit Player</div>
-            <div className="mb8">
-              <div className="il">Name</div>
-              <input className="inp" value={editingPlayer.name} onChange={e => setEditingPlayer({ ...editingPlayer, name: e.target.value })} />
-            </div>
-            <div className="mb8">
-              <div className="il">Handicap Index</div>
-              <input className="inp" type="number" step="0.1" value={editingPlayer.index} onChange={e => setEditingPlayer({ ...editingPlayer, index: e.target.value })} />
-            </div>
-            <div className="mb10">
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                <input type="checkbox" checked={editingPlayer.favorite || false} onChange={e => setEditingPlayer({ ...editingPlayer, favorite: e.target.checked })} />
-                <span style={{ fontSize: 14 }}>Tournament favorite</span>
-              </label>
-            </div>
-            <div className="fx g8">
-              <button className="btn bs" onClick={() => setEditingPlayer(null)}>Cancel</button>
-              <button className="btn bp" onClick={saveEditPlayer}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

@@ -50,22 +50,61 @@ const Scoring = ({ round, updateScore }) => {
         </div>
 
         {results.length > 0 && <div className="tk"><div className="tkt">Live Bets</div>
-          {results.map((r, ri) => (
-            <div key={ri} style={{ marginBottom: ri < results.length - 1 ? 8 : 0 }}>
-              <div className="fxb">
-                <span style={{ fontWeight: 600, color: T.txt, fontSize: 13 }}>{r.title}</span>
-                {r.status && <span style={{ fontSize: 12, color: T.accB, fontWeight: 600 }}>{r.status}</span>}
+          {results.map((r, ri) => {
+            // Determine current segment for 6-6-6 games
+            let currentSegment = null;
+            if (r.segmentScores) {
+              const h = hole;
+              currentSegment = h <= 5
+                ? r.segmentScores.find(s => s.range === "1-6")
+                : h <= 11
+                ? r.segmentScores.find(s => s.range === "7-12")
+                : r.segmentScores.find(s => s.range === "13-18");
+            }
+
+            return (
+              <div key={ri} style={{ marginBottom: ri < results.length - 1 ? 8 : 0 }}>
+                <div className="fxb">
+                  <span style={{ fontWeight: 600, color: T.txt, fontSize: 13 }}>{r.title}</span>
+                  {r.status && <span style={{ fontSize: 12, color: T.accB, fontWeight: 600 }}>{r.status}</span>}
+                </div>
+
+                {/* Skins hole results */}
+                {r.holeResults && (() => {
+                  const sc = [0, 0, 0, 0]; r.holeResults.forEach(h => { if (h.w != null) sc[h.w] += h.v; });
+                  const carry = r.holeResults.filter(h => h.r === "C").length;
+                  return <div className="fx g6" style={{ marginTop: 4 }}>
+                    {pl.map((_, i) => sc[i] > 0 ? <span key={i} className={`pc${i}`} style={{ fontSize: 12, fontWeight: 600 }}>{n[i]}:{sc[i]}</span> : null)}
+                    {carry > 0 && <span style={{ fontSize: 12, color: T.gold }}>+{carry}carry</span>}
+                  </div>;
+                })()}
+
+                {/* Current 6's segment */}
+                {currentSegment && (
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 12, color: T.dim, marginBottom: 2 }}>
+                      Holes {currentSegment.range} • {currentSegment.played}/{currentSegment.holes} played
+                    </div>
+                    <div className="fxb" style={{ fontSize: 12 }}>
+                      <div>
+                        <span className={`pc${currentSegment.t1[0]}`} style={{ fontWeight: 600 }}>{n[currentSegment.t1[0]]}</span>
+                        &
+                        <span className={`pc${currentSegment.t1[1]}`} style={{ fontWeight: 600 }}>{n[currentSegment.t1[1]]}</span>
+                        : <span style={{ fontWeight: 700, color: currentSegment.winner === "t1" ? T.accB : T.txt }}>{currentSegment.s1}</span>
+                      </div>
+                      <span style={{ color: T.dim, margin: "0 6px" }}>vs</span>
+                      <div>
+                        <span className={`pc${currentSegment.t2[0]}`} style={{ fontWeight: 600 }}>{n[currentSegment.t2[0]]}</span>
+                        &
+                        <span className={`pc${currentSegment.t2[1]}`} style={{ fontWeight: 600 }}>{n[currentSegment.t2[1]]}</span>
+                        : <span style={{ fontWeight: 700, color: currentSegment.winner === "t2" ? T.accB : T.txt }}>{currentSegment.s2}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              {r.holeResults && (() => {
-                const sc = [0, 0, 0, 0]; r.holeResults.forEach(h => { if (h.w != null) sc[h.w] += h.v; });
-                const carry = r.holeResults.filter(h => h.r === "C").length;
-                return <div className="fx g6" style={{ marginTop: 4 }}>
-                  {pl.map((_, i) => sc[i] > 0 ? <span key={i} className={`pc${i}`} style={{ fontSize: 12, fontWeight: 600 }}>{n[i]}:{sc[i]}</span> : null)}
-                  {carry > 0 && <span style={{ fontSize: 12, color: T.gold }}>+{carry}carry</span>}
-                </div>;
-              })()}
-            </div>
-          ))}
+            );
+          })}
         </div>}
 
         <div className="fxb mb12">

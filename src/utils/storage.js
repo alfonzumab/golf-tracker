@@ -8,8 +8,12 @@ export const ld = (k, f) => { try { const d = localStorage.getItem("gt3-" + k); 
 // --- Supabase CRUD ---
 
 export async function loadPlayers() {
+  console.log('loadPlayers: Starting...');
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return ld('players', []);
+  if (!user) {
+    console.log('loadPlayers: No user found, returning localStorage');
+    return ld('players', []);
+  }
 
   // Load all active players
   const { data: playersData, error: playersError } = await supabase
@@ -18,7 +22,10 @@ export async function loadPlayers() {
     .eq('is_active', true)
     .order('name');
 
-  if (playersError) return ld('players', []);
+  if (playersError) {
+    console.log('loadPlayers: Failed to load players, returning localStorage');
+    return ld('players', []);
+  }
 
   // Load user's favorites
   const { data: favoritesData, error: favoritesError } = await supabase
@@ -31,6 +38,7 @@ export async function loadPlayers() {
   }
 
   const favoriteIds = new Set(favoritesData?.map(f => f.player_id) || []);
+  console.log('loadPlayers: Loaded favorites:', favoriteIds);
 
   const players = playersData.map(p => ({
     id: p.id,
@@ -39,13 +47,19 @@ export async function loadPlayers() {
     favorite: favoriteIds.has(p.id)
   }));
 
+  console.log('loadPlayers: Final players with favorites:', players.filter(p => p.favorite));
   sv('players', players);
   return players;
 }
 
 export async function savePlayersFavorites(favoritePlayerIds) {
+  console.log('savePlayersFavorites called with:', favoritePlayerIds);
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) {
+    console.log('savePlayersFavorites: No user found');
+    return;
+  }
+  console.log('savePlayersFavorites: User found, proceeding...');
 
   try {
     // Get existing favorites
@@ -65,6 +79,8 @@ export async function savePlayersFavorites(favoritePlayerIds) {
     const toDelete = [...existingIds].filter(id => !newIds.has(id));
     const toInsert = [...newIds].filter(id => !existingIds.has(id));
 
+    console.log('savePlayersFavorites: toDelete:', toDelete, 'toInsert:', toInsert);
+
     // Delete removed favorites
     if (toDelete.length > 0) {
       const { error: delErr } = await supabase
@@ -75,6 +91,8 @@ export async function savePlayersFavorites(favoritePlayerIds) {
 
       if (delErr) {
         console.error('savePlayersFavorites: Failed to delete favorites:', delErr.message);
+      } else {
+        console.log('savePlayersFavorites: Deleted favorites successfully');
       }
     }
 
@@ -86,12 +104,15 @@ export async function savePlayersFavorites(favoritePlayerIds) {
 
       if (insErr) {
         console.error('savePlayersFavorites: Failed to insert favorites:', insErr.message);
+      } else {
+        console.log('savePlayersFavorites: Inserted favorites successfully');
       }
     }
 
   } catch (e) {
     console.error('savePlayersFavorites: Unexpected error:', e);
   }
+  console.log('savePlayersFavorites: Completed');
 }
 
 export async function adminSavePlayers(players) {

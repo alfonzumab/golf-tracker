@@ -3,25 +3,23 @@ import { T, PC } from '../theme';
 import { calcAll } from '../utils/calc';
 import { fmt$, enrichPlayer } from '../utils/golf';
 
-const Hist = ({ rounds, tournamentHistory, onLoad, onReopenRound, onReopenTournament, isHost, onViewTournament }) => {
+const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, isHost, onViewTournament }) => {
   const [tab, setTab] = useState('rounds');
   const [det, setDet] = useState(null);
 
   // Share round results
   const shareRound = (r) => {
     const n = r.players.map(p => p.name.split(" ")[0]);
-    const { balances, results } = calcAll(r.games, r.players);
-    const hc = r.players.map(p => p.scores.filter(s => s != null).length);
-    const minHoles = Math.min(...hc);
+    const { balances } = calcAll(r.games, r.players);
 
     let text = `${r.course.name} - ${r.date}\n\n`;
     text += `Scores:\n`;
-    r.players.forEach((p, i) => {
+    r.players.forEach((p) => {
       const gr = p.scores.filter(s => s != null).reduce((a, b) => a + b, 0);
       text += `${p.name}: ${gr} (CH ${p.courseHandicap})\n`;
     });
     text += `\nFinal P&L:\n`;
-    r.players.forEach((_, i) => {
+    r.players.forEach((p, i) => {
       const v = -balances[i];
       text += `${n[i]}: ${fmt$(v)}\n`;
     });
@@ -40,8 +38,8 @@ const Hist = ({ rounds, tournamentHistory, onLoad, onReopenRound, onReopenTourna
 
     // Build leaderboard
     const allPlayers = [];
-    t.groups.forEach((g, gi) => {
-      g.players.forEach((p, pi) => {
+    t.groups.forEach((g) => {
+      g.players.forEach((p) => {
         const enriched = enrichPlayer(p, t.course.tees.find(te => te.name === t.teeName));
         const scores = enriched.scores.filter(s => s != null);
         const gross = scores.reduce((a, b) => a + b, 0);

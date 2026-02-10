@@ -205,12 +205,12 @@ export default function App() {
         console.error('Failed to save players:', error);
         alert('Failed to save players to database. Please check console for details.');
       }
-    } else {
-      console.log('User is not admin, only saving favorites locally');
-      // For regular users, only update favorites
-      const favoriteIds = up.filter(p => p.favorite).map(p => p.id);
-      savePlayersFavorites(favoriteIds);
     }
+    // Save favorites for all users (including admins)
+    const favoriteIds = up.filter(p => p.favorite).map(p => p.id);
+    console.log('handleSetPlayers: Calling savePlayersFavorites with:', favoriteIds);
+    await savePlayersFavorites(favoriteIds);
+    console.log('handleSetPlayers: savePlayersFavorites completed');
   };
   const handleSetCourses = (up) => {
     setCourses(up);
@@ -408,7 +408,6 @@ export default function App() {
   // Finish active tournament
   const handleFinishTournament = () => {
     if (!tournament) return;
-    const { balances } = calcAll(tournament.groups[0]?.games || [], tournament.groups[0]?.players || []);
     setModal({
       title: 'Finish Tournament?',
       text: `${tournament.name}\n\nThis will end the tournament for all participants and move it to history.`,
@@ -484,7 +483,7 @@ export default function App() {
       }
     }, 10000);
     return () => clearInterval(id);
-  }, [tournament?.shareCode, tournament?.status, tournamentGuest?.groupIdx]);
+  }, [tournament, tournamentGuest?.groupIdx]);
 
   // Auto-navigate to scoring when tournament first goes live (but allow manual navigation to lobby)
   useEffect(() => {

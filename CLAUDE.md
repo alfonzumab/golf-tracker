@@ -13,7 +13,7 @@ npm run preview  # Preview production build
 
 No test framework is configured. Production deploys automatically via Vercel on push to `main` (configured in `vercel.json`).
 
-ESLint flat config (v9+) allows unused variables matching `^[A-Z_]` (so `GT`, `PC`, `TT` constants won't trigger errors). Run `npm run lint` before pushing.
+ESLint flat config (v9+) allows unused variables matching `^[A-Z_]` (so `GT`, `PC`, `TT` constants won't trigger errors). **Run `npm run build` and `npm run lint` before pushing** — Vercel auto-deploys on push to `main` and a broken build takes the production app down.
 
 ## Architecture
 
@@ -36,17 +36,19 @@ Components never call storage functions directly. `App.jsx` provides wrapper fun
 3. Write to Supabase async (cloud persistence)
 
 Three storage modules:
-- `src/utils/storage.js` — rounds, global players/courses (admin-only writes), user favorites, profile. `saveCurrentRound()` has 1.5s debounce. `joinRound(code)` calls `join_round` RPC. Admin functions use global queries; user functions only modify favorites.
-- `src/utils/tournamentStorage.js` — tournament CRUD via Supabase RPCs. Same as before.
+- `src/utils/storage.js` — rounds, global players/courses (admin-only writes), user favorites, profile. `saveCurrentRound()` has 1.5s debounce. `joinRound(code)` calls `join_round` RPC. Round lifecycle RPCs: `finishRound()`, `reopenRound()`, `registerRoundParticipant()`. Admin functions use global queries; user functions only modify favorites.
+- `src/utils/tournamentStorage.js` — tournament CRUD via Supabase RPCs. Includes `loadTournamentHistory()`, `reopenTournament()`, `registerTournamentParticipant()` for multi-user history tracking.
 - **Global Data Model**: Players and courses are shared across all users. Admin users can add/edit/delete via `adminSavePlayers()`/`adminSaveCourses()`. Regular users see read-only lists and can toggle favorites via `savePlayersFavorites()`. Soft deletes use `is_active = false`.
 
 ### Cross-Device Sync
 
 A 10-second poller syncs active rounds. A 60-second poller syncs global players/courses for non-admin users. **Critical invariant:** Supabase is always the source of truth. Admin changes to players/courses propagate via polling. Regular users cannot accidentally delete global data.
 
-### Round Sharing
+### Round Sharing & History
 
 Rounds have a 6-char `shareCode`. Other users can join a shared round via `joinRound(code)` RPC, which copies the round into their own `rounds` table. Same character set as tournament codes (`ABCDEFGHJKMNPQRSTUVWXYZ23456789`).
+
+When a round is finished (`finishRound` RPC), participants are tracked in `round_participants` so all players see the round in their history. `History.jsx` displays both round and tournament history with settlement details, sharing via native share API/clipboard, and the ability to reopen finished rounds/tournaments.
 
 ### State Management
 
@@ -111,7 +113,11 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 **Shared table** (cross-user, RLS allows read by share code):
 - `tournaments` — id (UUID PK), share_code (TEXT, unique), host_user_id, name, date, course (JSONB), tee_name, groups (JSONB), tournament_games (JSONB), team_config (JSONB), format (TEXT: 'standard'|'rydercup'), status (TEXT: 'setup'|'live'|'finished')
 
-**RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `update_group_games(p_code, p_group_idx, p_games)`, `join_round(p_code)`. The score/games RPCs use `FOR UPDATE` row locking to prevent concurrent write races on the `groups` JSONB column.
+**Participant tracking tables** (multi-user history):
+- `round_participants` — user_id, round_id (composite PK) — tracks who played in shared rounds
+- `tournament_participants` — user_id, tournament_id (composite PK) — tracks who played in tournaments
+
+**RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `update_group_games(p_code, p_group_idx, p_games)`, `join_round(p_code)`, `finish_round(p_round_id, p_share_code)`, `register_round_participant(p_round_id)`, `reopen_round(p_round_id)`, `load_tournament_history()`. The score/games RPCs use `FOR UPDATE` row locking to prevent concurrent write races on the `groups` JSONB column.
 
 ### Theme & Styling
 
@@ -149,11 +155,16 @@ VITE_SUPABASE_URL=<supabase project url>
 VITE_SUPABASE_ANON_KEY=<supabase publishable key>
 ```
 
-**Database Migrations** (run in Supabase SQL Editor):
+**Database Migrations** (run in Supabase SQL Editor, in order):
 - `migration-global-db.sql` — global players/courses with admin RLS, profiles table, user_favorites
 - `tournament-schema.sql` — tournaments table, RPC functions with row locking
-- `protected-db-migration.sql` — placeholder (empty)
+- `history-migration.sql` — round_participants, tournament_participants tables + history RPCs (finish_round, register_round_participant, reopen_round, load_tournament_history)
 
 After migration, manually set admin role: `UPDATE public.profiles SET role = 'admin' WHERE email = 'YOUR_EMAIL';`
 
-**Legacy files** (outdated, do not use as reference): `PROJECT.md`, `CLAUDE-CODE-PROMPT.md` — describe the pre-migration single-file monolith.
+**Utility SQL scripts** (run manually in Supabase SQL Editor as needed):
+- `fix-duplicate-rounds.sql`, `remove-duplicate-tournaments.sql` — deduplicate data
+- `fix-share-code-constraint.sql` — fix share_code unique constraint
+- `cleanup-migration.sql` — general cleanup
+
+**Legacy files** (outdated, do not use as reference): `PROJECT.md`, `CLAUDE-CODE-PROMPT.md`, `protected-db-migration.sql` (empty) — describe the pre-migration single-file monolith.

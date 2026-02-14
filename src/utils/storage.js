@@ -115,9 +115,9 @@ export async function savePlayersFavorites(favoritePlayerIds) {
   console.log('savePlayersFavorites: Completed');
 }
 
-export async function adminSavePlayers(players) {
+export async function savePlayers(players) {
   try {
-    console.log('adminSavePlayers called with', players.length, 'players');
+    console.log('savePlayers called with', players.length, 'players');
 
     // Get existing players from database (global)
     const { data: existing, error: fetchErr } = await supabase
@@ -193,7 +193,7 @@ export async function loadCourses() {
   return courses;
 }
 
-export async function adminSaveCourses(courses) {
+export async function saveCourses(courses) {
   try {
     // Get existing courses from database (global)
     const { data: existing, error: fetchErr } = await supabase
@@ -201,7 +201,7 @@ export async function adminSaveCourses(courses) {
       .select('id');
 
     if (fetchErr) {
-      console.error('adminSaveCourses: Failed to fetch existing courses:', fetchErr.message);
+      console.error('saveCourses: Failed to fetch existing courses:', fetchErr.message);
       return;
     }
 
@@ -221,7 +221,7 @@ export async function adminSaveCourses(courses) {
 
     // Safety check: Don't delete more than 20 courses at once
     if (toSoftDelete.length > 20) {
-      console.error(`adminSaveCourses: Refusing to soft-delete ${toSoftDelete.length} courses. This looks like a bug.`);
+      console.error(`saveCourses: Refusing to soft-delete ${toSoftDelete.length} courses. This looks like a bug.`);
       return;
     }
 
@@ -233,7 +233,7 @@ export async function adminSaveCourses(courses) {
         .in('id', toSoftDelete);
 
       if (delErr) {
-        console.error('adminSaveCourses: Failed to soft-delete courses:', delErr.message);
+        console.error('saveCourses: Failed to soft-delete courses:', delErr.message);
         return;
       }
     }
@@ -245,12 +245,12 @@ export async function adminSaveCourses(courses) {
         .upsert(toUpsert, { onConflict: 'id' });
 
       if (upsertErr) {
-        console.error('adminSaveCourses: Failed to upsert courses:', upsertErr.message);
+        console.error('saveCourses: Failed to upsert courses:', upsertErr.message);
       }
     }
 
   } catch (e) {
-    console.error('adminSaveCourses: Unexpected error:', e);
+    console.error('saveCourses: Unexpected error:', e);
   }
 }
 

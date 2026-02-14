@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "SideAction Golf",
-  "short_name": "SideAction",
+  "name": "Settle Up Golf",
+  "short_name": "Settle Up",
   "description": "Golf round tracker with real-time betting and settlement",
   "start_url": "/",
   "scope": "/",

@@ -114,13 +114,12 @@ const CourseEditor = ({ courseId, courses, setCourses, onClose }) => {
   );
 };
 
-const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId, isAdmin }) => {
+const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId }) => {
   const [edit, setEdit] = useState(null);
   const [inactive, setInactive] = useState([]);
 
-  // Load inactive courses for admin view
+  // Load inactive courses
   useEffect(() => {
-    if (!isAdmin) return;
     const loadInactive = async () => {
       const { data, error } = await supabase
         .from('courses')
@@ -132,7 +131,7 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId, i
       }
     };
     loadInactive();
-  }, [isAdmin]);
+  }, []);
 
   const addCourse = () => {
     const newC = {
@@ -163,7 +162,7 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId, i
     <div className="pg">
       <div className="fxb mb10">
         <span className="pg-title">Courses</span>
-        {isAdmin && <button className="btn bp bsm" onClick={addCourse}>+ Add Course</button>}
+        <button className="btn bp bsm" onClick={addCourse}>+ Add Course</button>
       </div>
 
       {courses.length === 0 && (
@@ -180,16 +179,14 @@ const Courses = ({ courses, setCourses, selectedCourseId, setSelectedCourseId, i
             <div className="prow-n">{c.name}</div>
             <div className="prow-i">{c.city} {"\u00B7"} {c.tees.length} tee{c.tees.length !== 1 ? "s" : ""}</div>
           </div>
-          {isAdmin && (
-            <>
-              <button className="bg" onClick={() => setEdit(c.id)}>Edit</button>
-              <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => deleteCourse(c.id)}>Delete</button>
-            </>
-          )}
+          <>
+            <button className="bg" onClick={() => setEdit(c.id)}>Edit</button>
+            <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => deleteCourse(c.id)}>Delete</button>
+          </>
         </div>
       ))}
 
-      {isAdmin && inactive.length > 0 && (
+      {inactive.length > 0 && (
         <>
           <div className="dvd" />
           <div className="mb10" style={{ fontSize: 14, color: T.dim, fontWeight: 600 }}>Inactive Courses</div>

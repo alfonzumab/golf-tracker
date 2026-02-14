@@ -12,6 +12,7 @@ export function calcAll(games, players) {
     else if (g.type === GT.MATCH) r = cMatch(g, players);
     else if (g.type === GT.SKINS) r = cSkins(g, players);
     else if (g.type === GT.SIXES) r = cSixes(g, players);
+    else if (g.type === GT.VEGAS) r = cVegas(g, players);
     if (r) { res.push(r); (r.payouts || []).forEach(p => pay(p.f, p.t, p.a)); }
   }
   const bal = Array(n).fill(0);
@@ -251,4 +252,100 @@ function cSixes(g, pl) {
     else if (w === "t2") { for (const loser of t1) for (const winner of t2) pay.push({ f: loser, t: winner, a: wg / t2.length }); }
   }
   return { title: "6-6-6 (" + (g.mode === "match" ? "Match" : "Stroke") + ")", details: det, payouts: pay, wager: "$" + g.wagerPerSegment + "/seg", pairs, segmentScores };
+}
+
+function cVegas(g, pl) {
+  // Guard against malformed data (e.g., old games created with wrong config)
+  if (!g.team1 || !g.team2) return null;
+  
+  const n = pl.map(p => p.name.split(" ")[0]);
+  const t1 = g.team1, t2 = g.team2;
+  const t1N = n[t1[0]] + "&" + n[t1[1]], t2N = n[t2[0]] + "&" + n[t2[1]];
+  const w = g.wagerPerPoint || 1;
+  
+  // Vegas scoring: combine two players' scores into 2-digit number (low-high)
+  // Difference between team numbers = points won
+  const holeResults = [];
+  let team1TotalPoints = 0;
+  let team2TotalPoints = 0;
+  
+  for (let h = 0; h < 18; h++) {
+    if (!pl.every(p => p.scores[h] != null)) {
+      holeResults.push({ h: h + 1, t1Num: 0, t2Num: 0, diff: 0, played: false });
+      continue;
+    }
+    
+    // Get net scores for each player
+    const scores = pl.map(p => p.scores[h] - p.strokeHoles[h]);
+    
+    // Team 1: combine scores into 2-digit number (low score first)
+    const t1Scores = [scores[t1[0]], scores[t1[1]]].sort((a, b) => a - b);
+    const t1Num = t1Scores[0] * 10 + t1Scores[1];
+    
+    // Team 2: combine scores into 2-digit number (low score first)
+    const t2Scores = [scores[t2[0]], scores[t2[1]]].sort((a, b) => a - b);
+    const t2Num = t2Scores[0] * 10 + t2Scores[1];
+    
+    // Calculate point difference for this hole
+    const diff = t2Num - t1Num; // positive = team1 wins, negative = team2 wins
+    
+    if (diff > 0) {
+      team1TotalPoints += diff;
+    } else if (diff < 0) {
+      team2TotalPoints += Math.abs(diff);
+    }
+    
+    holeResults.push({ h: h + 1, t1Num, t2Num, diff, played: true });
+  }
+  
+  // Calculate payouts
+  const pay = [];
+  const netDiff = team1TotalPoints - team2TotalPoints;
+  
+  if (netDiff > 0) {
+    // Team 1 wins - each team 2 player pays each team 1 player
+    const amountPerPlayer = (netDiff * w) / 2;
+    for (const loser of t2) {
+      for (const winner of t1) {
+        pay.push({ f: loser, t: winner, a: amountPerPlayer });
+      }
+    }
+  } else if (netDiff < 0) {
+    // Team 2 wins - each team 1 player pays each team 2 player
+    const amountPerPlayer = (Math.abs(netDiff) * w) / 2;
+    for (const loser of t1) {
+      for (const winner of t2) {
+        pay.push({ f: loser, t: winner, a: amountPerPlayer });
+      }
+    }
+  }
+  
+  // Build status message
+  let status = "";
+  const totalDollarValue = Math.abs(netDiff) * w;
+  if (netDiff > 0) {
+    status = t1N + " +" + netDiff + " pts ($" + totalDollarValue.toFixed(2) + ")";
+  } else if (netDiff < 0) {
+    status = t2N + " +" + Math.abs(netDiff) + " pts ($" + totalDollarValue.toFixed(2) + ")";
+  } else {
+    status = "All Square";
+  }
+  
+  const details = [
+    t1N + " vs " + t2N,
+    "Team 1 total: " + team1TotalPoints + " pts",
+    "Team 2 total: " + team2TotalPoints + " pts",
+    "Net difference: " + (netDiff > 0 ? "+" : "") + netDiff + " pts",
+    "Total payout: $" + totalDollarValue.toFixed(2)
+  ];
+  
+  return { 
+    title: "Vegas (2v2)", 
+    details, 
+    status, 
+    payouts: pay, 
+    wager: "$" + w + "/pt",
+    holeResults,
+    vegasData: { team1TotalPoints, team2TotalPoints, t1N, t2N, netDiff, w }
+  };
 }

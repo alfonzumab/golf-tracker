@@ -80,11 +80,30 @@ Share codes use `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no ambiguous chars: 0/O, 1/I/
 
 ### Calculation Engine (`src/utils/calc.js`)
 
-Pure functions with no React dependencies. `calcAll(games, players)` returns `{ results, settlements, balances }`. Requires exactly 4 players. Four game calculators: `cStroke`, `cMatch`, `cSkins`, `cSixes` — each returns the same `{ title, details, status, payouts, wager }` shape. **Do not modify calculation logic** without thorough testing — the payout math is correct and interdependent.
+Pure functions with no React dependencies. `calcAll(games, players)` returns `{ results, settlements, balances }`. Requires exactly 4 players. Five game calculators: `cStroke`, `cMatch`, `cSkins`, `cSixes`, `cVegas` — each returns the same `{ title, details, status, payouts, wager }` shape. **Do not modify calculation logic** without thorough testing — the payout math is correct and interdependent.
 
 **Game mode detection** (stroke & match support two formats each):
 - Stroke: `g.team1` exists → 2v2 best-ball; absent → individual (all 4 compete). Both use `wagerFront`/`wagerBack`/`wagerOverall`.
 - Match: `g.matchups` exists → individual 1v1 pairs (e.g. `[[0,1],[2,3]]`); absent → 2v2 best-ball with `team1`/`team2`. Both use `wagerFront`/`wagerBack`/`wagerOverall`.
+
+**Special result shapes:**
+- Vegas: Returns `vegasData: { team1TotalPoints, team2TotalPoints, t1N, t2N }` + `holeResults` array for hole-by-hole table rendering
+- 6-6-6: Returns `segmentScores` array with team matchup details for each 6-hole segment
+- Skins: Returns `holeResults` array with winner info (`w` = winner index, `v` = skin value) for hole-by-hole table
+
+### Game Detail Rendering Consistency
+
+**Critical Rule:** All game detail rendering (6-6-6 segments, Vegas tables, Skins tables, Match/Stroke details, payouts) must be **identical** across regular rounds and tournament views. When adding new game types or modifying detail views, update both:
+- `src/components/Bets.jsx` — regular round bets tab
+- `src/components/tournament/TournamentScore.jsx` BV() section — tournament group games
+
+**Rendering pattern:**
+1. **Vegas & 6-6-6**: Rich visuals (team summaries, segment cards, hole-by-hole tables) shown by default, with expandable payouts section below
+2. **All games**: "Tap for details" / "Hide" toggle at bottom of card
+3. **Expandable sections**: Payouts breakdown, skins hole-by-hole table (when applicable)
+4. **State management**: Use `exp` (Bets.jsx) or `expGame` (TournamentScore.jsx) to track which game card is expanded
+
+Do not create separate duplicate rendering for the same game type — combine rich visuals and expandable details into a single card.
 
 ### Tournament Calculation Engine (`src/utils/tournamentCalc.js`)
 

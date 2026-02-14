@@ -1,4 +1,4 @@
-export const GT = { STROKE: "stroke", MATCH: "match", SKINS: "skins", SIXES: "sixes" };
+export const GT = { STROKE: "stroke", MATCH: "match", SKINS: "skins", SIXES: "sixes", VEGAS: "vegas" };
 export const PC = ["#4ade80", "#60a5fa", "#f0c040", "#f472b6"];
 export const TT = { a: "#60a5fa", aD: "#1e3a5f", b: "#f472b6", bD: "#5f1d3a" };
 

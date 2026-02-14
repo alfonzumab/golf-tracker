@@ -27,7 +27,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
   const prevHole = useRef(hole);
 
   // Group games state
-  const groupGames = group?.games || [];
+  const groupGames = useMemo(() => group?.games || [], [group?.games]);
 
   // Calculate group results (needed by both HV and BV)
   const has4 = pl.length === 4;
@@ -41,6 +41,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
   const [editing, setEditing] = useState(false);
   const [editGames, setEditGames] = useState(groupGames);
   const [showAddGame, setShowAddGame] = useState(false);
+  const [expGame, setExpGame] = useState(null);
 
   // Auto-advance hole
   const currentHoleScores = pl.map(p => p.scores[hole]).join(",");
@@ -105,7 +106,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                 </div>
 
                 {/* Skins hole results */}
-                {r.holeResults && (() => {
+                {r.holeResults && r.holeResults[0] && r.holeResults[0].w !== undefined && (() => {
                   const sc = [0, 0, 0, 0]; r.holeResults.forEach(h => { if (h.w != null) sc[h.w] += h.v; });
                   const carry = r.holeResults.filter(h => h.r === "C").length;
                   return <div className="fx g6" style={{ marginTop: 4 }}>
@@ -233,7 +234,8 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
       else Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
     }
     else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: false, potPerPlayer: 20 });
-    else Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
+    else if (t === GT.SIXES) Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
+    else if (t === GT.VEGAS) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerPerPoint: 1 });
     setEditGames([...editGames, g]); setShowAddGame(false);
   };
   const ug = (id, up) => setEditGames(editGames.map(g => g.id === id ? { ...g, ...up } : g));
@@ -282,11 +284,12 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
               <button className="btn bs" onClick={() => addGame(GT.SKINS)}>Skins</button>
               <button className="btn bs" disabled={!has2} onClick={() => has2 && addGame(GT.MATCH)}>Match</button>
               <button className="btn bs" disabled={!has4} onClick={() => has4 && addGame(GT.SIXES)}>6-6-6</button>
-            </div>{!has4 && <p style={{ fontSize: 12, color: T.dim, marginTop: 6 }}>6-6-6 needs 4 players</p>}</div>}
+              <button className="btn bs" disabled={!has4} onClick={() => has4 && addGame(GT.VEGAS)}>Vegas</button>
+            </div>{!has4 && <p style={{ fontSize: 12, color: T.dim, marginTop: 6 }}>6-6-6 and Vegas need 4 players</p>}</div>}
             {editGames.map(g => (
               <div key={g.id} className="cd">
                 <div className="fxb mb6">
-                  <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : "6-6-6"}</span>
+                  <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : g.type === GT.SIXES ? "6-6-6" : "Vegas"}</span>
                   <button style={{ background: "none", border: "none", color: T.red, cursor: "pointer", fontSize: 13 }} onClick={() => setEditGames(editGames.filter(x => x.id !== g.id))}>Remove</button>
                 </div>
                 {g.type === GT.STROKE && <>
@@ -365,6 +368,20 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                   </div>
                   <div><div className="il">$/segment/person</div><input className="inp" type="number" value={g.wagerPerSegment} onChange={e => ug(g.id, { wagerPerSegment: parseFloat(e.target.value) || 0 })} /></div>
                 </>}
+                {g.type === GT.VEGAS && <>
+                  <div className="fx g6 mb8" style={{ justifyContent: "center" }}>
+                    <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.accD + "22", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team1[0]}`}>{n[g.team1[0]]}</span> & <span className={`pc${g.team1[1]}`}>{n[g.team1[1]]}</span></div>
+                    <span style={{ color: T.dim, fontWeight: 700, fontSize: 13 }}>vs</span>
+                    <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.red + "15", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team2[0]}`}>{n[g.team2[0]]}</span> & <span className={`pc${g.team2[1]}`}>{n[g.team2[1]]}</span></div>
+                  </div>
+                  <button className="btn bg mb10" style={{ width: "100%" }} onClick={() => {
+                    const c = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]];
+                    const cur = c.findIndex(x => x[0] === g.team1[0] && x[1] === g.team1[1]);
+                    const nx = c[(cur + 1) % 3];
+                    ug(g.id, { team1: [nx[0], nx[1]], team2: [nx[2], nx[3]] });
+                  }}>Swap Teams</button>
+                  <div><div className="il">$/point</div><input className="inp" type="number" step="0.05" value={g.wagerPerPoint} onChange={e => ug(g.id, { wagerPerPoint: parseFloat(e.target.value) || 0 })} /></div>
+                </>}
               </div>
             ))}
             <div className="fx g8">
@@ -400,13 +417,174 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                 </div>
               ))}
             </div>}
-            {results.map((r, ri) => (
-              <div key={ri} className="cd">
-                <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
-                {r.status && <div style={{ fontSize: 14, fontWeight: 700, color: T.accB, marginBottom: 6 }}>{r.status}</div>}
-                {r.details?.map((d, j) => <div key={j} style={{ fontSize: 13, color: T.dim, marginBottom: 4, lineHeight: 1.4 }}>{d}</div>)}
-              </div>
-            ))}
+            {results.map((r, ri) => {
+              // Vegas games - rich display with expandable payouts
+              if (r.title.includes("Vegas") && r.vegasData) {
+                return (
+                  <div key={ri} className="cd" style={{ cursor: "pointer" }} onClick={() => setExpGame(expGame === ri ? null : ri)}>
+                    <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
+                    {r.status && <div style={{ fontSize: 14, fontWeight: 700, color: T.accB, marginBottom: 8 }}>{r.status}</div>}
+                    
+                    {/* Team summary */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div className="fxb" style={{ padding: '8px 12px', borderRadius: 8, background: T.card, marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{r.vegasData.t1N}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700 }}>{r.vegasData.team1TotalPoints} pts</span>
+                      </div>
+                      <div className="fxb" style={{ padding: '8px 12px', borderRadius: 8, background: T.card }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{r.vegasData.t2N}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700 }}>{r.vegasData.team2TotalPoints} pts</span>
+                      </div>
+                    </div>
+
+                    {/* Hole-by-hole table */}
+                    <div className="sw">
+                      {[{ l: "Front 9", s: 0, e: 9 }, { l: "Back 9", s: 9, e: 18 }].map(nine => (
+                        <div key={nine.l} className="mb6"><table className="sct"><thead><tr>
+                          <th style={{ minWidth: 44, textAlign: "left", paddingLeft: 4 }}>{nine.l}</th>
+                          {Array.from({ length: 9 }, (_, i) => <th key={i} className="hn">{nine.s + i + 1}</th>)}
+                        </tr></thead><tbody>
+                          <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 11, color: T.dim }}>T1 #</td>
+                            {Array.from({ length: 9 }, (_, i) => {
+                              const hr = r.holeResults[nine.s + i];
+                              return <td key={i} style={{ fontSize: 11, fontWeight: hr.played ? 600 : 400, color: hr.played ? T.txt : T.mut }}>
+                                {hr.played ? hr.t1Num : '|'}
+                              </td>;
+                            })}
+                          </tr>
+                          <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 11, color: T.dim }}>T2 #</td>
+                            {Array.from({ length: 9 }, (_, i) => {
+                              const hr = r.holeResults[nine.s + i];
+                              return <td key={i} style={{ fontSize: 11, fontWeight: hr.played ? 600 : 400, color: hr.played ? T.txt : T.mut }}>
+                                {hr.played ? hr.t2Num : '|'}
+                              </td>;
+                            })}
+                          </tr>
+                          <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 11, color: T.dim }}>Pts</td>
+                            {Array.from({ length: 9 }, (_, i) => {
+                              const hr = r.holeResults[nine.s + i];
+                              const winner = hr.diff > 0 ? 1 : hr.diff < 0 ? 2 : 0;
+                              return <td key={i} style={{ fontSize: 11, fontWeight: winner > 0 ? 700 : 400, color: winner === 1 ? T.accB : winner === 2 ? T.red : T.mut }}>
+                                {hr.played ? (hr.diff !== 0 ? Math.abs(hr.diff) : '-') : '|'}
+                              </td>;
+                            })}
+                          </tr>
+                        </tbody></table></div>
+                      ))}
+                    </div>
+
+                    {/* Expandable payouts */}
+                    {expGame === ri && r.payouts && r.payouts.length > 0 && <div className="mt8">
+                      <div className="il mb6">Payouts</div>
+                      {r.payouts.map((p, j) => (
+                        <div key={j} style={{ fontSize: 13, marginBottom: 4 }}>
+                          <span className={`pc${p.f}`} style={{ fontWeight: 600 }}>{n[p.f]}</span> → <span className={`pc${p.t}`} style={{ fontWeight: 600 }}>{n[p.t]}</span>: <span style={{ fontWeight: 700 }}>{fmt$(p.a)}</span>
+                        </div>
+                      ))}
+                    </div>}
+
+                    <div style={{ textAlign: "center", fontSize: 12, color: T.mut, marginTop: 6 }}>{expGame === ri ? "Hide" : "Tap for details"}</div>
+                  </div>
+                );
+              }
+
+              // 6-6-6 games - rich segment display with expandable payouts
+              if (r.title.includes("6-6-6") && r.segmentScores) {
+                return (
+                  <div key={ri} className="cd" style={{ cursor: "pointer" }} onClick={() => setExpGame(expGame === ri ? null : ri)}>
+                    <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager.replace('/pl', '/player').replace('/seg', '/segment')}</span>}</div>
+                    {r.segmentScores.map((seg, si) => {
+                      const currentHole = (() => { for (let h = 0; h < 18; h++) { if (!pl.every(p => p.scores[h] != null)) return h; } return 17; })();
+                      const isActive = currentHole >= (seg.range === "1-6" ? 0 : seg.range === "7-12" ? 6 : 12) && currentHole <= (seg.range === "1-6" ? 5 : seg.range === "7-12" ? 11 : 17);
+                      return (
+                        <div key={si} style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 8, border: `1.5px solid ${isActive ? T.acc : T.bdr}`, background: isActive ? T.accD + '15' : 'transparent' }}>
+                          <div style={{ fontSize: 13, color: isActive ? T.accB : T.dim, marginBottom: 6, fontWeight: isActive ? 600 : 400 }}>
+                            Holes {seg.range}{isActive ? ' (current)' : ''}
+                          </div>
+                          <div className="fxb mb6">
+                            <div style={{ textAlign: "center", flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${seg.t1[0]}`}>{n[seg.t1[0]]}</span> & <span className={`pc${seg.t1[1]}`}>{n[seg.t1[1]]}</span></div>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: seg.winner === "t1" ? T.accB : T.txt, marginTop: 4 }}>{seg.s1}</div>
+                            </div>
+                            <div style={{ fontSize: 13, color: T.dim, alignSelf: "center" }}>vs</div>
+                            <div style={{ textAlign: "center", flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600 }}><span className={`pc${seg.t2[0]}`}>{n[seg.t2[0]]}</span> & <span className={`pc${seg.t2[1]}`}>{n[seg.t2[1]]}</span></div>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: seg.winner === "t2" ? T.accB : T.txt, marginTop: 4 }}>{seg.s2}</div>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 12, color: T.dim, textAlign: "center" }}>{seg.played}/{seg.holes} holes played</div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Expandable payouts */}
+                    {expGame === ri && r.payouts && r.payouts.length > 0 && <div className="mt8">
+                      <div className="il mb6">Payouts</div>
+                      {r.payouts.map((p, j) => (
+                        <div key={j} style={{ fontSize: 13, marginBottom: 4 }}>
+                          <span className={`pc${p.f}`} style={{ fontWeight: 600 }}>{n[p.f]}</span> → <span className={`pc${p.t}`} style={{ fontWeight: 600 }}>{n[p.t]}</span>: <span style={{ fontWeight: 700 }}>{fmt$(p.a)}</span>
+                        </div>
+                      ))}
+                    </div>}
+
+                    <div style={{ textAlign: "center", fontSize: 12, color: T.mut, marginTop: 6 }}>{expGame === ri ? "Hide" : "Tap for details"}</div>
+                  </div>
+                );
+              }
+
+              // All other games - standard expandable display
+              return (
+                <div key={ri} className="cd" style={{ cursor: "pointer" }} onClick={() => setExpGame(expGame === ri ? null : ri)}>
+                  <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
+                  {r.status && <div style={{ fontSize: 14, fontWeight: 700, color: T.accB, marginBottom: 6 }}>{r.status}</div>}
+                  {expGame === ri && <div style={{ marginTop: 8 }}>
+                    {r.details?.map((d, j) => <div key={j} style={{ fontSize: 13, color: T.dim, marginBottom: 4, lineHeight: 1.4 }}>{d}</div>)}
+                    {r.payouts && r.payouts.length > 0 && <div className="mt8">
+                      <div className="il mb6">Payouts</div>
+                      {r.payouts.map((p, j) => (
+                        <div key={j} style={{ fontSize: 13, marginBottom: 4 }}>
+                          <span className={`pc${p.f}`} style={{ fontWeight: 600 }}>{n[p.f]}</span> → <span className={`pc${p.t}`} style={{ fontWeight: 600 }}>{n[p.t]}</span>: <span style={{ fontWeight: 700 }}>{fmt$(p.a)}</span>
+                        </div>
+                      ))}
+                    </div>}
+                    {r.holeResults && r.holeResults[0] && r.holeResults[0].w !== undefined && <div className="mt8">
+                      <div className="il mb6">Skins by Hole</div>
+                      {[{ l: "Front 9", s: 0, e: 9 }, { l: "Back 9", s: 9, e: 18 }].map(nine => (
+                        <div key={nine.l} className="sw mb6"><table className="sct"><thead><tr>
+                          <th style={{ minWidth: 44, textAlign: "left", paddingLeft: 4 }}>{nine.l}</th>
+                          {Array.from({ length: 9 }, (_, i) => <th key={i} className="hn">{nine.s + i + 1}</th>)}
+                        </tr></thead><tbody>
+                          {pl.map((p, pi) => (
+                            <tr key={pi}><td style={{ textAlign: "left", paddingLeft: 4 }}><span className={`pc${pi}`} style={{ fontWeight: 600, fontSize: 12 }}>{n[pi]}</span></td>
+                              {Array.from({ length: 9 }, (_, i) => {
+                                const hi = nine.s + i, sc = p.scores[hi], hri = r.holeResults[hi];
+                                const isW = hri && hri.w === pi;
+                                return <td key={i} style={{ fontSize: 12, fontWeight: isW ? 800 : 500, color: isW ? PC[pi] : sc != null ? T.txt : T.mut, background: isW ? PC[pi] + "15" : "transparent" }}>{sc != null ? sc : "|"}</td>;
+                              })}
+                            </tr>
+                          ))}
+                          <tr><td style={{ textAlign: "left", paddingLeft: 4, fontSize: 11, color: T.mut }}>Skin</td>
+                            {Array.from({ length: 9 }, (_, i) => {
+                              const hri = r.holeResults[nine.s + i];
+                              return <td key={i} style={{ fontSize: 11, fontWeight: 700, color: hri && hri.w != null ? PC[hri.w] : T.mut }}>
+                                {hri ? hri.w != null ? (hri.v > 1 ? hri.v + "W" : "W") : hri.r === "--" ? "|" : hri.r : "|"}
+                              </td>;
+                            })}
+                          </tr>
+                        </tbody></table></div>
+                      ))}
+                      <div className="fx fw g6" style={{ justifyContent: "center" }}>
+                        {pl.map((_, i) => {
+                          const cnt = r.holeResults.filter(h => h.w === i).reduce((a, h) => a + h.v, 0);
+                          return cnt > 0 ? <span key={i} className={`pc${i}`} style={{ fontSize: 13, fontWeight: 700 }}>{n[i]}: {cnt} skin{cnt !== 1 ? "s" : ""}</span> : null;
+                        })}
+                      </div>
+                    </div>}
+                  </div>}
+                  <div style={{ textAlign: "center", fontSize: 12, color: T.mut, marginTop: 6 }}>{expGame === ri ? "Hide" : "Tap for details"}</div>
+                </div>
+              );
+            })}
           </div>
         );
       }

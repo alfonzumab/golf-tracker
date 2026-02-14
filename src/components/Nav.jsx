@@ -3,7 +3,8 @@ score:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="curren
 bets:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>,
 players:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
 courses:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>,
-hist:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>};
+hist:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+profile:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>};
 
 const Nav = ({ pg, go, hr }) => (
   <div className="nav">
@@ -13,6 +14,7 @@ const Nav = ({ pg, go, hr }) => (
     <button className={`ni ${pg === "players" ? "on" : ""}`} onClick={() => go("players")}><span className="nii">{ICN.players}</span>Players</button>
     <button className={`ni ${pg === "courses" ? "on" : ""}`} onClick={() => go("courses")}><span className="nii">{ICN.courses}</span>Courses</button>
     <button className={`ni ${pg === "hist" ? "on" : ""}`} onClick={() => go("hist")}><span className="nii">{ICN.hist}</span>History</button>
+    <button className={`ni ${pg === "profile" ? "on" : ""}`} onClick={() => go("profile")}><span className="nii">{ICN.profile}</span>Profile</button>
   </div>
 );
 

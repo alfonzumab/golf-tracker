@@ -4,8 +4,8 @@ import { T } from './theme';
 import { supabase } from './lib/supabase';
 import {
   sv, ld,
-  loadPlayers, savePlayersFavorites, adminSavePlayers,
-  loadCourses, adminSaveCourses,
+  loadPlayers, savePlayersFavorites, savePlayers,
+  loadCourses, saveCourses,
   loadRounds, saveRound,
   loadCurrentRound, saveCurrentRound, clearCurrentRound,
   loadSelectedCourse, saveSelectedCourse,
@@ -26,6 +26,7 @@ import Setup from './components/Setup';
 import Scoring from './components/Scoring';
 import Bets from './components/Bets';
 import Hist from './components/History';
+import Profile from './components/Profile';
 import TournamentHub from './components/tournament/TournamentHub';
 import TournamentSetup from './components/tournament/TournamentSetup';
 import TournamentLobby from './components/tournament/TournamentLobby';
@@ -56,11 +57,6 @@ export default function App() {
 
   // Track when local scores were last updated to avoid poll overwriting them
   const lastScoreUpdate = useRef(0);
-
-  // Computed values
-  const isAdmin = profile?.role === 'admin';
-  console.log('Current user profile:', profile);
-  console.log('Is admin:', isAdmin);
 
   // Listen for auth changes
   useEffect(() => {
@@ -175,9 +171,9 @@ export default function App() {
     return () => clearInterval(id);
   }, [session]);
 
-  // Poll for global player/course changes every 60s (for non-admin users)
+  // Poll for global player/course changes every 60s
   useEffect(() => {
-    if (!session || isAdmin) return; // Admins see changes immediately via their edits
+    if (!session) return;
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
       try {
@@ -189,37 +185,39 @@ export default function App() {
       }
     }, 60000);
     return () => clearInterval(id);
-  }, [session, isAdmin]);
+  }, [session]);
 
   const go = p => setPg(p);
   const isTournamentPg = pg.startsWith('t');
+
+  // Handle player changes - all authenticated users can save
   const handleSetPlayers = async (up) => {
     setPlayers(up);
     sv("players", up);
-    if (isAdmin) {
-      console.log('Saving players to Supabase as admin...');
-      try {
-        await adminSavePlayers(up);
-        console.log('Players saved successfully');
-      } catch (error) {
-        console.error('Failed to save players:', error);
-        alert('Failed to save players to database. Please check console for details.');
-      }
+    // All users can save players to Supabase
+    console.log('Saving players to Supabase...');
+    try {
+      await savePlayers(up);
+      console.log('Players saved successfully');
+    } catch (error) {
+      console.error('Failed to save players:', error);
     }
-    // Save favorites for all users (including admins)
+    // Save favorites for all users
     const favoriteIds = up.filter(p => p.favorite).map(p => p.id);
     console.log('handleSetPlayers: Calling savePlayersFavorites with:', favoriteIds);
     await savePlayersFavorites(favoriteIds);
     console.log('handleSetPlayers: savePlayersFavorites completed');
   };
+
+  // Handle course changes - all authenticated users can save
   const handleSetCourses = (up) => {
     setCourses(up);
     sv("courses", up);
-    if (isAdmin) {
-      adminSaveCourses(up);
-    }
-    // Regular users can't modify courses
+    // All users can save courses to Supabase
+    console.log('Saving courses to Supabase...');
+    saveCourses(up);
   };
+
   const handleSetSelectedCourse = (id) => { setSelectedCourseId(id); sv("selectedCourse", id); saveSelectedCourse(id); };
 
   const us = (pi, hi, v) => {
@@ -500,6 +498,11 @@ export default function App() {
     setPg("home");
   };
 
+  // Handle profile updates
+  const handleUpdateProfile = (updates) => {
+    setProfile(prev => ({ ...prev, ...updates }));
+  };
+
   // Loading state
   if (session === undefined) {
     return (
@@ -515,30 +518,29 @@ export default function App() {
   const isHost = tournament && session && tournament.hostUserId === session.user.id;
 
   const titles = {
-    home: "SideAction Golf", score: "Scoring", bets: "Bets & Settlement",
+    home: "Settle Up Golf", score: "Scoring", bets: "Bets & Settlement",
     players: "Players", courses: "Courses", hist: "History", setup: "Game Setup",
     thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament",
-    tscore: "Scoring", tboard: "Leaderboard"
+    tscore: "Scoring", tboard: "Leaderboard", profile: "Profile"
   };
 
   return (
     <div className="app">
       <div className="hdr">
-        {["setup", "score", "bets"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
+        {["setup", "score", "bets", "profile"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else if (pg === "profile") { go("home"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
         {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={() => go('home')}>{"<"}</button>}
-        <div><div className="hdr-t">{titles[pg] || "SideAction Golf"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
+        <div><div className="hdr-t">{titles[pg] || "Settle Up Golf"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {pg === "score" && round && <>
             <button className="btn bp bsm" onClick={finish}>Finish</button>
             <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={abandon}>{"x"}</button>
           </>}
-          <button className="bg" onClick={logout} style={{ fontSize: 12, color: T.dim }}>Logout</button>
         </div>
       </div>
       {pg === "home" && <Home courses={courses} players={players} rounds={rounds} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
-      {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} isAdmin={isAdmin} />}
-      {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} isAdmin={isAdmin} />}
+      {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} />}
+      {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} />}
       {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={(games, updatedPlayers) => {
         const r = {
           id: Date.now().toString(),
@@ -563,6 +565,7 @@ export default function App() {
         isHost={(t) => t && session && t.hostUserId === session.user.id}
         onViewTournament={(t) => { setTournament(t); setViewingFinishedTournament(true); go('tboard'); }}
       />}
+      {pg === "profile" && <Profile session={session} profile={profile} courses={courses} players={players} onLogout={logout} onUpdateProfile={handleUpdateProfile} />}
 
       {/* Tournament pages */}
       {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}

@@ -768,7 +768,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
                       }}>
                       <option value="">Add player...</option>
                       {allPlayers.map((p, i) => (
-                        !assignedPlayers.has(i) || f.players.includes(i) ? (
+                        !assignedPlayers.has(i) ? (
                           <option key={i} value={i}>{p.name}</option>
                         ) : null
                       ))}

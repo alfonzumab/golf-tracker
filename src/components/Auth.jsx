@@ -9,6 +9,10 @@ const Auth = () => {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
 
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -43,11 +47,86 @@ const Auth = () => {
     // OAuth will redirect, so no need to setLoading(false) here
   };
 
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      setError("Please enter your email address");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: window.location.origin
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setMessage("Check your email for a password reset link!");
+    }
+    setLoading(false);
+  };
+
+  // If showing forgot password form
+  if (showForgotPassword) {
+    return (
+      <div className="auth-wrap">
+        <div className="auth-box">
+          <div className="auth-logo">
+            <div className="auth-title">Settle Up Golf</div>
+            <div className="auth-sub">Track rounds, settle bets</div>
+          </div>
+
+          <div className="auth-card">
+            <div className="ct">Reset Password</div>
+            <div style={{ fontSize: 14, color: '#6b9b7a', marginBottom: 16 }}>
+              Enter your email and we'll send you a link to reset your password.
+            </div>
+
+            <div className="mb12">
+              <div className="il">Email</div>
+              <input 
+                className="inp" 
+                type="email" 
+                value={resetEmail} 
+                onChange={e => setResetEmail(e.target.value)} 
+                placeholder="you@email.com" 
+              />
+            </div>
+
+            {error && <div className="auth-err">{error}</div>}
+            {message && <div className="auth-msg">{message}</div>}
+
+            <button 
+              type="button" 
+              onClick={handleForgotPassword} 
+              disabled={loading} 
+              className="btn bp"
+            >
+              {loading ? "Sending..." : "Send Reset Link"}
+            </button>
+
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <button 
+                type="button"
+                onClick={() => { setShowForgotPassword(false); setError(null); setMessage(null); }}
+                style={{ background: 'none', border: 'none', color: '#4ade80', cursor: 'pointer', fontSize: 14 }}
+              >
+                Back to Login
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-wrap">
       <div className="auth-box">
         <div className="auth-logo">
-          <div className="auth-title">SideAction Golf</div>
+          <div className="auth-title">Settle Up Golf</div>
           <div className="auth-sub">Track rounds, settle bets</div>
         </div>
 
@@ -72,6 +151,18 @@ const Auth = () => {
 
             <button type="submit" disabled={loading} className="btn bp">{loading ? "..." : mode === "login" ? "Log In" : "Create Account"}</button>
           </form>
+
+          {mode === "login" && (
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <button 
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                style={{ background: 'none', border: 'none', color: '#6b9b7a', cursor: 'pointer', fontSize: 13 }}
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
 
           <div className="auth-divider">
             <span>or</span>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { T } from '../theme';
 import { supabase } from '../lib/supabase';
 
-const Players = ({ players, setPlayers, isAdmin }) => {
+const Players = ({ players, setPlayers }) => {
   const [sa, setSa] = useState(false);
   const [nm, setNm] = useState("");
   const [ix, setIx] = useState("");
@@ -13,7 +13,6 @@ const Players = ({ players, setPlayers, isAdmin }) => {
 
   // Load inactive players for admin view
   useEffect(() => {
-    if (!isAdmin) return;
     const loadInactive = async () => {
       const { data, error } = await supabase
         .from('players')
@@ -25,7 +24,7 @@ const Players = ({ players, setPlayers, isAdmin }) => {
       }
     };
     loadInactive();
-  }, [isAdmin]);
+  }, []);
 
   const add = () => {
     if (!nm.trim()) return;
@@ -73,7 +72,7 @@ const Players = ({ players, setPlayers, isAdmin }) => {
     <div className="pg">
       <div className="fxb mb10">
         <span className="pg-title">Players</span>
-        {isAdmin && <button className="btn bp bsm" onClick={() => setSa(true)}>+ Add</button>}
+        <button className="btn bp bsm" onClick={() => setSa(true)}>+ Add</button>
       </div>
 
       <div className="mb10">
@@ -123,17 +122,15 @@ const Players = ({ players, setPlayers, isAdmin }) => {
                 <div className="prow-i" style={{ fontSize: '12px', color: T.dim }}>Index: {p.index}</div>
               </div>
             </div>
-            {isAdmin && (
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button className="btn bg bsm" onClick={() => setEdit({ ...p })}>Edit</button>
-                <button className="btn bg bsm" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id, p.name)}>Delete</button>
-              </div>
-            )}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="btn bg bsm" onClick={() => setEdit({ ...p })}>Edit</button>
+              <button className="btn bg bsm" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => rm(p.id, p.name)}>Delete</button>
+            </div>
           </div>
         ))}
       </div>
 
-      {isAdmin && inactive.length > 0 && (
+      {inactive.length > 0 && (
         <>
           <div className="dvd" />
           <div className="mb10" style={{ fontSize: 14, color: T.dim, fontWeight: 600 }}>Inactive Players</div>

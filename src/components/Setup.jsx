@@ -14,7 +14,8 @@ const Setup = ({ rp, course, onConfirm }) => {
     if (t === GT.STROKE) Object.assign(g, { net: true, wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
     else if (t === GT.MATCH) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerFront: 5, wagerBack: 5, wagerOverall: 10 });
     else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: false, skinsMode: "pot", potPerPlayer: 20 });
-    else Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
+    else if (t === GT.SIXES) Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
+    else if (t === GT.VEGAS) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerPerPoint: 1, flipOnBirdie: true });
     setGames([...games, g]); setSa(false);
   };
   const u = (id, up) => setGames(games.map(g => g.id === id ? { ...g, ...up } : g));
@@ -100,12 +101,13 @@ const Setup = ({ rp, course, onConfirm }) => {
         <button className="btn bs" onClick={() => add(GT.MATCH)}>Match</button>
         <button className="btn bs" onClick={() => add(GT.SKINS)}>Skins</button>
         <button className="btn bs" onClick={() => add(GT.SIXES)}>6-6-6</button>
+        <button className="btn bs" onClick={() => add(GT.VEGAS)}>Vegas</button>
       </div></div>}
 
       {games.map(g => (
         <div key={g.id} className="cd">
           <div className="fxb mb6">
-            <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : "6-6-6"}</span>
+            <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : g.type === GT.SIXES ? "6-6-6" : "Vegas"}</span>
             <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => setGames(games.filter(x => x.id !== g.id))}>Remove</button>
           </div>
           {g.type === GT.STROKE && <>
@@ -192,6 +194,22 @@ const Setup = ({ rp, course, onConfirm }) => {
               <button className="bg" onClick={() => u(g.id, { pairs: sixPairs() })}>Randomize</button>
             </div>
             <div style={{ fontSize: 13, color: T.dim }}>{(g.pairs || []).map((p, i) => <div key={i} style={{ padding: "2px 0" }}>{p.l}: {n[p.t1[0]]}&{n[p.t1[1]]} vs {n[p.t2[0]]}&{n[p.t2[1]]}</div>)}</div>
+          </>}
+          {g.type === GT.VEGAS && <>
+            <div className="fx g6 mb8" style={{ justifyContent: "center" }}>
+              <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.accD + "22", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team1[0]}`}>{n[g.team1[0]]}</span> & <span className={`pc${g.team1[1]}`}>{n[g.team1[1]]}</span></div>
+              <span style={{ color: T.dim, fontWeight: 700, fontSize: 13 }}>vs</span>
+              <div style={{ flex: 1, textAlign: "center", padding: 8, borderRadius: 10, background: T.red + "15", fontSize: 14, fontWeight: 600 }}><span className={`pc${g.team2[0]}`}>{n[g.team2[0]]}</span> & <span className={`pc${g.team2[1]}`}>{n[g.team2[1]]}</span></div>
+            </div>
+            <button className="btn bg mb10" style={{ width: "100%" }} onClick={() => {
+              const c = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]];
+              const cur = c.findIndex(x => x[0] === g.team1[0] && x[1] === g.team1[1]);
+              const nx = c[(cur + 1) % 3];
+              u(g.id, { team1: [nx[0], nx[1]], team2: [nx[2], nx[3]] });
+            }}>Swap Teams</button>
+            <div className="mb10"><div className="il">$/point</div><input className="inp" type="number" step="0.05" value={g.wagerPerPoint} onChange={e => u(g.id, { wagerPerPoint: parseFloat(e.target.value) || 0 })} /></div>
+            <Tog label="Flip on Birdie" v={g.flipOnBirdie} onChange={v => u(g.id, { flipOnBirdie: v })} />
+            <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>When a player makes birdie or better, the opposing team's number is reversed.</div>
           </>}
         </div>
       ))}

@@ -15,6 +15,13 @@ No test framework is configured. Production deploys automatically via Vercel on 
 
 ESLint flat config (v9+) allows unused variables matching `^[A-Z_]` (so `GT`, `PC`, `TT` constants won't trigger errors). **Run `npm run build` and `npm run lint` before pushing** — Vercel auto-deploys on push to `main` and a broken build takes the production app down.
 
+**Deployment workflow:**
+1. Make changes locally
+2. Run `npm run build` and `npm run lint` to validate
+3. Commit with descriptive message (include `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` for AI-assisted changes)
+4. Push to `main` — Vercel deployment starts automatically (30-60 seconds to live)
+5. Monitor deployment at vercel.com/dashboard if issues arise
+
 ## Architecture
 
 Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-time betting/settlement and multi-group tournament mode. React 19 with Vite, no TypeScript. Supabase for auth and cloud storage. PWA-enabled (installable via Add to Home Screen).
@@ -27,6 +34,8 @@ Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-
 - `session` truthy → render the app, load data from Supabase
 
 On login, data loads from Supabase with localStorage as write-through cache. Players and courses are now **global shared data** protected by admin-only write access via RLS. Regular users can only modify their personal favorites. Guest players exist only for the current round session.
+
+**Profile System:** Each user has a profile with `linked_player_id` (optional) that references a global player. When set, TournamentSetup auto-selects this player on step 2. Profiles also store `display_name` and `role` ('user' or 'admin').
 
 ### Persistence Pattern
 
@@ -69,7 +78,7 @@ Multi-group tournament system with cross-device sync via Supabase. All tournamen
   - **Standard** (4 steps): basics → players (min 4) → groups (2-4 per group, min 2 groups) → skins
   - **Ryder Cup** (6 steps): basics + format → players (even count) → team assignment → match creation → foursome assignment → skins
 - **TournamentJoin** — fetches tournament by code, user picks their group/player
-- **TournamentLobby** — share code display, group roster, host starts tournament
+- **TournamentLobby** — share code display, group roster, host can edit player handicaps/reorder groups (setup phase only), host starts tournament
 - **TournamentScore** — group scorecard (hole view + card view), mirrors `Scoring.jsx` patterns. Player picker shown if `playerInfo` is null.
 - **TournamentBoard** — cross-group leaderboard sorted by to-par; Ryder Cup shows team scoreboard + match results
 - **TournamentNav** — 3-tab bottom nav (Lobby/Score/Board)
@@ -87,7 +96,7 @@ Pure functions with no React dependencies. `calcAll(games, players)` returns `{ 
 - Match: `g.matchups` exists → individual 1v1 pairs (e.g. `[[0,1],[2,3]]`); absent → 2v2 best-ball with `team1`/`team2`. Both use `wagerFront`/`wagerBack`/`wagerOverall`.
 
 **Special result shapes:**
-- Vegas: Returns `vegasData: { team1TotalPoints, team2TotalPoints, t1N, t2N }` + `holeResults` array for hole-by-hole table rendering
+- Vegas: Returns `vegasData: { team1TotalPoints, team2TotalPoints, t1N, t2N }` + `holeResults` array for hole-by-hole table rendering. Wager is per team; payouts are split 4 ways (2 losers × 2 winners), so divide net points by 4, not 2.
 - 6-6-6: Returns `segmentScores` array with team matchup details for each 6-hole segment
 - Skins: Returns `holeResults` array with winner info (`w` = winner index, `v` = skin value) for hole-by-hole table
 

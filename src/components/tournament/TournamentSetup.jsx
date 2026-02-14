@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { T, TT, PC } from '../../theme';
 import Tog from '../Toggle';
 
-const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onComplete }) => {
+const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, profile, onComplete }) => {
   const [step, setStep] = useState(1);
+  const hasAutoSelectedRef = useRef(false);
 
   // Step 1: Basics
   const [name, setName] = useState('New Tournament');
@@ -206,6 +207,18 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, onC
   const skinsStep = isRC ? 6 : 4;
   const prevSkinsStep = isRC ? 5 : 3;
   const prevFoursomeStep = isRC ? 4 : null;
+
+  // Auto-select linked profile player when entering step 2
+  useEffect(() => {
+    if (step === 2 && profile?.linked_player_id && savedPlayers.length > 0 && !hasAutoSelectedRef.current) {
+      const linkedPlayer = savedPlayers.find(p => p.id === profile.linked_player_id);
+      if (linkedPlayer) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSelectedPlayers([{ ...linkedPlayer }]);
+        hasAutoSelectedRef.current = true;
+      }
+    }
+  }, [step, profile, savedPlayers]);
 
   return (
     <div className="pg">

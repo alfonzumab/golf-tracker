@@ -299,23 +299,26 @@ function cVegas(g, pl) {
   }
   
   // Calculate payouts
+  // Wager is per team: if team wins by 9 points at $1/pt, total payout is $9
+  // Each person on winning team receives $4.50, each person on losing team pays $4.50
   const pay = [];
   const netDiff = team1TotalPoints - team2TotalPoints;
   
   if (netDiff > 0) {
     // Team 1 wins - each team 2 player pays each team 1 player
-    const amountPerPlayer = (netDiff * w) / 2;
+    // Total team payout = netDiff * w, split among 4 payout entries (2 losers × 2 winners)
+    const amountPerPayout = (netDiff * w) / 4;
     for (const loser of t2) {
       for (const winner of t1) {
-        pay.push({ f: loser, t: winner, a: amountPerPlayer });
+        pay.push({ f: loser, t: winner, a: amountPerPayout });
       }
     }
   } else if (netDiff < 0) {
     // Team 2 wins - each team 1 player pays each team 2 player
-    const amountPerPlayer = (Math.abs(netDiff) * w) / 2;
+    const amountPerPayout = (Math.abs(netDiff) * w) / 4;
     for (const loser of t1) {
       for (const winner of t2) {
-        pay.push({ f: loser, t: winner, a: amountPerPlayer });
+        pay.push({ f: loser, t: winner, a: amountPerPayout });
       }
     }
   }

@@ -180,6 +180,12 @@ const Setup = ({ rp, course, onConfirm }) => {
             <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
             <Tog label="Carry-over" v={g.carryOver} onChange={v => u(g.id, { carryOver: v })} />
             <div><div className="il">{g.skinsMode === "perSkin" ? "$/skin" : "Pot $/player"}</div><input className="inp" type="number" value={g.skinsMode === "perSkin" ? (g.amountPerSkin || 5) : (g.potPerPlayer || 20)} onChange={e => u(g.id, { [g.skinsMode === "perSkin" ? "amountPerSkin" : "potPerPlayer"]: parseFloat(e.target.value) || 0 })} /></div>
+            <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>
+              {g.skinsMode === "perSkin" 
+                ? `Example: With 6 skins, a player could lose up to $${((g.amountPerSkin || 5) * 6).toFixed(0)} (${g.amountPerSkin || 5}/skin × 6 skins)`
+                : `Example: ${players.length} players × $${g.potPerPlayer || 20} = $${(players.length * (g.potPerPlayer || 20)).toFixed(0)} pot. If 5 skins won: $${((players.length * (g.potPerPlayer || 20)) / 5).toFixed(0)}/skin`
+              }
+            </div>
           </>}
           {g.type === GT.SIXES && <>
             <div className="il mb6">Format</div>
@@ -207,7 +213,7 @@ const Setup = ({ rp, course, onConfirm }) => {
               const nx = c[(cur + 1) % 3];
               u(g.id, { team1: [nx[0], nx[1]], team2: [nx[2], nx[3]] });
             }}>Swap Teams</button>
-            <div className="mb10"><div className="il">$/point</div><input className="inp" type="number" step="0.05" value={g.wagerPerPoint} onChange={e => u(g.id, { wagerPerPoint: parseFloat(e.target.value) || 0 })} /></div>
+            <div className="mb10"><div className="il">$/point (per team)</div><input className="inp" type="number" step="0.05" value={g.wagerPerPoint} onChange={e => u(g.id, { wagerPerPoint: parseFloat(e.target.value) || 0 })} /></div>
             <Tog label="Flip on Birdie" v={g.flipOnBirdie} onChange={v => u(g.id, { flipOnBirdie: v })} />
             <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>When a player makes birdie or better, the opposing team's number is reversed.</div>
           </>}

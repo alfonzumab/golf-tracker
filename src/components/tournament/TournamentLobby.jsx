@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { T, TT } from '../../theme';
+import { calcCH, getStrokes } from '../../utils/golf';
 
-const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
+const TournamentLobby = ({ tournament, isHost, onStart, onBack, onUpdateTournament }) => {
   const [copied, setCopied] = useState(false);
   const [showLeave, setShowLeave] = useState(false);
+  const [editingIndex, setEditingIndex] = useState(null); // { groupIdx, playerIdx }
+  const [tempIndex, setTempIndex] = useState('');
 
   if (!tournament) return null;
 
@@ -41,6 +44,63 @@ const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
   };
 
   const totalPlayers = tournament.groups.reduce((sum, g) => sum + g.players.length, 0);
+
+  const startEditIndex = (groupIdx, playerIdx, currentIndex) => {
+    setEditingIndex({ groupIdx, playerIdx });
+    setTempIndex(currentIndex.toString());
+  };
+
+  const saveIndex = () => {
+    if (!editingIndex || !onUpdateTournament) return;
+    const newIndex = parseFloat(tempIndex);
+    if (isNaN(newIndex)) {
+      setEditingIndex(null);
+      return;
+    }
+
+    const updatedGroups = tournament.groups.map((g, gi) => {
+      if (gi !== editingIndex.groupIdx) return g;
+      return {
+        ...g,
+        players: g.players.map((p, pi) => {
+          if (pi !== editingIndex.playerIdx) return p;
+          
+          // Recalculate course handicap and stroke holes with new index
+          const tee = tournament.teeData;
+          const totalPar = tee.pars.reduce((a, b) => a + b, 0);
+          const courseHandicap = calcCH(newIndex, tee.slope, tee.rating, totalPar);
+          const strokeHoles = getStrokes(courseHandicap, tee.handicaps);
+          
+          return {
+            ...p,
+            index: newIndex,
+            courseHandicap,
+            strokeHoles
+          };
+        })
+      };
+    });
+
+    onUpdateTournament({ ...tournament, groups: updatedGroups });
+    setEditingIndex(null);
+    setTempIndex('');
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setTempIndex('');
+  };
+
+  const moveGroup = (fromIdx, direction) => {
+    if (!onUpdateTournament) return;
+    const toIdx = direction === 'up' ? fromIdx - 1 : fromIdx + 1;
+    if (toIdx < 0 || toIdx >= tournament.groups.length) return;
+
+    const updatedGroups = [...tournament.groups];
+    [updatedGroups[fromIdx], updatedGroups[toIdx]] = [updatedGroups[toIdx], updatedGroups[fromIdx]];
+    
+    onUpdateTournament({ ...tournament, groups: updatedGroups });
+  };
 
   return (
     <div className="pg">
@@ -114,10 +174,66 @@ const TournamentLobby = ({ tournament, isHost, onStart, onBack }) => {
           </div>
           {tournament.groups.map((g, gi) => (
             <div key={gi} className="t-grp">
-              <div className="t-grp-h">Group {gi + 1}</div>
+              <div className="t-grp-h fxb">
+                <span>Group {gi + 1}</span>
+                {isHost && tournament.status === 'setup' && tournament.groups.length > 1 && (
+                  <div className="fx g4">
+                    <button 
+                      style={{ background: 'none', border: 'none', color: T.acc, cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
+                      onClick={() => moveGroup(gi, 'up')}
+                      disabled={gi === 0}
+                      title="Move up">
+                      ▲
+                    </button>
+                    <button 
+                      style={{ background: 'none', border: 'none', color: T.acc, cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
+                      onClick={() => moveGroup(gi, 'down')}
+                      disabled={gi === tournament.groups.length - 1}
+                      title="Move down">
+                      ▼
+                    </button>
+                  </div>
+                )}
+              </div>
               {g.players.map((p, pi) => (
-                <div key={pi} className="t-grp-p">
-                  {p.name} <span style={{ fontSize: 12, color: T.dim }}>({p.index})</span>
+                <div key={pi} className="t-grp-p fxb">
+                  <span>{p.name}</span>
+                  {editingIndex?.groupIdx === gi && editingIndex?.playerIdx === pi ? (
+                    <div className="fx g4" style={{ alignItems: 'center' }}>
+                      <input 
+                        className="inp" 
+                        type="number" 
+                        step="0.1"
+                        style={{ width: '60px', padding: '2px 6px', fontSize: 12 }}
+                        value={tempIndex}
+                        onChange={e => setTempIndex(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveIndex();
+                          if (e.key === 'Escape') cancelEdit();
+                        }}
+                        autoFocus
+                      />
+                      <button 
+                        style={{ background: 'none', border: 'none', color: T.acc, cursor: 'pointer', fontSize: 16, padding: 2 }}
+                        onClick={saveIndex}
+                        title="Save">
+                        ✓
+                      </button>
+                      <button 
+                        style={{ background: 'none', border: 'none', color: T.red, cursor: 'pointer', fontSize: 16, padding: 2 }}
+                        onClick={cancelEdit}
+                        title="Cancel">
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <span 
+                      style={{ fontSize: 12, color: isHost && tournament.status === 'setup' ? T.acc : T.dim, cursor: isHost && tournament.status === 'setup' ? 'pointer' : 'default' }}
+                      onClick={() => isHost && tournament.status === 'setup' && startEditIndex(gi, pi, p.index)}
+                      title={isHost && tournament.status === 'setup' ? 'Click to edit' : ''}>
+                      ({p.index})
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

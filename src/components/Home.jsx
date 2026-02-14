@@ -341,15 +341,17 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
       )}
 
       {/* New round section — always available */}
-      {round && !showNewRound ? (
-        <button className="btn bg" onClick={() => setShowNewRound(true)}>Start a Different Round</button>
-      ) : (
-        renderNewRound()
-      )}
+      <div className="mb10">
+        {round && !showNewRound ? (
+          <button className="btn bg" onClick={() => setShowNewRound(true)}>Start a Different Round</button>
+        ) : (
+          renderNewRound()
+        )}
+      </div>
 
       {/* Tournament button */}
       {!tournament && (
-        <button className="btn bs mb10" style={{ fontSize: 15 }} onClick={() => go("thub")}>
+        <button className="btn bs" style={{ fontSize: 15 }} onClick={() => go("thub")}>
           Tournament Mode
         </button>
       )}

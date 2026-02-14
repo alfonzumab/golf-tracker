@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const Auth = () => {
@@ -12,6 +12,13 @@ const Auth = () => {
   // Forgot password state
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+
+  // PWA install state
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,6 +74,85 @@ const Auth = () => {
     }
     setLoading(false);
   };
+
+  // PWA install detection
+  useEffect(() => {
+    // Check if already installed
+    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                      window.navigator.standalone ||
+                      document.referrer.includes('android-app://');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsStandalone(standalone);
+
+    // Detect iOS
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    setIsIOS(iOS);
+
+    // Listen for install prompt (Android/Chrome/Edge)
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (isIOS) {
+      setShowIOSInstructions(true);
+      return;
+    }
+
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+    }
+    
+    setDeferredPrompt(null);
+  };
+
+  // iOS install instructions modal
+  if (showIOSInstructions) {
+    return (
+      <div className="auth-wrap">
+        <div className="auth-box">
+          <div className="auth-logo">
+            <div className="auth-title">Settle Up Golf</div>
+            <div className="auth-sub">Track rounds, settle bets</div>
+          </div>
+
+          <div className="auth-card">
+            <div className="ct">Install on iOS</div>
+            <div style={{ fontSize: 14, color: '#6b9b7a', marginBottom: 16, lineHeight: 1.6 }}>
+              To install this app on your iPhone or iPad:
+              <ol style={{ marginTop: 12, paddingLeft: 20 }}>
+                <li style={{ marginBottom: 8 }}>Tap the <strong>Share</strong> button <span style={{ fontSize: 18 }}>⎋</span> in Safari</li>
+                <li style={{ marginBottom: 8 }}>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                <li>Tap <strong>"Add"</strong> in the top right</li>
+              </ol>
+            </div>
+
+            <button 
+              type="button" 
+              onClick={() => setShowIOSInstructions(false)}
+              className="btn bp"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // If showing forgot password form
   if (showForgotPassword) {
@@ -177,6 +263,30 @@ const Auth = () => {
             </svg>
             {loading ? "..." : "Continue with Google"}
           </button>
+
+          {/* PWA Install Button */}
+          {!isStandalone && (isInstallable || isIOS) && (
+            <>
+              <div className="auth-divider">
+                <span>or</span>
+              </div>
+              <button 
+                onClick={handleInstallClick} 
+                className="btn bs"
+                style={{ 
+                  background: '#4ade80', 
+                  color: '#0b1a10', 
+                  border: 'none',
+                  fontWeight: 600
+                }}
+              >
+                📱 {isIOS ? 'Add to Home Screen' : 'Install App'}
+              </button>
+              <div style={{ fontSize: 12, color: '#6b9b7a', textAlign: 'center', marginTop: 8 }}>
+                Install for offline access & faster loading
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

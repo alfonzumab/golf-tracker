@@ -499,8 +499,23 @@ export default function App() {
   };
 
   // Handle profile updates
-  const handleUpdateProfile = (updates) => {
+  const handleUpdateProfile = async (updates) => {
     setProfile(prev => ({ ...prev, ...updates }));
+    
+    // If handicap_index was updated and user has a linked player, sync it to the players list
+    if (updates.handicap_index !== undefined && profile?.linked_player_id) {
+      const linkedPlayerId = profile.linked_player_id;
+      const updatedPlayers = players.map(p => 
+        p.id === linkedPlayerId 
+          ? { ...p, index: updates.handicap_index } 
+          : p
+      );
+      
+      // Only update if the player was actually found and changed
+      if (updatedPlayers.some((p, i) => p.id === linkedPlayerId && p.index !== players[i].index)) {
+        await handleSetPlayers(updatedPlayers);
+      }
+    }
   };
 
   // Loading state

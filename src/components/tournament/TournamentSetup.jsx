@@ -47,7 +47,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
   const course = courses.find(c => c.id === courseId) || courses[0];
   const teeName = course?.tees?.[0]?.name || '';
   const isRC = format === 'rydercup';
-  const totalSteps = isRC ? 6 : 4;
+  const totalSteps = isRC ? 5 : 4;
 
   // Step 1 validation
   const step1Valid = name.trim() && course;
@@ -137,11 +137,12 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
     }
   };
 
-  // Step 4 (rydercup): Matches
+  // Step 4 (rydercup): Foursomes & Matches (combined)
   const startAddMatch = (type) => setAddingMatch({ type, t1: [], t2: [] });
 
   const isPlayerAssigned = (teamSide, playerIdx) => {
-    return matches.some(m => m.t1.includes(playerIdx) || m.t2.includes(playerIdx));
+    const key = teamSide === 1 ? 't1' : 't2';
+    return matches.some(m => m[key].includes(playerIdx));
   };
 
   const toggleMatchPlayer = (teamSide, playerIdx) => {
@@ -161,20 +162,6 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
     const need = addingMatch.type === 'singles' ? 1 : 2;
     if (addingMatch.t1.length !== need || addingMatch.t2.length !== need) return;
 
-    // For singles matches, both players must be in the same foursome
-    if (addingMatch.type === 'singles' && foursomes.length > 0) {
-      const player1Idx = addingMatch.t1[0];
-      const player2Idx = addingMatch.t2[0];
-
-      const player1Foursome = foursomes.find(f => f.players.includes(player1Idx));
-      const player2Foursome = foursomes.find(f => f.players.includes(player2Idx));
-
-      if (!player1Foursome || !player2Foursome || player1Foursome !== player2Foursome) {
-        alert('For singles matches, both players must be in the same foursome.');
-        return;
-      }
-    }
-
     setMatches([...matches, { ...addingMatch }]);
     setAddingMatch(null);
   };
@@ -185,34 +172,20 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
 
   // Build final data
   const buildRyderCupGroups = () => {
-    if (foursomes.length > 0) {
-      // Use manually assigned foursomes
-      return foursomes.map(f => ({
-        players: f.players.map(playerIdx => {
-          const player = [...teamA, ...teamB][playerIdx];
-          return {
-            id: player.id, name: player.name, index: player.index, scores: Array(18).fill(null)
-          };
-        })
-      }));
-    } else {
-      // Default: one group per match
-      return matches.map(m => {
-        const t1Players = m.t1.map(i => teamA[i]);
-        const t2Players = m.t2.map(i => teamB[i]);
-        return {
-          players: [...t1Players, ...t2Players].map(p => ({
-            id: p.id, name: p.name, index: p.index, scores: Array(18).fill(null)
-          }))
-        };
-      });
-    }
+    // Each match creates its own foursome/group
+    return matches.map(m => {
+      const t1Players = m.t1.map(i => teamA[i]);
+      const t2Players = m.t2.map(i => teamB[i]);
+      return {
+        players: [...t1Players, ...t2Players].map(p => ({
+          id: p.id, name: p.name, index: p.index, scores: Array(18).fill(null)
+        }))
+      };
+    });
   };
 
-  const foursomeStep = isRC ? 5 : null;
-  const skinsStep = isRC ? 6 : 4;
-  const prevSkinsStep = isRC ? 5 : 3;
-  const prevFoursomeStep = isRC ? 4 : null;
+  const skinsStep = isRC ? 5 : 4;
+  const prevSkinsStep = isRC ? 4 : 3;
 
   // Auto-select linked profile player when entering step 2
   useEffect(() => {
@@ -572,14 +545,14 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
         </div>
       )}
 
-      {/* Step 4 (rydercup): Matches */}
+      {/* Step 4 (rydercup): Foursomes & Matches */}
       {step === 4 && isRC && (
         <div>
           <div className="cd">
             <div className="t-step">Step 4 of {totalSteps}</div>
-            <div className="t-step-title">Create Matches</div>
+            <div className="t-step-title">Foursomes & Matches</div>
             <p style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
-              Set up best-ball (2v2) and singles (1v1) matches between teams.
+              Build your foursomes by selecting players for each match. Each foursome will play together and compete in match play.
             </p>
             <div className="fx g6">
               <button className="btn bg" style={{ flex: 1 }} onClick={() => startAddMatch('bestball')}>+ Best Ball (2v2)</button>
@@ -686,134 +659,11 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
           <div className="fx g8">
             <button className="btn bs" style={{ flex: 1 }} onClick={() => setStep(3)}>{"<"} Back</button>
             <button className="btn bp" style={{ flex: 2 }} disabled={!matchesValid} onClick={() => setStep(5)}>
-              Next: Games {">"}
+              Next: Skins {">"}
             </button>
           </div>
         </div>
       )}
-
-      {/* Foursome assignment step (step 5 rydercup only) */}
-      {step === foursomeStep && (() => {
-        const allPlayers = [...teamA, ...teamB];
-        const assignedPlayers = new Set(foursomes.flatMap(f => f.players));
-        const availablePlayers = allPlayers.map((_, i) => i).filter(i => !assignedPlayers.has(i));
-
-        return (
-          <div>
-            <div className="t-step">Step {foursomeStep} of {totalSteps}</div>
-            <div className="t-step-title">Assign Foursomes (Optional)</div>
-            <p style={{ fontSize: 13, color: T.dim, marginBottom: 16 }}>
-              Group players into foursomes for side games. Players in the same foursome can play Stroke, Skins, or Match games together.
-              If you skip this, each match becomes its own group.
-            </p>
-
-            <div className="fx g6 mb12">
-              <button className="btn bg" disabled={availablePlayers.length < 2} onClick={() => {
-                if (availablePlayers.length >= 2) {
-                  // Smart foursome assignment considering singles matches
-                  const singlesPairs = new Map();
-
-                  // Find all singles match pairs
-                  matches.forEach(match => {
-                    if (match.type === 'singles') {
-                      const player1 = match.t1[0];
-                      const player2 = match.t2[0];
-                      singlesPairs.set(player1, player2);
-                      singlesPairs.set(player2, player1);
-                    }
-                  });
-
-                  // Group players by their singles match relationships
-                  const groups = [];
-                  const processed = new Set();
-
-                  availablePlayers.forEach(playerIdx => {
-                    if (processed.has(playerIdx)) return;
-
-                    const group = [playerIdx];
-                    processed.add(playerIdx);
-
-                    // If this player has a singles partner, add them
-                    const partner = singlesPairs.get(playerIdx);
-                    if (partner && availablePlayers.includes(partner) && !processed.has(partner)) {
-                      group.push(partner);
-                      processed.add(partner);
-                    }
-
-                    // Fill the group up to 4 players
-                    availablePlayers.forEach(otherIdx => {
-                      if (!processed.has(otherIdx) && group.length < 4) {
-                        group.push(otherIdx);
-                        processed.add(otherIdx);
-                      }
-                    });
-
-                    if (group.length >= 2) {
-                      groups.push(group);
-                    }
-                  });
-
-                  // Create foursomes from the groups
-                  const newFoursomes = groups.map(group => ({ players: group }));
-                  setFoursomes([...foursomes, ...newFoursomes]);
-                }
-              }}>Add Foursome</button>
-              <button className="btn bs" onClick={() => setFoursomes([])}>Clear All</button>
-            </div>
-
-            {foursomes.map((f, fi) => (
-              <div key={fi} className="cd mb8">
-                <div className="fxb mb6">
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Foursome {fi + 1}</span>
-                  <button style={{ background: 'none', border: 'none', color: T.red, cursor: 'pointer', fontSize: 14, padding: 4 }}
-                    onClick={() => setFoursomes(foursomes.filter((_, i) => i !== fi))}>x</button>
-                </div>
-                <div className="fx fw g6">
-                  {f.players.map(playerIdx => {
-                    const player = allPlayers[playerIdx];
-                    return (
-                      <div key={playerIdx} className="chip sel" style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          // Remove player from foursome
-                          const newPlayers = f.players.filter(p => p !== playerIdx);
-                          if (newPlayers.length > 0) {
-                            setFoursomes(foursomes.map((f, i) => i === fi ? { ...f, players: newPlayers } : f));
-                          } else {
-                            setFoursomes(foursomes.filter((_, i) => i !== fi));
-                          }
-                        }}>
-                        {player.name}
-                      </div>
-                    );
-                  })}
-                  {f.players.length < 4 && (
-                    <select style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${T.bdr}` }}
-                      onChange={e => {
-                        const newPlayerIdx = parseInt(e.target.value);
-                        if (newPlayerIdx >= 0 && !f.players.includes(newPlayerIdx)) {
-                          setFoursomes(foursomes.map((f, i) => i === fi ? { ...f, players: [...f.players, newPlayerIdx] } : f));
-                        }
-                        e.target.value = '';
-                      }}>
-                      <option value="">Add player...</option>
-                      {allPlayers.map((p, i) => (
-                        !assignedPlayers.has(i) ? (
-                          <option key={i} value={i}>{p.name}</option>
-                        ) : null
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            <div className="fx g6">
-              <button className="btn bs" onClick={() => setStep(prevFoursomeStep)}>Back</button>
-              <button className="btn bp" onClick={() => setStep(skinsStep)}>Continue</button>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Skins step (step 4 standard, step 6 rydercup) */}
       {step === skinsStep && (() => {

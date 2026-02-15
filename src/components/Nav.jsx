@@ -10,7 +10,6 @@ const Nav = ({ pg, go, hr }) => (
   <div className="nav">
     <button className={`ni ${pg === "home" ? "on" : ""}`} onClick={() => go("home")}><span className="nii">{ICN.home}</span>Home</button>
     {hr && <button className={`ni ${pg === "score" ? "on" : ""}`} onClick={() => go("score")}><span className="nii">{ICN.score}</span>Score</button>}
-    {hr && <button className={`ni ${pg === "bets" ? "on" : ""}`} onClick={() => go("bets")}><span className="nii">{ICN.bets}</span>Bets</button>}
     <button className={`ni ${pg === "players" ? "on" : ""}`} onClick={() => go("players")}><span className="nii">{ICN.players}</span>Players</button>
     <button className={`ni ${pg === "courses" ? "on" : ""}`} onClick={() => go("courses")}><span className="nii">{ICN.courses}</span>Courses</button>
     <button className={`ni ${pg === "hist" ? "on" : ""}`} onClick={() => go("hist")}><span className="nii">{ICN.hist}</span>History</button>

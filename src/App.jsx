@@ -13,7 +13,7 @@ import {
   joinRound, generateShareCode,
   finishRound, registerRoundParticipant, reopenRound
 } from './utils/storage';
-import { createTournament, getTournament, startTournament, finishTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo, registerTournamentParticipant, loadTournamentHistory, reopenTournament } from './utils/tournamentStorage';
+import { createTournament, getTournament, saveTournamentSetup, startTournament, finishTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo, registerTournamentParticipant, loadTournamentHistory, reopenTournament } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -24,7 +24,6 @@ import Players from './components/Players';
 import Courses from './components/Courses';
 import Setup from './components/Setup';
 import Scoring from './components/Scoring';
-import Bets from './components/Bets';
 import Hist from './components/History';
 import Profile from './components/Profile';
 import TournamentHub from './components/tournament/TournamentHub';
@@ -379,6 +378,17 @@ export default function App() {
     if (tournament) updateGroupGames(tournament.shareCode, groupIdx, games);
   };
 
+  const handleUpdateTournament = async (updatedTournament) => {
+    // Update local state immediately for instant UI feedback
+    setTournament(updatedTournament);
+
+    // Persist to Supabase
+    const result = await saveTournamentSetup(updatedTournament);
+    if (result.error) {
+      console.error('Failed to update tournament:', result.error);
+    }
+  };
+
   const handleSelectTournamentPlayer = (info) => {
     setTournamentGuest(info);
     saveGuestInfo(info);
@@ -533,7 +543,7 @@ export default function App() {
   const isHost = tournament && session && tournament.hostUserId === session.user.id;
 
   const titles = {
-    home: "Settle Up Golf", score: "Scoring", bets: "Bets & Settlement",
+    home: "Settle Up Golf", score: "Scoring",
     players: "Players", courses: "Courses", hist: "History", setup: "Game Setup",
     thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament",
     tscore: "Scoring", tboard: "Leaderboard", profile: "Profile"
@@ -570,11 +580,10 @@ export default function App() {
         setSetup(null); setSetupCourse(null); go("score");
       }} />}
       {pg === "score" && round && <Scoring round={round} updateScore={us} />}
-      {pg === "bets" && round && <Bets round={round} />}
       {pg === "hist" && <Hist
         rounds={rounds}
         tournamentHistory={tournamentHistory}
-        onLoad={r => { setRound({ ...r }); sv("currentRound", r); go("bets"); }}
+        onLoad={r => { setRound({ ...r }); sv("currentRound", r); go("score"); }}
         onReopenRound={handleReopenRound}
         onReopenTournament={handleReopenTournament}
         isHost={(t) => t && session && t.hostUserId === session.user.id}
@@ -585,7 +594,7 @@ export default function App() {
       {/* Tournament pages */}
       {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}
       {pg === "tsetup" && <TournamentSetup courses={courses} players={players} selectedCourseId={selectedCourseId} onComplete={handleCreateTournament} />}
-      {pg === "tlobby" && <TournamentLobby tournament={tournament} isHost={isHost} onStart={handleStartTournament} onBack={leaveTournament} />}
+      {pg === "tlobby" && <TournamentLobby tournament={tournament} isHost={isHost} onStart={handleStartTournament} onBack={leaveTournament} onUpdateTournament={handleUpdateTournament} />}
       {pg === "tjoin" && joinCode && <TournamentJoin code={joinCode} onJoined={handleJoined} onBack={() => go('thub')} />}
       {pg === "tscore" && tournament && <TournamentScore tournament={tournament} playerInfo={tournamentGuest} onUpdateScore={handleTournamentScoreUpdate} onSelectPlayer={handleSelectTournamentPlayer} onUpdateGroupGames={handleUpdateGroupGames} />}
       {pg === "tboard" && tournament && <TournamentBoard tournament={tournament} isHost={isHost} onFinish={handleFinishTournament} readOnly={viewingFinishedTournament} />}

@@ -13,7 +13,7 @@ import {
   joinRound, generateShareCode,
   finishRound, registerRoundParticipant, reopenRound
 } from './utils/storage';
-import { createTournament, getTournament, saveTournamentSetup, startTournament, finishTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo, registerTournamentParticipant, loadTournamentHistory, reopenTournament } from './utils/tournamentStorage';
+import { createTournament, getTournament, saveTournamentSetup, startTournament, finishTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, saveActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo, registerTournamentParticipant, loadTournamentHistory, reopenTournament } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
 import Auth from './components/Auth';
@@ -118,6 +118,19 @@ export default function App() {
       // Load tournament history
       const th = await loadTournamentHistory();
       setTournamentHistory(th);
+
+      // Auto-resume live/setup tournament from history if none loaded from localStorage
+      if (!activeCode && th.length > 0) {
+        const liveTournament = th.find(t => t.status === 'live' || t.status === 'setup');
+        if (liveTournament) {
+          setTournament(liveTournament);
+          tournamentStartedRef.current = liveTournament.status === 'live';
+          saveActiveTournament(liveTournament.shareCode);
+          // Restore guest info if available
+          const guest = loadGuestInfo();
+          if (guest) setTournamentGuest(guest);
+        }
+      }
     };
     load();
   }, [session]);

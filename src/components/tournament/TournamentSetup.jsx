@@ -81,6 +81,12 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
     setSelectedPlayers(selectedPlayers.filter(sp => sp.id !== id));
   };
 
+  const updatePlayerIndex = (id, newIndex) => {
+    setSelectedPlayers(selectedPlayers.map(p =>
+      p.id === id ? { ...p, index: parseFloat(newIndex) || 0 } : p
+    ));
+  };
+
 
 
   const step2Valid = isRC ? selectedPlayers.length >= 4 && selectedPlayers.length % 2 === 0 : selectedPlayers.length >= 4;
@@ -393,7 +399,17 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
                       {p.name}
                       {p.isGuest && <span style={{ fontSize: 9, background: T.blue + "22", color: T.blue, padding: "1px 4px", borderRadius: 3, marginLeft: 4 }}>Guest</span>}
                     </span>
-                    <span style={{ fontSize: 13, color: T.dim }}>Idx {p.index}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: T.dim }}>Idx</span>
+                      <input
+                        className="inp ism"
+                        type="number"
+                        step="0.1"
+                        style={{ width: '60px', padding: '4px 6px', fontSize: 13, textAlign: 'center' }}
+                        value={p.index}
+                        onChange={e => updatePlayerIndex(p.id, e.target.value)}
+                      />
+                    </div>
                     <button style={{ background: 'none', border: 'none', color: T.red, cursor: 'pointer', padding: 4, fontSize: 16 }}
                       onClick={() => removeSelectedPlayer(p.id)}>×</button>
                   </div>

@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| `9aa21eb` | Update deployment workflow: add localhost testing step and SQL cleanup rules |
 | `81ab81a` | Add linked player indicator and home course to Players list |
 | `f2b2dac` | Fix earnings tab: per-player breakdown now matches lifetime total |
 | `9f7e4b8` | Add earnings tab to Profile with lifetime earnings tracking |

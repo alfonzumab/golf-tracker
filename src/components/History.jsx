@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { T, PC } from '../theme';
 import { calcAll } from '../utils/calc';
 import { fmt$, enrichPlayer } from '../utils/golf';
+import { calcTournamentSkins } from '../utils/tournamentCalc';
 
 const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, isHost, onViewTournament }) => {
   const [tab, setTab] = useState('rounds');
@@ -10,7 +11,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
   // Share round results
   const shareRound = (r) => {
     const n = r.players.map(p => p.name.split(" ")[0]);
-    const { balances } = calcAll(r.games, r.players);
+    const { results, settlements, balances } = calcAll(r.games, r.players);
 
     let text = `${r.course.name} - ${r.date}\n\n`;
     text += `Scores:\n`;
@@ -23,6 +24,16 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
       const v = -balances[i];
       text += `${n[i]}: ${fmt$(v)}\n`;
     });
+    results.forEach(res => {
+      text += `\n${res.title}:\n`;
+      if (res.details) res.details.forEach(d => { text += `  ${d}\n`; });
+    });
+    if (settlements.length > 0) {
+      text += `\nSettlement:\n`;
+      settlements.forEach(s => {
+        text += `${n[s.from]} > ${n[s.to]}: $${s.amount.toFixed(2)}\n`;
+      });
+    }
 
     if (navigator.share) {
       navigator.share({ title: 'Round Results', text }).catch(() => {});
@@ -58,6 +69,48 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
     allPlayers.forEach((p, i) => {
       const sign = p.toPar > 0 ? '+' : '';
       text += `${i + 1}. ${p.name}: ${sign}${p.toPar}\n`;
+    });
+
+    // Tournament skins
+    const skinsConfig = t.tournamentGames?.find(g => g.type === 'skins');
+    if (skinsConfig) {
+      const teeData = t.course.tees.find(te => te.name === t.teeName);
+      const skinsPlayers = [];
+      t.groups.forEach((g, gi) => {
+        g.players.forEach(p => {
+          const enriched = enrichPlayer(p, teeData);
+          skinsPlayers.push({ ...enriched, groupIdx: gi });
+        });
+      });
+      const sr = calcTournamentSkins(skinsConfig, skinsPlayers);
+      if (sr.totalSkins > 0) {
+        text += `\nTournament Skins:\n`;
+        sr.playerResults.filter(pr => pr.skins > 0).forEach(pr => {
+          text += `  ${pr.name}: ${pr.skins} skin${pr.skins !== 1 ? 's' : ''} (${pr.netPLStr})\n`;
+        });
+      }
+    }
+
+    // Group game results
+    t.groups.forEach((g, gi) => {
+      if (g.games && g.games.length > 0 && g.players.length === 4) {
+        const teeData = t.course.tees.find(te => te.name === t.teeName);
+        const enrichedPlayers = g.players.map(p => enrichPlayer(p, teeData));
+        const { results: groupResults, settlements: groupSett } = calcAll(g.games, enrichedPlayers);
+        const groupN = g.players.map(p => p.name.split(" ")[0]);
+
+        text += `\nGroup ${gi + 1} Games:\n`;
+        groupResults.forEach(res => {
+          text += `${res.title}:\n`;
+          if (res.details) res.details.forEach(d => { text += `  ${d}\n`; });
+        });
+        if (groupSett.length > 0) {
+          text += `Settlement:\n`;
+          groupSett.forEach(s => {
+            text += `  ${groupN[s.from]} > ${groupN[s.to]}: $${s.amount.toFixed(2)}\n`;
+          });
+        }
+      }
     });
 
     if (navigator.share) {

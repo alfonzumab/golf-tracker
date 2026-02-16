@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| `3f63b12` | Enhance sharing: game results, settlements, and website link |
 | `9aa21eb` | Update deployment workflow: add localhost testing step and SQL cleanup rules |
 | `81ab81a` | Add linked player indicator and home course to Players list |
 | `f2b2dac` | Fix earnings tab: per-player breakdown now matches lifetime total |
@@ -21,6 +22,7 @@
 - Cross-device sync (rounds + tournaments)
 - Round sharing via 6-char codes
 - History with settlement details for rounds and tournaments
+- Enhanced sharing: game results + settlements in share text, website link in join-code shares
 - Profile page (display name, linked player, preferred course)
 - Profile earnings tab (lifetime net earnings by opponent)
 - PWA installable on Android/iOS
@@ -49,4 +51,4 @@ All planned features are complete. Project is in maintenance mode.
 
 ---
 
-*Last Updated: 2026-02-15*
+*Last Updated: 2026-02-16*

@@ -81,7 +81,7 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
 
   const shareCode = async (code) => {
     if (navigator.share) {
-      try { await navigator.share({ title: 'Join my round', text: `Join my golf round! Code: ${code}` }); } catch {
+      try { await navigator.share({ title: 'Join my round', text: `Join my golf round! Code: ${code}\n\nsettleup-golf.com` }); } catch {
         // Fallback to copy if share fails
       }
     } else {

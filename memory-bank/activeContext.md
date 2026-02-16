@@ -4,11 +4,9 @@
 **Maintenance mode** — all planned features complete, production app is live.
 
 ## Just Shipped (2026-02-16)
-- **Deployment workflow improvements** — CLAUDE.md now requires localhost testing before pushing to production; added SQL file cleanup rules (archive migrations after applying, delete one-time scripts)
-- **Linked player indicators** — Players list now shows "Linked" badge and home course for players linked to user accounts (uses new `player_links` view in Supabase)
-- **Earnings tab bug fix** — per-player breakdown now uses settlement flows instead of balance comparisons, so the sum matches the lifetime total
-- **Earnings tab** on Profile page — lifetime net earnings + per-opponent breakdown
-- **Memory bank instructions** updated in CLAUDE.md so all AI tools (Cline, Claude Code CLI, VS Code extension) auto-update progress on every commit
+- **Enhanced sharing** — Round shares now include game results (Stroke, Match, Skins, etc.) and settlement details. Tournament shares include skins winners and group game breakdowns. Join-code shares (round + tournament) include settleup-golf.com link.
+- **Deployment workflow improvements** — CLAUDE.md now requires localhost testing before pushing to production; added SQL file cleanup rules
+- **Linked player indicators** — Players list shows "Linked" badge and home course for linked accounts
 
 ## What's Next
 No immediate tasks. User may request:
@@ -25,4 +23,4 @@ No immediate tasks. User may request:
 
 ---
 
-*Last Updated: 2026-02-15*
+*Last Updated: 2026-02-16*

@@ -33,7 +33,7 @@ const TournamentLobby = ({ tournament, isHost, onStart, onBack, onUpdateTourname
       try {
         await navigator.share({
           title: tournament.name,
-          text: `Join my golf tournament! Code: ${tournament.shareCode}`,
+          text: `Join my golf tournament! Code: ${tournament.shareCode}\n\nsettleup-golf.com`,
         });
       } catch {
         // Fallback to copy if share fails

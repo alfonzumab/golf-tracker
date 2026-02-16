@@ -4,13 +4,13 @@
 
 | Commit | Summary |
 |--------|---------|
+| `81ab81a` | Add linked player indicator and home course to Players list |
 | `f2b2dac` | Fix earnings tab: per-player breakdown now matches lifetime total |
 | `9f7e4b8` | Add earnings tab to Profile with lifetime earnings tracking |
 | `d5c4691` | Improve tournament UX: auto-select linked player, cache history, fix lint |
 | `4824cd5` | Fix Ryder Cup match creation: resolve player greying bug and streamline foursome workflow |
 | `869335a` | Add handicap index editing to tournament setup |
 | `8a4ebf9` | Auto-resume live tournaments cross-device |
-| `2915d49` | Fix tournament lobby features and move Bets tab to top |
 
 ## Completed Milestones
 

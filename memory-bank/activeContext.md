@@ -4,6 +4,7 @@
 **Maintenance mode** — all planned features complete, production app is live.
 
 ## Just Shipped (2026-02-16)
+- **Ryder Cup team colors** — Player names in tournament scoring "By Hole" view now display in team colors (blue for Team A, pink for Team B), making team assignments immediately visible at a glance
 - **Enhanced sharing** — Round shares now include game results (Stroke, Match, Skins, etc.) and settlement details. Tournament shares include skins winners and group game breakdowns. Join-code shares (round + tournament) include settleup-golf.com link.
 - **Deployment workflow improvements** — CLAUDE.md now requires localhost testing before pushing to production; added SQL file cleanup rules
 - **Linked player indicators** — Players list shows "Linked" badge and home course for linked accounts

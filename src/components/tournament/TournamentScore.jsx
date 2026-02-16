@@ -59,29 +59,97 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
     }
   }, [currentHoleScores, hole, pl]);
 
+  const renderMatchPlayCards = () => {
+    const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
+    if (!isRC || !playerInfo) return null;
+
+    const standings = calcRyderCupStandings(tournament);
+    const teams = tournament.teamConfig.teams;
+    const myMatch = tournament.teamConfig.matches.find(m => m.groupIdx === playerInfo.groupIdx);
+    const myResult = myMatch ? calcMatchPlay(pl, myMatch.type) : null;
+
+    return (
+      <div>
+        <div className="cd" style={{ textAlign: 'center' }}>
+          <div className="fxb" style={{ justifyContent: 'center', gap: 24 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: teams[0].color }}>{teams[0].name}</div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: teams[0].color }}>{standings.team1Points}</div>
+            </div>
+            <div style={{ fontSize: 14, color: T.dim, alignSelf: 'center' }}>vs</div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: teams[1].color }}>{teams[1].name}</div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: teams[1].color }}>{standings.team2Points}</div>
+            </div>
+          </div>
+        </div>
+
+        {myResult && (
+          <div className="cd">
+            <div className="ct">This Match ({myMatch.type === 'bestball' ? 'Best Ball' : 'Singles'})</div>
+            <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 700, color: myResult.statusTeam === 1 ? teams[0].color : myResult.statusTeam === 2 ? teams[1].color : T.accB }}>
+              {myResult.statusText}
+            </div>
+            {myResult.statusTeam > 0 && <div style={{ fontSize: 13, color: T.dim, textAlign: 'center', marginTop: 4 }}>
+              {myResult.statusTeam === 1 ? teams[0].name : teams[1].name}
+            </div>}
+            <div style={{ fontSize: 12, color: T.dim, textAlign: 'center', marginTop: 4 }}>
+              {myResult.played} holes played{myResult.remaining > 0 ? `, ${myResult.remaining} remaining` : ''}
+              {myResult.finished && myResult.played < 18 ? ' (match decided)' : ''}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const HV = () => {
+    const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
+
     const lb = pl.map((p, i) => {
       const played = p.scores.filter(s => s != null).length;
       const gross = p.scores.filter(s => s != null).reduce((a, b) => a + b, 0);
       const parPlayed = p.teeData.pars.filter((_, hi) => p.scores[hi] != null).reduce((a, b) => a + b, 0);
       const toPar = gross - parPlayed;
-      return { i, gross, toPar, played, name: n[i] };
+
+      // Determine team for Ryder Cup
+      let teamIdx = null;
+      if (isRC) {
+        if (tournament.teamConfig.teams[0].playerIds.includes(p.id)) teamIdx = 0;
+        else if (tournament.teamConfig.teams[1].playerIds.includes(p.id)) teamIdx = 1;
+      }
+
+      return { i, gross, toPar, played, name: n[i], teamIdx };
     }).sort((a, b) => a.gross - b.gross);
 
     return (
       <div>
+        {renderMatchPlayCards()}
+        {tournament.format === 'rydercup' && tournament.teamConfig && (
+          <div className="dvd" style={{ margin: '12px 0' }} />
+        )}
         <div style={{ fontSize: 13, color: T.accB, textAlign: 'center', marginBottom: 8 }}>Group {playerInfo.groupIdx + 1}</div>
         <div className="tk"><div className="tkt">Leaderboard</div>
-          {lb.map((x, ri) => (
-            <div key={x.i} className="tkr">
-              <div className="fx g6"><span style={{ fontSize: 12, color: T.mut, width: 16 }}>{ri + 1}.</span><span className={`pc${x.i}`} style={{ fontWeight: 600, fontSize: 14 }}>{x.name}</span></div>
-              <div className="fx g8">
-                <span style={{ fontSize: 14, fontWeight: 700 }}>{x.gross || "--"}</span>
-                <span style={{ fontSize: 13, color: x.toPar < 0 ? T.accB : x.toPar > 0 ? T.red : T.dim, fontWeight: 600 }}>{x.played > 0 ? (x.toPar > 0 ? "+" : "") + x.toPar : "--"}</span>
-                <span style={{ fontSize: 13, color: T.dim, minWidth: 36, textAlign: "right" }}>{x.played > 0 ? `${x.played}h` : ""}</span>
+          {lb.map((x, ri) => {
+            // Use team color for Ryder Cup, player color otherwise
+            const nameColor = x.teamIdx !== null
+              ? tournament.teamConfig.teams[x.teamIdx].color
+              : null;
+
+            return (
+              <div key={x.i} className="tkr">
+                <div className="fx g6">
+                  <span style={{ fontSize: 12, color: T.mut, width: 16 }}>{ri + 1}.</span>
+                  <span className={nameColor ? '' : `pc${x.i}`} style={{ fontWeight: 600, fontSize: 14, color: nameColor || undefined }}>{x.name}</span>
+                </div>
+                <div className="fx g8">
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{x.gross || "--"}</span>
+                  <span style={{ fontSize: 13, color: x.toPar < 0 ? T.accB : x.toPar > 0 ? T.red : T.dim, fontWeight: 600 }}>{x.played > 0 ? (x.toPar > 0 ? "+" : "") + x.toPar : "--"}</span>
+                  <span style={{ fontSize: 13, color: T.dim, minWidth: 36, textAlign: "right" }}>{x.played > 0 ? `${x.played}h` : ""}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Live Bets */}
@@ -604,47 +672,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
     })();
 
     // Section 3: Ryder Cup match play status
-    const isRC = tournament.format === 'rydercup' && tournament.teamConfig;
-    const matchPlaySection = isRC ? (() => {
-      const standings = calcRyderCupStandings(tournament);
-      const teams = tournament.teamConfig.teams;
-      const myMatch = tournament.teamConfig.matches.find(m => m.groupIdx === playerInfo.groupIdx);
-      const myResult = myMatch ? calcMatchPlay(pl, myMatch.type) : null;
-
-      return (
-        <div>
-          <div className="cd" style={{ textAlign: 'center' }}>
-            <div className="fxb" style={{ justifyContent: 'center', gap: 24 }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: teams[0].color }}>{teams[0].name}</div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: teams[0].color }}>{standings.team1Points}</div>
-              </div>
-              <div style={{ fontSize: 14, color: T.dim, alignSelf: 'center' }}>vs</div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: teams[1].color }}>{teams[1].name}</div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: teams[1].color }}>{standings.team2Points}</div>
-              </div>
-            </div>
-          </div>
-
-          {myResult && (
-            <div className="cd">
-              <div className="ct">This Match ({myMatch.type === 'bestball' ? 'Best Ball' : 'Singles'})</div>
-              <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 700, color: myResult.statusTeam === 1 ? teams[0].color : myResult.statusTeam === 2 ? teams[1].color : T.accB }}>
-                {myResult.statusText}
-              </div>
-              {myResult.statusTeam > 0 && <div style={{ fontSize: 13, color: T.dim, textAlign: 'center', marginTop: 4 }}>
-                {myResult.statusTeam === 1 ? teams[0].name : teams[1].name}
-              </div>}
-              <div style={{ fontSize: 12, color: T.dim, textAlign: 'center', marginTop: 4 }}>
-                {myResult.played} holes played{myResult.remaining > 0 ? `, ${myResult.remaining} remaining` : ''}
-                {myResult.finished && myResult.played < 18 ? ' (match decided)' : ''}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    })() : null;
+    const matchPlaySection = renderMatchPlayCards();
 
     return (
       <div>

@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| `d1d786b` | Add team color indicators to Ryder Cup tournament scoring |
 | `3f63b12` | Enhance sharing: game results, settlements, and website link |
 | `9aa21eb` | Update deployment workflow: add localhost testing step and SQL cleanup rules |
 | `81ab81a` | Add linked player indicator and home course to Players list |

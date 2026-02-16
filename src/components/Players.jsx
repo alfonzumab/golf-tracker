@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { T } from '../theme';
 import { supabase } from '../lib/supabase';
 
-const Players = ({ players, setPlayers }) => {
+const Players = ({ players, setPlayers, courses = [], playerLinks = {} }) => {
+  const courseMap = Object.fromEntries(courses.map(c => [c.id, c]));
   const [sa, setSa] = useState(false);
   const [nm, setNm] = useState("");
   const [ix, setIx] = useState("");
@@ -116,10 +117,16 @@ const Players = ({ players, setPlayers }) => {
                 {p.favorite ? "⭐" : "☆"}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="prow-n" style={{ fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {p.name}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="prow-n" style={{ fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.name}
+                  </span>
+                  {p.id in playerLinks && <span style={{ fontSize: 11, color: T.acc, fontWeight: 500, flexShrink: 0 }}>Linked</span>}
                 </div>
                 <div className="prow-i" style={{ fontSize: '12px', color: T.dim }}>Index: {p.index}</div>
+                {playerLinks[p.id] && courseMap[playerLinks[p.id]] && (
+                  <div style={{ fontSize: '11px', color: T.dim, marginTop: 1 }}>Home: {courseMap[playerLinks[p.id]].name}</div>
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '6px' }}>

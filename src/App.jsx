@@ -9,7 +9,7 @@ import {
   loadRounds, saveRound,
   loadCurrentRound, saveCurrentRound, clearCurrentRound,
   loadSelectedCourse, saveSelectedCourse,
-  loadProfile,
+  loadProfile, loadPlayerLinks,
   joinRound, generateShareCode,
   finishRound, registerRoundParticipant, reopenRound
 } from './utils/storage';
@@ -47,6 +47,8 @@ export default function App() {
   const [setupCourse, setSetupCourse] = useState(null);
   const [modal, setModal] = useState(null);
 
+  const [playerLinks, setPlayerLinks] = useState({});
+
   // Tournament state
   const [tournament, setTournament] = useState(null);
   const [tournamentGuest, setTournamentGuest] = useState(null);
@@ -78,13 +80,14 @@ export default function App() {
     if (dataLoaded.current) return;
     dataLoaded.current = true;
     const load = async () => {
-      const [prof, p, c, r, cr, sc] = await Promise.all([
-        loadProfile(), loadPlayers(), loadCourses(), loadRounds(), loadCurrentRound(), loadSelectedCourse()
+      const [prof, p, c, r, cr, sc, pl] = await Promise.all([
+        loadProfile(), loadPlayers(), loadCourses(), loadRounds(), loadCurrentRound(), loadSelectedCourse(), loadPlayerLinks()
       ]);
       setProfile(prof);
       setPlayers(p);
       setCourses(c);
       setRounds(r);
+      setPlayerLinks(pl);
       if (cr) {
         // Auto-generate share code for rounds created before the feature
         if (!cr.shareCode) {
@@ -604,7 +607,7 @@ export default function App() {
         </div>
       </div>
       {pg === "home" && <Home courses={courses} players={players} rounds={rounds} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
-      {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} />}
+      {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} courses={courses} playerLinks={playerLinks} />}
       {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} />}
       {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={(games, updatedPlayers) => {
         const r = {

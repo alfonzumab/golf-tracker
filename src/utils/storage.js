@@ -461,6 +461,28 @@ export async function saveProfile(updates) {
   }
 }
 
+// ========== Player Links ==========
+
+export async function loadPlayerLinks() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return {};
+
+  const { data, error } = await supabase
+    .from('player_links')
+    .select('linked_player_id, preferred_course_id');
+
+  if (error) {
+    console.error('loadPlayerLinks: Failed:', error.message);
+    return {};
+  }
+
+  const links = {};
+  for (const row of data || []) {
+    links[row.linked_player_id] = row.preferred_course_id || null;
+  }
+  return links;
+}
+
 // ========== Round History RPCs ==========
 
 export async function finishRound(roundId, shareCode) {

@@ -30,8 +30,12 @@ When the user says "deploy", "push", "ship it", or similar, execute these steps 
    Co-Authored-By: Claude <model> <noreply@anthropic.com>
    ```
    Replace `<model>` with your actual model name (e.g., `Opus 4.6`, `Sonnet 4.5`).
-5. **Push** — Run `git push origin main`. This triggers Vercel auto-deployment (30-60 seconds to live).
-6. **Confirm** — Tell the user the push succeeded and summarize what was deployed.
+5. **Update Memory Bank** — After committing, update `memory-bank/progress.md` and `memory-bank/activeContext.md`:
+   - Add the commit hash and a one-line summary to `Recent Activity` in `progress.md`
+   - Move any completed tasks from "What's Left" to "Completed" in `progress.md`
+   - Update `activeContext.md` with what was just shipped and what comes next
+6. **Push** — Run `git push origin main`. This triggers Vercel auto-deployment (30-60 seconds to live).
+7. **Confirm** — Tell the user the push succeeded and summarize what was deployed.
 
 **Critical rules:**
 - Build + lint MUST both pass before committing. A broken push takes the production app down.
@@ -216,7 +220,10 @@ After migration, manually set admin role: `UPDATE public.profiles SET role = 'ad
 
 ## AI Workflow & Memory Bank
 
-- **Source of Truth:** Always read `memory-bank/progress.md` at the start of a session to understand current status.
-- **Task Management:** Before starting any "Act" plan, verify the next step against the open tasks in `progress.md`.
-- **Session Handoff:** At the end of every significant task or before a tool switch, you MUST update `memory-bank/progress.md` and `memory-bank/activeContext.md` with the latest changes.
+The `memory-bank/` directory tracks project state across sessions. **Every AI tool** (Claude Code CLI, Cline in VS Code, Claude Code in VS Code, etc.) must follow these rules:
+
+- **Session Start:** Always read `memory-bank/progress.md` and `memory-bank/activeContext.md` to understand current status before doing work.
+- **Task Management:** Before starting any plan, verify the next step against the open tasks in `progress.md`.
+- **On Every Commit:** Update `memory-bank/progress.md` (add commit hash + summary to Recent Activity, move completed tasks) and `memory-bank/activeContext.md` (what was shipped, what's next). Include the memory-bank files in the commit.
+- **Session End / Handoff:** If ending a session without committing, still update memory-bank files so the next session picks up where you left off.
 - **Duplicate Prevention:** Do not re-examine or modify files marked as "Completed" in `progress.md` unless explicitly instructed.

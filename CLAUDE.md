@@ -24,22 +24,24 @@ When the user says "deploy", "push", "ship it", or similar, execute these steps 
    - `setState in effect`: Move the logic out of `useEffect` into the render body or a callback
    - `accessed before declared`: Reorder declarations or inline the logic
    - `unused vars`: Prefix with `_` and uppercase first letter (e.g., `_Foursomes`) to match the `^[A-Z_]` ignore pattern
-3. **Stage files** — Run `git add` with specific file paths. Never use `git add -A` or `git add .`. Do NOT stage `.env`, `.env.local`, or any credential files.
-4. **Commit** — Create a descriptive commit message summarizing what changed and why. Always append this trailer:
+3. **Test on localhost** — Run `npm run dev` and remind the user to test the changes on `localhost:5173` before deploying to production. Wait for user confirmation before proceeding.
+4. **Stage files** — Run `git add` with specific file paths. Never use `git add -A` or `git add .`. Do NOT stage `.env`, `.env.local`, or any credential files.
+5. **Commit** — Create a descriptive commit message summarizing what changed and why. Always append this trailer:
    ```
    Co-Authored-By: Claude <model> <noreply@anthropic.com>
    ```
    Replace `<model>` with your actual model name (e.g., `Opus 4.6`, `Sonnet 4.5`).
-5. **Update Memory Bank** — After committing, update `memory-bank/progress.md` and `memory-bank/activeContext.md`:
+6. **Update Memory Bank** — After committing, update `memory-bank/progress.md` and `memory-bank/activeContext.md`:
    - Add the commit hash and a one-line summary to `Recent Activity` in `progress.md`
    - Move any completed tasks from "What's Left" to "Completed" in `progress.md`
    - Update `activeContext.md` with what was just shipped and what comes next
-6. **Push** — Run `git push origin main`. This triggers Vercel auto-deployment (30-60 seconds to live).
-7. **Confirm** — Tell the user the push succeeded and summarize what was deployed.
+7. **Push** — Run `git push origin main`. This triggers Vercel auto-deployment (30-60 seconds to live).
+8. **Confirm** — Tell the user the push succeeded and summarize what was deployed.
 
 **Critical rules:**
 - Build + lint MUST both pass before committing. A broken push takes the production app down.
 - If build or lint fails, fix the issue, then restart from step 1.
+- User must test on localhost before pushing to production.
 - Never use `--no-verify`, `--force`, or skip any step.
 - The production branch is `main`. Never force-push to `main`.
 
@@ -208,13 +210,14 @@ VITE_SUPABASE_ANON_KEY=<supabase publishable key>
 - `migration-global-db.sql` — global players/courses with admin RLS, profiles table, user_favorites
 - `tournament-schema.sql` — tournaments table, RPC functions with row locking
 - `history-migration.sql` — round_participants, tournament_participants tables + history RPCs (finish_round, register_round_participant, reopen_round, load_tournament_history)
+- `player-links-migration.sql` — player_links view exposing linked_player_id + preferred_course_id
 
 After migration, manually set admin role: `UPDATE public.profiles SET role = 'admin' WHERE email = 'YOUR_EMAIL';`
 
-**Utility SQL scripts** (run manually in Supabase SQL Editor as needed):
-- `fix-duplicate-rounds.sql`, `remove-duplicate-tournaments.sql` — deduplicate data
-- `fix-share-code-constraint.sql` — fix share_code unique constraint
-- `cleanup-migration.sql` — general cleanup
+**SQL File Management:**
+- After a migration is successfully applied to production, move it to `migrations/archive/` folder to keep the root directory clean
+- One-time utility scripts (fixes, cleanups) should be deleted after use or archived with a dated filename (e.g., `fix-duplicate-rounds-2026-02-16.sql`)
+- Active migrations needed for fresh deployments stay in root; everything else gets archived or deleted
 
 **Legacy files** (outdated, do not use as reference): `PROJECT.md`, `CLAUDE-CODE-PROMPT.md`, `protected-db-migration.sql` (empty) — describe the pre-migration single-file monolith.
 

@@ -196,3 +196,10 @@ After migration, manually set admin role: `UPDATE public.profiles SET role = 'ad
 - `cleanup-migration.sql` — general cleanup
 
 **Legacy files** (outdated, do not use as reference): `PROJECT.md`, `CLAUDE-CODE-PROMPT.md`, `protected-db-migration.sql` (empty) — describe the pre-migration single-file monolith.
+
+## AI Workflow & Memory Bank
+
+- **Source of Truth:** Always read `memory-bank/progress.md` at the start of a session to understand current status.
+- **Task Management:** Before starting any "Act" plan, verify the next step against the open tasks in `progress.md`.
+- **Session Handoff:** At the end of every significant task or before a tool switch, you MUST update `memory-bank/progress.md` and `memory-bank/activeContext.md` with the latest changes.
+- **Duplicate Prevention:** Do not re-examine or modify files marked as "Completed" in `progress.md` unless explicitly instructed.

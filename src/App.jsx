@@ -51,7 +51,7 @@ export default function App() {
   const [tournament, setTournament] = useState(null);
   const [tournamentGuest, setTournamentGuest] = useState(null);
   const [joinCode, setJoinCode] = useState(null);
-  const [tournamentHistory, setTournamentHistory] = useState([]);
+  const [tournamentHistory, setTournamentHistory] = useState(() => ld("tournamentHistory", []));
   const [viewingFinishedTournament, setViewingFinishedTournament] = useState(false);
 
   // Track when local scores were last updated to avoid poll overwriting them
@@ -134,6 +134,27 @@ export default function App() {
     };
     load();
   }, [session]);
+
+  // Auto-select linked player in tournament (derived, no setState in effect)
+  if (tournament && !tournamentGuest && profile?.linked_player_id) {
+    for (let groupIdx = 0; groupIdx < tournament.groups.length; groupIdx++) {
+      const group = tournament.groups[groupIdx];
+      const playerIdx = group.players.findIndex(p => p.id === profile.linked_player_id);
+      if (playerIdx !== -1) {
+        const player = group.players[playerIdx];
+        const info = {
+          code: tournament.shareCode,
+          groupIdx,
+          playerIdx,
+          playerName: player.name,
+          tournamentName: tournament.name
+        };
+        setTournamentGuest(info);
+        saveGuestInfo(info);
+        break;
+      }
+    }
+  }
 
   // Poll Supabase for score updates every 10s (cross-device sync)
   useEffect(() => {
@@ -436,7 +457,9 @@ export default function App() {
         try {
           await finishTournament(tournament.shareCode);
           // Move to history
-          setTournamentHistory(prev => [...prev, tournament]);
+          const updatedHistory = [...tournamentHistory, tournament];
+          setTournamentHistory(updatedHistory);
+          sv('tournamentHistory', updatedHistory);
           // Clear active tournament
           setTournament(null);
           setTournamentGuest(null);
@@ -463,6 +486,7 @@ export default function App() {
       // Remove from tournament history
       const filtered = tournamentHistory.filter(th => th.id !== t.id);
       setTournamentHistory(filtered);
+      sv('tournamentHistory', filtered);
       // Save active tournament code
       sv('active-tournament', t.shareCode);
       go('tscore');
@@ -483,7 +507,10 @@ export default function App() {
         if (fresh) {
           // If tournament was finished by host, move to history
           if (fresh.status === 'finished') {
-            setTournamentHistory(prev => [...prev, fresh]);
+            setTournamentHistory(prev => {
+              if (prev.some(t => t.id === fresh.id)) return prev; // dedup
+              return [...prev, fresh];
+            });
             setTournament(null);
             setTournamentGuest(null);
             clearActiveTournament();
@@ -608,7 +635,7 @@ export default function App() {
       {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}
       {pg === "tsetup" && <TournamentSetup courses={courses} players={players} selectedCourseId={selectedCourseId} onComplete={handleCreateTournament} />}
       {pg === "tlobby" && <TournamentLobby tournament={tournament} isHost={isHost} onStart={handleStartTournament} onBack={leaveTournament} onUpdateTournament={handleUpdateTournament} />}
-      {pg === "tjoin" && joinCode && <TournamentJoin code={joinCode} onJoined={handleJoined} onBack={() => go('thub')} />}
+      {pg === "tjoin" && joinCode && <TournamentJoin code={joinCode} profile={profile} onJoined={handleJoined} onBack={() => go('thub')} />}
       {pg === "tscore" && tournament && <TournamentScore tournament={tournament} playerInfo={tournamentGuest} onUpdateScore={handleTournamentScoreUpdate} onSelectPlayer={handleSelectTournamentPlayer} onUpdateGroupGames={handleUpdateGroupGames} />}
       {pg === "tboard" && tournament && <TournamentBoard tournament={tournament} isHost={isHost} onFinish={handleFinishTournament} readOnly={viewingFinishedTournament} />}
 

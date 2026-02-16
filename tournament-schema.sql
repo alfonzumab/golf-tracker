@@ -30,6 +30,11 @@ BEGIN
                  WHERE table_name = 'tournaments' AND column_name = 'created_at') THEN
     ALTER TABLE tournaments ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
   END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'tournaments' AND column_name = 'format') THEN
+    ALTER TABLE tournaments ADD COLUMN format TEXT DEFAULT 'standard';
+  END IF;
 END $$;
 
 -- 3. Enable RLS on tournaments

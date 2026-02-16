@@ -130,16 +130,24 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
             </div>
           ) : (
             [...rounds].reverse().map((r, i) => {
-              const { balances } = calcAll(r.games, r.players), n = r.players.map(p => p.name.split(" ")[0]);
-              return <div key={i} className="cd" style={{ cursor: "pointer" }} onClick={() => setDet(r)}>
-                <div className="fxb mb6"><div><div style={{ fontWeight: 600, fontSize: 15 }}>{r.course.name}</div><div style={{ fontSize: 13, color: T.dim }}>{r.date}</div></div></div>
-                <div className="fx fw g6">{r.players.map((p, pi) => {
-                  const gr = p.scores.filter(s => s != null).reduce((a, b) => a + b, 0), v = -balances[pi];
-                  return <div key={pi} className="fx g6" style={{ fontSize: 13 }}>
-                    <span className={`pc${pi}`} style={{ fontWeight: 600 }}>{n[pi]}:{gr}</span>
-                    <span style={{ color: v > 0.01 ? T.accB : v < -0.01 ? T.red : T.dim, fontWeight: 600, fontSize: 12 }}>({fmt$(v)})</span>
-                  </div>;
-                })}</div>
+              const totalPlayers = r.players.length;
+              return <div key={i} className="cd">
+                <div className="fxb mb6">
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>
+                      {r.course.name}
+                    </div>
+                    <div style={{ fontSize: 13, color: T.dim }}>{r.date}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>
+                  {totalPlayers} player{totalPlayers !== 1 ? 's' : ''}
+                </div>
+                <div className="fx g10">
+                  <button className="btn bp" style={{ flex: 1 }} onClick={() => setDet(r)}>View</button>
+                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); shareRound(r); }}>Share</button>
+                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onReopenRound(r); }}>Reopen</button>
+                </div>
               </div>;
             })
           )}
@@ -156,7 +164,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
               <div style={{ fontSize: 14, color: T.dim, marginTop: 8 }}>Finished tournaments will appear here</div>
             </div>
           ) : (
-            [...tournamentHistory].reverse().map((t, i) => {
+            [...tournamentHistory].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).map((t, i) => {
               const totalPlayers = t.groups.reduce((sum, g) => sum + g.players.length, 0);
               const isHostUser = isHost(t);
               return <div key={i} className="cd">
@@ -175,7 +183,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
                 <div className="fx g10">
                   <button className="btn bp" style={{ flex: 1 }} onClick={() => onViewTournament(t)}>View</button>
                   <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); shareTournament(t); }}>Share</button>
-                  {isHostUser && <button className="btn bg" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onReopenTournament(t); }}>Reopen</button>}
+                  {isHostUser && <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onReopenTournament(t); }}>Reopen</button>}
                 </div>
               </div>;
             })

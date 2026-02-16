@@ -34,7 +34,7 @@ const TournamentSetup = ({ courses, players: savedPlayers, selectedCourseId, pro
   const [addingMatch, setAddingMatch] = useState(null); // null | { type, t1: [], t2: [] }
 
   // Foursomes (Ryder Cup only - step 5)
-  const [foursomes, setFoursomes] = useState([]); // Array of { players: [playerIndices] }
+  const [_Foursomes, _SetFoursomes] = useState([]); // Array of { players: [playerIndices] }
 
   // Skins (last step for both formats)
   const [skinsOn, setSkinsOn] = useState(false);

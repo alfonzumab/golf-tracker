@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { T } from '../../theme';
 import { getTournament, saveGuestInfo, saveActiveTournament } from '../../utils/tournamentStorage';
 
-const TournamentJoin = ({ code, onJoined, onBack }) => {
+const TournamentJoin = ({ code, profile, onJoined, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [tournament, setTournament] = useState(null);
@@ -24,6 +24,26 @@ const TournamentJoin = ({ code, onJoined, onBack }) => {
   // Auto-fetch on mount
   if (!tournament && !loading && !error) {
     fetchTournament();
+  }
+
+  // Auto-select linked player when tournament loads (no setState in effect)
+  if (tournament && profile?.linked_player_id && selectedGroup === null && selectedPlayer === null) {
+    for (let groupIdx = 0; groupIdx < tournament.groups.length; groupIdx++) {
+      const group = tournament.groups[groupIdx];
+      const playerIdx = group.players.findIndex(p => p.id === profile.linked_player_id);
+      if (playerIdx !== -1) {
+        const guestInfo = {
+          code: tournament.shareCode,
+          groupIdx,
+          playerIdx,
+          playerName: group.players[playerIdx].name,
+          tournamentName: tournament.name
+        };
+        saveGuestInfo(guestInfo);
+        saveActiveTournament(tournament.shareCode);
+        onJoined(tournament, guestInfo);
+      }
+    }
   }
 
   const confirmJoin = () => {

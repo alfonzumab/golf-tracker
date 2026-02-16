@@ -152,13 +152,16 @@ export async function loadTournamentHistory() {
 
   if (error) {
     console.error('loadTournamentHistory: Failed to load:', error.message);
+    return ld('tournamentHistory', []);
+  }
+
+  if (!data || data.length === 0) {
+    sv('tournamentHistory', []);
     return [];
   }
 
-  if (!data || data.length === 0) return [];
-
   // Convert snake_case to camelCase
-  return data.map(t => ({
+  const result = data.map(t => ({
     id: t.id,
     shareCode: t.share_code,
     hostUserId: t.host_user_id,
@@ -174,6 +177,9 @@ export async function loadTournamentHistory() {
     createdAt: t.created_at,
     updatedAt: t.updated_at
   }));
+
+  sv('tournamentHistory', result);
+  return result;
 }
 
 export async function reopenTournament(code) {

@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| `f2b2dac` | Fix earnings tab: per-player breakdown now matches lifetime total |
 | `9f7e4b8` | Add earnings tab to Profile with lifetime earnings tracking |
 | `d5c4691` | Improve tournament UX: auto-select linked player, cache history, fix lint |
 | `4824cd5` | Fix Ryder Cup match creation: resolve player greying bug and streamline foursome workflow |

@@ -182,45 +182,42 @@ const Profile = ({ session, profile, courses, players, rounds, tournamentHistory
           for (const group of round.groups) {
             const playerIdx = group.players.findIndex(p => p.id === linkedPlayer);
             if (playerIdx !== -1 && group.games && group.players && group.players.length >= 2) {
-              const { balances } = calcAll(group.games, group.players);
+              const { balances, settlements } = calcAll(group.games, group.players);
               if (balances && balances.length === group.players.length) {
-                const earnings = -balances[playerIdx]; // Negative balance = profit
-                totalEarnings += earnings;
+                totalEarnings += -balances[playerIdx];
 
-                // Track earnings against each opponent
-                group.players.forEach((opponent, oppIdx) => {
-                  if (oppIdx !== playerIdx) {
-                    const opponentEarnings = -balances[oppIdx];
-                    const netAgainstOpponent = earnings - opponentEarnings;
-                    if (!playerEarnings[opponent.id]) {
-                      playerEarnings[opponent.id] = { name: opponent.name, net: 0 };
-                    }
-                    playerEarnings[opponent.id].net += netAgainstOpponent;
+                for (const s of settlements) {
+                  if (s.from === playerIdx) {
+                    const opp = group.players[s.to];
+                    if (!playerEarnings[opp.id]) playerEarnings[opp.id] = { name: opp.name, net: 0 };
+                    playerEarnings[opp.id].net -= s.amount;
+                  } else if (s.to === playerIdx) {
+                    const opp = group.players[s.from];
+                    if (!playerEarnings[opp.id]) playerEarnings[opp.id] = { name: opp.name, net: 0 };
+                    playerEarnings[opp.id].net += s.amount;
                   }
-                });
+                }
               }
             }
           }
         } else {
-          // Handle regular rounds
           const playerIdx = round.players.findIndex(p => p.id === linkedPlayer);
           if (playerIdx !== -1 && round.games && round.players && round.players.length >= 2) {
-            const { balances } = calcAll(round.games, round.players);
+            const { balances, settlements } = calcAll(round.games, round.players);
             if (balances && balances.length === round.players.length) {
-              const earnings = -balances[playerIdx]; // Negative balance = profit
-              totalEarnings += earnings;
+              totalEarnings += -balances[playerIdx];
 
-              // Track earnings against each opponent
-              round.players.forEach((opponent, oppIdx) => {
-                if (oppIdx !== playerIdx) {
-                  const opponentEarnings = -balances[oppIdx];
-                  const netAgainstOpponent = earnings - opponentEarnings;
-                  if (!playerEarnings[opponent.id]) {
-                    playerEarnings[opponent.id] = { name: opponent.name, net: 0 };
-                  }
-                  playerEarnings[opponent.id].net += netAgainstOpponent;
+              for (const s of settlements) {
+                if (s.from === playerIdx) {
+                  const opp = round.players[s.to];
+                  if (!playerEarnings[opp.id]) playerEarnings[opp.id] = { name: opp.name, net: 0 };
+                  playerEarnings[opp.id].net -= s.amount;
+                } else if (s.to === playerIdx) {
+                  const opp = round.players[s.from];
+                  if (!playerEarnings[opp.id]) playerEarnings[opp.id] = { name: opp.name, net: 0 };
+                  playerEarnings[opp.id].net += s.amount;
                 }
-              });
+              }
             }
           }
         }

@@ -3,7 +3,8 @@
 ## Current State
 **Maintenance mode** — all planned features complete, production app is live.
 
-## Just Shipped (2026-02-15)
+## Just Shipped (2026-02-16)
+- **Earnings tab bug fix** — per-player breakdown now uses settlement flows instead of balance comparisons, so the sum matches the lifetime total
 - **Earnings tab** on Profile page — lifetime net earnings + per-opponent breakdown
 - **Memory bank instructions** updated in CLAUDE.md so all AI tools (Cline, Claude Code CLI, VS Code extension) auto-update progress on every commit
 

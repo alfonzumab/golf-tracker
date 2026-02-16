@@ -629,7 +629,7 @@ export default function App() {
         isHost={(t) => t && session && t.hostUserId === session.user.id}
         onViewTournament={(t) => { setTournament(t); setViewingFinishedTournament(true); go('tboard'); }}
       />}
-      {pg === "profile" && <Profile session={session} profile={profile} courses={courses} players={players} onLogout={logout} onUpdateProfile={handleUpdateProfile} />}
+      {pg === "profile" && <Profile session={session} profile={profile} courses={courses} players={players} rounds={rounds} tournamentHistory={tournamentHistory} onLogout={logout} onUpdateProfile={handleUpdateProfile} />}
 
       {/* Tournament pages */}
       {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}

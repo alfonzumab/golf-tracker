@@ -15,12 +15,29 @@ No test framework is configured. Production deploys automatically via Vercel on 
 
 ESLint flat config (v9+) allows unused variables matching `^[A-Z_]` (so `GT`, `PC`, `TT` constants won't trigger errors). **Run `npm run build` and `npm run lint` before pushing** — Vercel auto-deploys on push to `main` and a broken build takes the production app down.
 
-**Deployment workflow:**
-1. Make changes locally
-2. Run `npm run build` and `npm run lint` to validate
-3. Commit with descriptive message (include `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` for AI-assisted changes)
-4. Push to `main` — Vercel deployment starts automatically (30-60 seconds to live)
-5. Monitor deployment at vercel.com/dashboard if issues arise
+**Deployment procedure (MANDATORY — follow every step exactly):**
+
+When the user says "deploy", "push", "ship it", or similar, execute these steps in order:
+
+1. **Build** — Run `npm run build`. If it fails, fix all errors and re-run until it succeeds. Do NOT proceed with errors.
+2. **Lint** — Run `npm run lint`. If it fails, fix all errors and re-run until it succeeds. Do NOT proceed with errors. Common lint issues:
+   - `setState in effect`: Move the logic out of `useEffect` into the render body or a callback
+   - `accessed before declared`: Reorder declarations or inline the logic
+   - `unused vars`: Prefix with `_` and uppercase first letter (e.g., `_Foursomes`) to match the `^[A-Z_]` ignore pattern
+3. **Stage files** — Run `git add` with specific file paths. Never use `git add -A` or `git add .`. Do NOT stage `.env`, `.env.local`, or any credential files.
+4. **Commit** — Create a descriptive commit message summarizing what changed and why. Always append this trailer:
+   ```
+   Co-Authored-By: Claude <model> <noreply@anthropic.com>
+   ```
+   Replace `<model>` with your actual model name (e.g., `Opus 4.6`, `Sonnet 4.5`).
+5. **Push** — Run `git push origin main`. This triggers Vercel auto-deployment (30-60 seconds to live).
+6. **Confirm** — Tell the user the push succeeded and summarize what was deployed.
+
+**Critical rules:**
+- Build + lint MUST both pass before committing. A broken push takes the production app down.
+- If build or lint fails, fix the issue, then restart from step 1.
+- Never use `--no-verify`, `--force`, or skip any step.
+- The production branch is `main`. Never force-push to `main`.
 
 ## Architecture
 

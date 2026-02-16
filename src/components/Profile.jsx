@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { T } from '../theme';
+import { calcAll } from '../utils/calc';
+import { fmt$ } from '../utils/golf';
 
-const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile }) => {
+const Profile = ({ session, profile, courses, players, rounds, tournamentHistory, onLogout, onUpdateProfile }) => {
+  const [view, setView] = useState("profile");
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [handicap, setHandicap] = useState(profile?.handicap_index || '');
   const [ghin, setGhin] = useState(profile?.ghin_number || '');
@@ -27,6 +30,17 @@ const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile
       setEmail(session.user.email);
     }
   }, [session]);
+
+  // Sync profile data when it loads
+  useEffect(() => {
+    if (profile) {
+      setDisplayName(profile.display_name || '');
+      setHandicap(profile.handicap_index || '');
+      setGhin(profile.ghin_number || '');
+      setPreferredCourse(profile.preferred_course_id || '');
+      setLinkedPlayer(profile.linked_player_id || '');
+    }
+  }, [profile]);
 
   // Get initials for avatar
   const getInitials = () => {
@@ -153,6 +167,76 @@ const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile
     }
   };
 
+  // Calculate earnings data
+  const calculateEarnings = () => {
+    if (!linkedPlayer) return { total: 0, byPlayer: [] };
+
+    const allRounds = [...rounds, ...tournamentHistory];
+    const playerEarnings = {};
+    let totalEarnings = 0;
+
+    for (const round of allRounds) {
+      try {
+        // Handle tournament rounds (they have groups structure)
+        if (round.groups) {
+          for (const group of round.groups) {
+            const playerIdx = group.players.findIndex(p => p.id === linkedPlayer);
+            if (playerIdx !== -1 && group.games && group.players && group.players.length >= 2) {
+              const { balances } = calcAll(group.games, group.players);
+              if (balances && balances.length === group.players.length) {
+                const earnings = -balances[playerIdx]; // Negative balance = profit
+                totalEarnings += earnings;
+
+                // Track earnings against each opponent
+                group.players.forEach((opponent, oppIdx) => {
+                  if (oppIdx !== playerIdx) {
+                    const opponentEarnings = -balances[oppIdx];
+                    const netAgainstOpponent = earnings - opponentEarnings;
+                    if (!playerEarnings[opponent.id]) {
+                      playerEarnings[opponent.id] = { name: opponent.name, net: 0 };
+                    }
+                    playerEarnings[opponent.id].net += netAgainstOpponent;
+                  }
+                });
+              }
+            }
+          }
+        } else {
+          // Handle regular rounds
+          const playerIdx = round.players.findIndex(p => p.id === linkedPlayer);
+          if (playerIdx !== -1 && round.games && round.players && round.players.length >= 2) {
+            const { balances } = calcAll(round.games, round.players);
+            if (balances && balances.length === round.players.length) {
+              const earnings = -balances[playerIdx]; // Negative balance = profit
+              totalEarnings += earnings;
+
+              // Track earnings against each opponent
+              round.players.forEach((opponent, oppIdx) => {
+                if (oppIdx !== playerIdx) {
+                  const opponentEarnings = -balances[oppIdx];
+                  const netAgainstOpponent = earnings - opponentEarnings;
+                  if (!playerEarnings[opponent.id]) {
+                    playerEarnings[opponent.id] = { name: opponent.name, net: 0 };
+                  }
+                  playerEarnings[opponent.id].net += netAgainstOpponent;
+                }
+              });
+            }
+          }
+        }
+      } catch (error) {
+        // Skip rounds with calculation errors (malformed data)
+        console.warn('Skipping round with calculation error:', error);
+        continue;
+      }
+    }
+
+    const byPlayer = Object.values(playerEarnings).sort((a, b) => b.net - a.net);
+    return { total: totalEarnings, byPlayer };
+  };
+
+  const earnings = calculateEarnings();
+
   return (
     <div className="pg">
       {/* Avatar Section */}
@@ -173,7 +257,15 @@ const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile
         )}
       </div>
 
-      {/* Personal Info Card */}
+      {/* Tabs */}
+      <div className="tabs">
+        <button className={`tab ${view === "profile" ? "on" : ""}`} onClick={() => setView("profile")}>Profile</button>
+        <button className={`tab ${view === "earnings" ? "on" : ""}`} onClick={() => setView("earnings")}>Earnings</button>
+      </div>
+
+      {view === "profile" && (
+        <>
+          {/* Personal Info Card */}
       <div className="cd">
         <div className="ct">Personal Info</div>
         
@@ -421,13 +513,68 @@ const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile
       </div>
 
       {/* Logout */}
-      <button 
+      <button
         className="btn"
         onClick={onLogout}
         style={{ marginTop: 24, marginBottom: 40, background: T.card, border: `1px solid ${T.bdr}`, color: T.txt }}
       >
         Log Out
       </button>
+        </>
+      )}
+
+      {view === "earnings" && (
+        <>
+          {/* Lifetime Earnings Card */}
+          <div className="cd">
+            <div className="ct">Lifetime Earnings</div>
+            {!linkedPlayer ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: T.dim }}>
+                Link a player in your profile to see earnings
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', fontSize: 24, fontWeight: 'bold', margin: '20px 0' }}>
+                <span style={{ color: earnings.total >= 0 ? T.green : T.red }}>
+                  {fmt$(earnings.total)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Net Earnings by Player */}
+          {linkedPlayer && earnings.byPlayer.length > 0 && (
+            <div className="cd">
+              <div className="ct">Net Earnings by Player</div>
+              {earnings.byPlayer.map((player, idx) => (
+                <div key={player.name} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 0',
+                  borderBottom: idx < earnings.byPlayer.length - 1 ? `1px solid ${T.bdr}` : 'none'
+                }}>
+                  <span style={{ fontWeight: '500' }}>{player.name}</span>
+                  <span style={{
+                    fontWeight: 'bold',
+                    color: player.net >= 0 ? T.green : T.red
+                  }}>
+                    {fmt$(player.net)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* No Rounds Message */}
+          {linkedPlayer && earnings.byPlayer.length === 0 && (
+            <div className="cd">
+              <div style={{ textAlign: 'center', padding: '20px', color: T.dim }}>
+                No completed rounds found
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

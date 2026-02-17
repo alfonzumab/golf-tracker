@@ -256,10 +256,19 @@ const Scoring = ({ round, updateScore }) => {
                           </td>
                         </tr>
                       ))}
-                      <tr style={{ color: T.dim, fontSize: 11 }}><td style={{ textAlign: "left", paddingLeft: 4 }}>Score</td>
+                      <tr style={{ fontSize: 11 }}><td style={{ textAlign: "left", paddingLeft: 4, color: T.dim }}>Score</td>
                         {Array.from({ length: 9 }, (_, i) => {
                           const hr = r.holeResults[nine.s + i];
-                          return <td key={i}>{hr.played ? hr.scores.join('/') : '|'}</td>;
+                          if (!hr.played) return <td key={i} style={{ color: T.mut }}>|</td>;
+                          return <td key={i}>{hr.scores.map((s, si) => <span key={si}>{si > 0 && <span style={{ color: T.mut }}>/</span>}<span className={`pc${si}`}>{s}</span></span>)}</td>;
+                        })}
+                        <td />
+                      </tr>
+                      <tr style={{ fontSize: 11 }}><td style={{ textAlign: "left", paddingLeft: 4, color: T.dim }}>Pts</td>
+                        {Array.from({ length: 9 }, (_, i) => {
+                          const hr = r.holeResults[nine.s + i];
+                          if (!hr.played) return <td key={i} style={{ color: T.mut }}>|</td>;
+                          return <td key={i}>{hr.pts.map((p, pi) => <span key={pi}>{pi > 0 && <span style={{ color: T.mut }}>/</span>}<span className={`pc${pi}`} style={{ fontWeight: p === 5 ? 800 : 600 }}>{p}</span></span>)}</td>;
                         })}
                         <td />
                       </tr>

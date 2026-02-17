@@ -16,6 +16,7 @@ import {
 import { createTournament, getTournament, saveTournamentSetup, startTournament, finishTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, saveActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo, registerTournamentParticipant, loadTournamentHistory, reopenTournament } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
+import Toast from './components/Toast';
 import Auth from './components/Auth';
 import Nav from './components/Nav';
 import Mdl from './components/Modal';
@@ -257,6 +258,7 @@ export default function App() {
   const handleSetSelectedCourse = (id) => { setSelectedCourseId(id); sv("selectedCourse", id); saveSelectedCourse(id); };
 
   const us = (pi, hi, v) => {
+    if (v !== undefined && v !== null && (!Number.isInteger(v) || v < 1 || v > 15)) return;
     lastScoreUpdate.current = Date.now();
     setRound(prev => {
       const u = { ...prev, players: prev.players.map((p, i) => { if (i !== pi) return p; const s = [...p.scores]; s[hi] = v; return { ...p, scores: s }; }) };
@@ -388,6 +390,7 @@ export default function App() {
 
   // Tournament score update
   const handleTournamentScoreUpdate = (groupIdx, playerIdx, holeIdx, score) => {
+    if (score !== undefined && score !== null && (!Number.isInteger(score) || score < 1 || score > 15)) return;
     setTournament(prev => {
       if (!prev) return prev;
       return {
@@ -594,6 +597,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <Toast />
       <div className="hdr">
         {["setup", "score", "bets", "profile"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else if (pg === "profile") { go("home"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}

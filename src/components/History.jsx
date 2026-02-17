@@ -3,6 +3,7 @@ import { T, PC } from '../theme';
 import { calcAll } from '../utils/calc';
 import { fmt$, enrichPlayer } from '../utils/golf';
 import { calcTournamentSkins } from '../utils/tournamentCalc';
+import { openSms, fetchRoundParticipantPhones, fetchTournamentParticipantPhones } from '../utils/sms';
 
 const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, isHost, onViewTournament }) => {
   const [tab, setTab] = useState('rounds');
@@ -10,31 +11,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
 
   // Share round results
   const shareRound = (r) => {
-    const n = r.players.map(p => p.name.split(" ")[0]);
-    const { results, settlements, balances } = calcAll(r.games, r.players);
-
-    let text = `${r.course.name} - ${r.date}\n\n`;
-    text += `Scores:\n`;
-    r.players.forEach((p) => {
-      const gr = p.scores.filter(s => s != null).reduce((a, b) => a + b, 0);
-      text += `${p.name}: ${gr} (CH ${p.courseHandicap})\n`;
-    });
-    text += `\nFinal P&L:\n`;
-    r.players.forEach((p, i) => {
-      const v = -balances[i];
-      text += `${n[i]}: ${fmt$(v)}\n`;
-    });
-    results.forEach(res => {
-      text += `\n${res.title}:\n`;
-      if (res.details) res.details.forEach(d => { text += `  ${d}\n`; });
-    });
-    if (settlements.length > 0) {
-      text += `\nSettlement:\n`;
-      settlements.forEach(s => {
-        text += `${n[s.from]} > ${n[s.to]}: $${s.amount.toFixed(2)}\n`;
-      });
-    }
-
+    const text = buildRoundText(r);
     if (navigator.share) {
       navigator.share({ title: 'Round Results', text }).catch(() => {});
     } else {
@@ -121,6 +98,70 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
     }
   };
 
+  // Build round results text (reused by share and SMS)
+  const buildRoundText = (r) => {
+    const n = r.players.map(p => p.name.split(" ")[0]);
+    const { results, settlements, balances } = calcAll(r.games, r.players);
+    let text = `${r.course.name} - ${r.date}\n\n`;
+    text += `Scores:\n`;
+    r.players.forEach((p) => {
+      const gr = p.scores.filter(s => s != null).reduce((a, b) => a + b, 0);
+      text += `${p.name}: ${gr} (CH ${p.courseHandicap})\n`;
+    });
+    text += `\nFinal P&L:\n`;
+    r.players.forEach((p, i) => {
+      const v = -balances[i];
+      text += `${n[i]}: ${fmt$(v)}\n`;
+    });
+    results.forEach(res => {
+      text += `\n${res.title}:\n`;
+      if (res.details) res.details.forEach(d => { text += `  ${d}\n`; });
+    });
+    if (settlements.length > 0) {
+      text += `\nSettlement:\n`;
+      settlements.forEach(s => {
+        text += `${n[s.from]} > ${n[s.to]}: $${s.amount.toFixed(2)}\n`;
+      });
+    }
+    return text;
+  };
+
+  // Text round results via SMS
+  const textRound = async (r) => {
+    const phones = await fetchRoundParticipantPhones(r.id);
+    if (!phones.length) { alert('No participant phone numbers on file'); return; }
+    const text = buildRoundText(r);
+    openSms(phones, text);
+  };
+
+  // Text tournament results via SMS
+  const textTournament = async (t) => {
+    const phones = await fetchTournamentParticipantPhones(t.id);
+    if (!phones.length) { alert('No participant phone numbers on file'); return; }
+    // Reuse shareTournament text-building logic
+    let text = `${t.name} - ${t.date}\n${t.course.name}\n\n`;
+    const allPlayers = [];
+    t.groups.forEach((g) => {
+      g.players.forEach((p) => {
+        const enriched = enrichPlayer(p, t.course.tees.find(te => te.name === t.teeName));
+        const scores = enriched.scores.filter(s => s != null);
+        const gross = scores.reduce((a, b) => a + b, 0);
+        const pars = t.course.tees.find(te => te.name === t.teeName).pars;
+        const holesPlayed = scores.length;
+        const par = pars.slice(0, holesPlayed).reduce((a, b) => a + b, 0);
+        const toPar = gross - par;
+        allPlayers.push({ name: p.name, gross, toPar, holesPlayed });
+      });
+    });
+    allPlayers.sort((a, b) => a.toPar - b.toPar);
+    text += 'Leaderboard:\n';
+    allPlayers.forEach((p, i) => {
+      const sign = p.toPar > 0 ? '+' : '';
+      text += `${i + 1}. ${p.name}: ${sign}${p.toPar}\n`;
+    });
+    openSms(phones, text);
+  };
+
   // Round detail view
   if (det && tab === 'rounds') {
     const r = det, n = r.players.map(p => p.name.split(" ")[0]);
@@ -156,6 +197,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
         </div>)}
         <div className="fx g10 mt10">
           <button className="btn bs" style={{ flex: 1 }} onClick={() => shareRound(det)}>Share Results</button>
+          <button className="btn bs" style={{ flex: 1 }} onClick={() => textRound(det)}>📱 Text</button>
           <button className="btn bs" style={{ flex: 1 }} onClick={() => onReopenRound(det)}>Reopen Round</button>
         </div>
       </div>
@@ -199,6 +241,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
                 <div className="fx g10">
                   <button className="btn bp" style={{ flex: 1 }} onClick={() => setDet(r)}>View</button>
                   <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); shareRound(r); }}>Share</button>
+                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); textRound(r); }}>📱 Text</button>
                   <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onReopenRound(r); }}>Reopen</button>
                 </div>
               </div>;
@@ -236,6 +279,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
                 <div className="fx g10">
                   <button className="btn bp" style={{ flex: 1 }} onClick={() => onViewTournament(t)}>View</button>
                   <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); shareTournament(t); }}>Share</button>
+                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); textTournament(t); }}>📱 Text</button>
                   {isHostUser && <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onReopenTournament(t); }}>Reopen</button>}
                 </div>
               </div>;

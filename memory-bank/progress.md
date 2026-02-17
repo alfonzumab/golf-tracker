@@ -32,11 +32,16 @@
 
 ## What's Left to Build
 
-### No Immediate Tasks
-All planned features are complete. Project is in maintenance mode.
+### In Progress (on `dev` branch)
+- **Toast notifications** — Infrastructure built, needs to be wired to error handling
+- **Testing** — ErrorBoundary, score validation, and toast system need testing on Vercel preview
+
+### Completed (not yet merged to production)
+- **Dev environment** — Separate Supabase project, Vercel preview deploys, dual-branch workflow
+- **ErrorBoundary** — Crash recovery UI
+- **Score validation** — Rejects scores > 15 or < 1
 
 ### Future Roadmap (Low Priority — not started)
-- **Development database**: Separate Supabase project for dev/staging environment so changes don't risk production data
 - **GHIN API exploration**: Investigate USGA GHIN API for automatic handicap index sync
 
 ## Current Status
@@ -44,8 +49,9 @@ All planned features are complete. Project is in maintenance mode.
 ### Codebase Health
 - **Build:** Passing (Vite + React 19)
 - **Lint:** Passing (ESLint v9+ flat config)
-- **Deployment:** Vercel auto-deploy on push to main
-- **Branch:** main (single branch)
+- **Deployment:** Vercel auto-deploy — `main` → production, `dev` → preview
+- **Branches:** `main` (production), `dev` (staging/feature work)
+- **Vercel project:** `golf-tracker-app`
 
 ### Known Bugs
 - None currently tracked

@@ -11,39 +11,71 @@ npm run lint     # ESLint (flat config, v9+)
 npm run preview  # Preview production build
 ```
 
-No test framework is configured. Production deploys automatically via Vercel on push to `main` (configured in `vercel.json`).
+No test framework is configured. ESLint flat config (v9+) allows unused variables matching `^[A-Z_]` (so `GT`, `PC`, `TT` constants won't trigger errors). **Run `npm run build` and `npm run lint` before pushing.**
 
-ESLint flat config (v9+) allows unused variables matching `^[A-Z_]` (so `GT`, `PC`, `TT` constants won't trigger errors). **Run `npm run build` and `npm run lint` before pushing** — Vercel auto-deploys on push to `main` and a broken build takes the production app down.
+## Branching & Environments
+
+| Branch | Environment | Vercel Deploy | Supabase Project | URL |
+|--------|------------|---------------|-----------------|-----|
+| `main` | Production | Auto on push | Production (original) | `settleup-golf.com` / `www.settleup-golf.com` |
+| `dev` | Staging/Preview | Auto preview deploy | Dev (separate project) | `golf-tracker-app-git-dev-alfonzumabs-projects.vercel.app` (or similar) |
+
+**All new feature work happens on `dev` first.** Only merge to `main` after testing on the Vercel preview URL.
+
+**Vercel project:** `golf-tracker-app` (the only project — `golf-tracker` was a duplicate and has been deleted).
+
+**Environment variables** in Vercel are split by environment:
+- **Production** env vars → production Supabase
+- **Preview** env vars → dev Supabase
+
+**Dev Supabase project:**
+- URL: `https://ocjhtvnsfdroovnumehk.supabase.co`
+- Anon Key: `sb_publishable_Kq7A0cxio01HOxQ3zkkZSg_Ok-eb6jG`
+- Seeded with 9 test players and 3 courses
+- Separate auth database (need separate account)
+- Email confirmations disabled for convenience
+
+**Local development:** Your `.env.local` should match whichever branch you're on:
+- On `dev` branch → use dev Supabase credentials
+- On `main` branch → use production Supabase credentials
 
 **Deployment procedure (MANDATORY — follow every step exactly):**
 
-When the user says "deploy", "push", "ship it", or similar, execute these steps in order:
+### Pushing to `dev` (feature work)
 
-1. **Build** — Run `npm run build`. If it fails, fix all errors and re-run until it succeeds. Do NOT proceed with errors.
-2. **Lint** — Run `npm run lint`. If it fails, fix all errors and re-run until it succeeds. Do NOT proceed with errors. Common lint issues:
+When the user says "push to dev", "deploy to dev", or similar:
+
+1. **Build** — Run `npm run build`. Fix all errors before proceeding.
+2. **Lint** — Run `npm run lint`. Fix all errors before proceeding. Common lint issues:
    - `setState in effect`: Move the logic out of `useEffect` into the render body or a callback
    - `accessed before declared`: Reorder declarations or inline the logic
    - `unused vars`: Prefix with `_` and uppercase first letter (e.g., `_Foursomes`) to match the `^[A-Z_]` ignore pattern
-3. **Test on localhost** — Run `npm run dev` and remind the user to test the changes on `localhost:5173` before deploying to production. Wait for user confirmation before proceeding.
-4. **Stage files** — Run `git add` with specific file paths. Never use `git add -A` or `git add .`. Do NOT stage `.env`, `.env.local`, or any credential files.
-5. **Commit** — Create a descriptive commit message summarizing what changed and why. Always append this trailer:
+3. **Stage files** — Run `git add` with specific file paths. Never use `git add -A` or `git add .`. Do NOT stage `.env`, `.env.local`, or any credential files.
+4. **Commit** — Create a descriptive commit message. Always append this trailer:
    ```
    Co-Authored-By: Claude <model> <noreply@anthropic.com>
    ```
    Replace `<model>` with your actual model name (e.g., `Opus 4.6`, `Sonnet 4.5`).
-6. **Update Memory Bank** — After committing, update `memory-bank/progress.md` and `memory-bank/activeContext.md`:
-   - Add the commit hash and a one-line summary to `Recent Activity` in `progress.md`
-   - Move any completed tasks from "What's Left" to "Completed" in `progress.md`
-   - Update `activeContext.md` with what was just shipped and what comes next
-7. **Push** — Run `git push origin main`. This triggers Vercel auto-deployment (30-60 seconds to live).
-8. **Confirm** — Tell the user the push succeeded and summarize what was deployed.
+5. **Update Memory Bank** — After committing, update `memory-bank/progress.md` and `memory-bank/activeContext.md`.
+6. **Push** — Run `git push origin dev`. This triggers a Vercel preview deployment.
+7. **Confirm** — Tell the user the push succeeded and remind them to test on the preview URL.
+
+### Promoting to Production (`dev` → `main`)
+
+When the user says "deploy", "push to prod", "ship it", or similar:
+
+1. **Verify on dev first** — Ensure the feature has been tested on the Vercel preview URL.
+2. **Test on localhost** — Run `npm run dev` and remind the user to test on `localhost:5173`. Wait for user confirmation.
+3. **Merge** — `git checkout main && git merge dev && git push origin main`. This triggers Vercel production auto-deployment (30-60 seconds to live).
+4. **Switch back** — `git checkout dev` to stay on the dev branch for next work.
+5. **Confirm** — Tell the user the push succeeded and summarize what was deployed.
 
 **Critical rules:**
-- Build + lint MUST both pass before committing. A broken push takes the production app down.
+- Build + lint MUST both pass before committing to ANY branch.
 - If build or lint fails, fix the issue, then restart from step 1.
-- User must test on localhost before pushing to production.
 - Never use `--no-verify`, `--force`, or skip any step.
-- The production branch is `main`. Never force-push to `main`.
+- Never force-push to `main`.
+- **Default working branch is `dev`.** Only touch `main` when promoting to production.
 
 ## Architecture
 
@@ -204,6 +236,12 @@ Requires `.env.local` with:
 ```
 VITE_SUPABASE_URL=<supabase project url>
 VITE_SUPABASE_ANON_KEY=<supabase publishable key>
+```
+
+**For local development on `dev` branch**, use the dev Supabase credentials:
+```
+VITE_SUPABASE_URL=https://ocjhtvnsfdroovnumehk.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_Kq7A0cxio01HOxQ3zkkZSg_Ok-eb6jG
 ```
 
 **Database Migrations** (run in Supabase SQL Editor, in order):

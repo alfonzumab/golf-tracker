@@ -1,26 +1,35 @@
 # Active Context — Golf Tracker
 
 ## Current State
-**Maintenance mode** — all planned features complete, production app is live.
+**Dev/staging environment is live.** Dual-environment workflow established.
 
 ## Just Shipped (2026-02-16)
-- **Ryder Cup team colors** — Player names in tournament scoring "By Hole" view now display in team colors (blue for Team A, pink for Team B), making team assignments immediately visible at a glance
-- **Enhanced sharing** — Round shares now include game results (Stroke, Match, Skins, etc.) and settlement details. Tournament shares include skins winners and group game breakdowns. Join-code shares (round + tournament) include settleup-golf.com link.
-- **Deployment workflow improvements** — CLAUDE.md now requires localhost testing before pushing to production; added SQL file cleanup rules
-- **Linked player indicators** — Players list shows "Linked" badge and home course for linked accounts
+- **Dev environment setup** — Separate Supabase project for dev/staging, Vercel preview deploys for `dev` branch
+- **ErrorBoundary** — Crash recovery UI ("Something went wrong" + Reload button)
+- **Toast notification system** — Infrastructure in place (no visible toasts yet, will wire up with error handling)
+- **Score validation** — Rejects scores > 15 or < 1
+- **Ryder Cup team colors** — Player names in tournament scoring "By Hole" view now display in team colors
+- **Enhanced sharing** — Round shares include game results and settlement details
+- **Linked player indicators** — Players list shows "Linked" badge and home course
+
+## Environment Setup
+- **Branches:** `main` = production, `dev` = staging
+- **Vercel project:** `golf-tracker-app` (duplicate `golf-tracker` project deleted)
+- **Vercel env vars:** Production vars → prod Supabase, Preview vars → dev Supabase
+- **Dev Supabase:** `https://ocjhtvnsfdroovnumehk.supabase.co` — 9 test players, 3 courses, email confirmations disabled
+- **Workflow:** All new work on `dev` → test on preview URL → merge to `main` for production
 
 ## What's Next
-No immediate tasks. User may request:
-- Bug fixes as they come up during use
-- Minor UI polish or enhancements
-- Future: development database setup (separate Supabase project)
+- Wire up toast notifications to error handling
+- Continue testing dev environment features on preview URL
 - Future: GHIN API integration for auto handicap sync
 
 ## Session Start Checklist
 1. Read this file and `progress.md`
-2. Check git status for uncommitted work
-3. Follow CLAUDE.md build/lint/deploy procedure for any changes
-4. Update memory-bank files on every commit (see CLAUDE.md "AI Workflow & Memory Bank")
+2. `git checkout dev` — ensure you're on the dev branch
+3. Check git status for uncommitted work
+4. Follow CLAUDE.md build/lint/deploy procedure for any changes
+5. Update memory-bank files on every commit (see CLAUDE.md "AI Workflow & Memory Bank")
 
 ---
 

@@ -18,7 +18,7 @@ No test framework is configured. ESLint flat config (v9+) allows unused variable
 | Branch | Environment | Vercel Deploy | Supabase Project | URL |
 |--------|------------|---------------|-----------------|-----|
 | `main` | Production | Auto on push | Production (original) | `settleup-golf.com` / `www.settleup-golf.com` |
-| `dev` | Staging/Preview | Auto preview deploy | Dev (separate project) | `golf-tracker-app-git-dev-alfonzumabs-projects.vercel.app` (or similar) |
+| `dev` | Staging/Preview | Auto preview deploy | Dev (separate project) | `golf-tracker-app-git-dev-alfonzumabs-projects.vercel.app` |
 
 **All new feature work happens on `dev` first.** Only merge to `main` after testing on the Vercel preview URL.
 

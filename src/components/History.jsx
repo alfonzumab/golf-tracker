@@ -197,7 +197,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
         </div>)}
         <div className="fx g10 mt10">
           <button className="btn bs" style={{ flex: 1 }} onClick={() => shareRound(det)}>Share Results</button>
-          <button className="btn bs" style={{ flex: 1 }} onClick={() => textRound(det)}>📱 Text</button>
+          <button className="btn bs" style={{ flex: 1 }} onClick={() => textRound(det)}>Text</button>
           <button className="btn bs" style={{ flex: 1 }} onClick={() => onReopenRound(det)}>Reopen Round</button>
         </div>
       </div>
@@ -241,7 +241,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
                 <div className="fx g10">
                   <button className="btn bp" style={{ flex: 1 }} onClick={() => setDet(r)}>View</button>
                   <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); shareRound(r); }}>Share</button>
-                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); textRound(r); }}>📱 Text</button>
+                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); textRound(r); }}>Text</button>
                   <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onReopenRound(r); }}>Reopen</button>
                 </div>
               </div>;
@@ -279,7 +279,7 @@ const Hist = ({ rounds, tournamentHistory, onReopenRound, onReopenTournament, is
                 <div className="fx g10">
                   <button className="btn bp" style={{ flex: 1 }} onClick={() => onViewTournament(t)}>View</button>
                   <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); shareTournament(t); }}>Share</button>
-                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); textTournament(t); }}>📱 Text</button>
+                  <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); textTournament(t); }}>Text</button>
                   {isHostUser && <button className="btn bs" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onReopenTournament(t); }}>Reopen</button>}
                 </div>
               </div>;

@@ -4,6 +4,8 @@
 
 | Commit | Summary |
 |--------|---------|
+| `082fafd` | Add SMS group text sharing for rounds and tournaments |
+| `c48c736` | Add phone number field to user profiles |
 | `d1d786b` | Add team color indicators to Ryder Cup tournament scoring |
 | `3f63b12` | Enhance sharing: game results, settlements, and website link |
 | `9aa21eb` | Update deployment workflow: add localhost testing step and SQL cleanup rules |
@@ -29,6 +31,7 @@
 - PWA installable on Android/iOS
 - Tournament handicap editing in lobby
 - Tournament auto-resume cross-device
+- SMS group text sharing (phone numbers in profiles, `sms:` URL for rounds and tournaments)
 
 ## What's Left to Build
 
@@ -42,7 +45,6 @@
 - **Score validation** — Rejects scores > 15 or < 1
 
 ### Future Roadmap (not started)
-- **SMS share via phone numbers**: Add optional phone number to user profiles (private, never exposed in search). When host shares round/tournament results, auto-populate a group text with participants' numbers via `sms:` URL. Google OAuth may provide phone but manual entry is primary. Fallback to clipboard if no numbers available. Note: Android `sms:` multi-recipient support varies.
 - **GHIN API exploration**: Investigate USGA GHIN API for automatic handicap index sync
 
 ## Current Status

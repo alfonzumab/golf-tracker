@@ -4,6 +4,8 @@
 **Dev/staging environment is live.** Dual-environment workflow established.
 
 ## Just Shipped (2026-02-16)
+- **SMS group text sharing** — "📱 Text" button on rounds and tournaments in History; fetches participant phone numbers via RPC, opens native SMS app with pre-filled recipients and results
+- **Phone number in profiles** — Optional phone_number field on profiles with strict RLS, `get_participant_phones` RPC
 - **Dev environment setup** — Separate Supabase project for dev/staging, Vercel preview deploys for `dev` branch
 - **ErrorBoundary** — Crash recovery UI ("Something went wrong" + Reload button)
 - **Toast notification system** — Infrastructure in place (no visible toasts yet, will wire up with error handling)

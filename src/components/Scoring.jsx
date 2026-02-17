@@ -38,6 +38,14 @@ const Scoring = ({ round, updateScore }) => {
     return (
       <div>
         <div className="tk"><div className="tkt">Leaderboard</div>
+          <div className="tkr" style={{ borderBottom: `1px solid ${T.bdr}`, paddingBottom: 4, marginBottom: 4 }}>
+            <div />
+            <div className="fx g8">
+              <span style={{ fontSize: 11, color: T.mut, fontWeight: 600 }}>Gross</span>
+              <span style={{ fontSize: 11, color: T.mut, fontWeight: 600 }}>+/−</span>
+              <span style={{ fontSize: 11, color: T.mut, fontWeight: 600, minWidth: 48, textAlign: "right" }}>P&L</span>
+            </div>
+          </div>
           {lb.map((x, ri) => (
             <div key={x.i} className="tkr">
               <div className="fx g6"><span style={{ fontSize: 12, color: T.mut, width: 16 }}>{ri + 1}.</span><span className={`pc${x.i}`} style={{ fontWeight: 600, fontSize: 14 }}>{x.name}</span></div>

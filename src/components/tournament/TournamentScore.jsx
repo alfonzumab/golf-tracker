@@ -130,6 +130,14 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
         )}
         <div style={{ fontSize: 13, color: T.accB, textAlign: 'center', marginBottom: 8 }}>Group {playerInfo.groupIdx + 1}</div>
         <div className="tk"><div className="tkt">Leaderboard</div>
+          <div className="tkr" style={{ borderBottom: `1px solid ${T.bdr}`, paddingBottom: 4, marginBottom: 4 }}>
+            <div />
+            <div className="fx g8">
+              <span style={{ fontSize: 11, color: T.mut, fontWeight: 600 }}>Gross</span>
+              <span style={{ fontSize: 11, color: T.mut, fontWeight: 600 }}>+/−</span>
+              <span style={{ fontSize: 11, color: T.mut, fontWeight: 600, minWidth: 36, textAlign: "right" }}>Thru</span>
+            </div>
+          </div>
           {lb.map((x, ri) => {
             // Use team color for Ryder Cup, player color otherwise
             const nameColor = x.teamIdx !== null
@@ -145,7 +153,7 @@ const TournamentScore = ({ tournament, playerInfo, onUpdateScore, onSelectPlayer
                 <div className="fx g8">
                   <span style={{ fontSize: 14, fontWeight: 700 }}>{x.gross || "--"}</span>
                   <span style={{ fontSize: 13, color: x.toPar < 0 ? T.accB : x.toPar > 0 ? T.red : T.dim, fontWeight: 600 }}>{x.played > 0 ? (x.toPar > 0 ? "+" : "") + x.toPar : "--"}</span>
-                  <span style={{ fontSize: 13, color: T.dim, minWidth: 36, textAlign: "right" }}>{x.played > 0 ? `${x.played}h` : ""}</span>
+                  <span style={{ fontSize: 13, color: T.dim, minWidth: 36, textAlign: "right" }}>{x.played > 0 ? x.played : ""}</span>
                 </div>
               </div>
             );

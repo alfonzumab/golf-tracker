@@ -414,7 +414,7 @@ function cNines(g, pl) {
   ];
 
   return {
-    title: "9s (" + (g.net ? "Net" : "Gross") + ")",
+    title: "9s (5-3-1, " + (g.net ? "Net" : "Gross") + ")",
     details: det,
     status,
     payouts: pay,

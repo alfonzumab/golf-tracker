@@ -104,13 +104,13 @@ const Setup = ({ rp, course, onConfirm }) => {
         <button className="btn bs" onClick={() => add(GT.SKINS)}>Skins</button>
         {!is3 && <button className="btn bs" onClick={() => add(GT.SIXES)}>6-6-6</button>}
         {!is3 && <button className="btn bs" onClick={() => add(GT.VEGAS)}>Vegas</button>}
-        {is3 && <button className="btn bs" onClick={() => add(GT.NINES)}>9s</button>}
+        {is3 && <button className="btn bs" onClick={() => add(GT.NINES)}>9s (5-3-1)</button>}
       </div></div>}
 
       {games.map(g => (
         <div key={g.id} className="cd">
           <div className="fxb mb6">
-            <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : g.type === GT.SIXES ? "6-6-6" : g.type === GT.NINES ? "9s" : "Vegas"}</span>
+            <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : g.type === GT.SIXES ? "6-6-6" : g.type === GT.NINES ? "9s (5-3-1)" : "Vegas"}</span>
             <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => setGames(games.filter(x => x.id !== g.id))}>Remove</button>
           </div>
           {g.type === GT.STROKE && <>

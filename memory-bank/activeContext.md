@@ -1,18 +1,15 @@
 # Active Context — Golf Tracker
 
 ## Current State
-**Dev/staging environment is live.** Dual-environment workflow established.
+**All dev features merged to production.** Dual-environment workflow established.
 
-## Just Shipped (2026-02-16)
-- **SMS group text sharing** — "📱 Text" button on rounds and tournaments in History; fetches participant phone numbers via RPC, opens native SMS app with pre-filled recipients and results
-- **Phone number in profiles** — Optional phone_number field on profiles with strict RLS, `get_participant_phones` RPC
-- **Dev environment setup** — Separate Supabase project for dev/staging, Vercel preview deploys for `dev` branch
+## Just Deployed to Production (2026-02-17)
+- **SMS group text sharing** — "Text" button on rounds and tournaments in History; fetches participant phone numbers via RPC, opens native SMS app with pre-filled recipients and results
+- **Phone number in profiles** — Optional phone_number field with `get_participant_phones` RPC
 - **ErrorBoundary** — Crash recovery UI ("Something went wrong" + Reload button)
-- **Toast notification system** — Infrastructure in place (no visible toasts yet, will wire up with error handling)
+- **Toast notification system** — Infrastructure in place (no visible toasts yet)
 - **Score validation** — Rejects scores > 15 or < 1
-- **Ryder Cup team colors** — Player names in tournament scoring "By Hole" view now display in team colors
-- **Enhanced sharing** — Round shares include game results and settlement details
-- **Linked player indicators** — Players list shows "Linked" badge and home course
+- **Fixed phone-number-migration.sql** — Removed destructive RLS policy changes that broke profile saves
 
 ## Environment Setup
 - **Branches:** `main` = production, `dev` = staging
@@ -23,7 +20,6 @@
 
 ## What's Next
 - Wire up toast notifications to error handling
-- Continue testing dev environment features on preview URL
 - Future: GHIN API integration for auto handicap sync
 
 ## Session Start Checklist
@@ -35,4 +31,4 @@
 
 ---
 
-*Last Updated: 2026-02-16*
+*Last Updated: 2026-02-17*

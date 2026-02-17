@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| `16a9e14` | Fix phone-number-migration.sql: remove destructive RLS policy changes |
 | `082fafd` | Add SMS group text sharing for rounds and tournaments |
 | `c48c736` | Add phone number field to user profiles |
 | `d1d786b` | Add team color indicators to Ryder Cup tournament scoring |
@@ -32,17 +33,14 @@
 - Tournament handicap editing in lobby
 - Tournament auto-resume cross-device
 - SMS group text sharing (phone numbers in profiles, `sms:` URL for rounds and tournaments)
+- Dev/staging environment (separate Supabase project, dual-branch workflow)
+- ErrorBoundary crash recovery UI
+- Score validation (rejects scores > 15 or < 1)
 
 ## What's Left to Build
 
 ### In Progress (on `dev` branch)
 - **Toast notifications** — Infrastructure built, needs to be wired to error handling
-- **Testing** — ErrorBoundary, score validation, and toast system need testing on Vercel preview
-
-### Completed (not yet merged to production)
-- **Dev environment** — Separate Supabase project, Vercel preview deploys, dual-branch workflow
-- **ErrorBoundary** — Crash recovery UI
-- **Score validation** — Rejects scores > 15 or < 1
 
 ### Future Roadmap (not started)
 - **GHIN API exploration**: Investigate USGA GHIN API for automatic handicap index sync
@@ -61,4 +59,4 @@
 
 ---
 
-*Last Updated: 2026-02-16*
+*Last Updated: 2026-02-17*

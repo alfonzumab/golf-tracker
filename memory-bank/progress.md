@@ -41,7 +41,8 @@
 - **ErrorBoundary** — Crash recovery UI
 - **Score validation** — Rejects scores > 15 or < 1
 
-### Future Roadmap (Low Priority — not started)
+### Future Roadmap (not started)
+- **SMS share via phone numbers**: Add optional phone number to user profiles (private, never exposed in search). When host shares round/tournament results, auto-populate a group text with participants' numbers via `sms:` URL. Google OAuth may provide phone but manual entry is primary. Fallback to clipboard if no numbers available. Note: Android `sms:` multi-recipient support varies.
 - **GHIN API exploration**: Investigate USGA GHIN API for automatic handicap index sync
 
 ## Current Status

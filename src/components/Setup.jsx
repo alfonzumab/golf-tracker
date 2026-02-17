@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, GT, PC } from '../theme';
+import { T, GT } from '../theme';
 import { sixPairs, calcCH, getStrokes } from '../utils/golf';
 import Tog from './Toggle';
 
@@ -8,6 +8,7 @@ const Setup = ({ rp, course, onConfirm }) => {
   const [sa, setSa] = useState(true);
   const [players, setPlayers] = useState(rp);
   const n = players.map(p => p.name.split(" ")[0]);
+  const is3 = players.length === 3;
 
   const add = t => {
     const g = { type: t, id: Date.now() };
@@ -16,6 +17,7 @@ const Setup = ({ rp, course, onConfirm }) => {
     else if (t === GT.SKINS) Object.assign(g, { net: true, carryOver: false, skinsMode: "pot", potPerPlayer: 20 });
     else if (t === GT.SIXES) Object.assign(g, { mode: "match", wagerPerSegment: 5, pairs: sixPairs() });
     else if (t === GT.VEGAS) Object.assign(g, { team1: [0, 1], team2: [2, 3], wagerPerPoint: 1, flipOnBirdie: true });
+    else if (t === GT.NINES) Object.assign(g, { net: true, wagerPerPoint: 1 });
     setGames([...games, g]); setSa(false);
   };
   const u = (id, up) => setGames(games.map(g => g.id === id ? { ...g, ...up } : g));
@@ -34,7 +36,7 @@ const Setup = ({ rp, course, onConfirm }) => {
   return (
     <div className="pg">
       <div className="cd">
-        <div className="ct">Foursome</div>
+        <div className="ct">{is3 ? "Threesome" : "Foursome"}</div>
         <div style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>{course.name}</div>
 
         {/* Player Grid - 2 columns for better space usage */}
@@ -98,16 +100,17 @@ const Setup = ({ rp, course, onConfirm }) => {
 
       {sa && <div className="cd"><div className="g2">
         <button className="btn bs" onClick={() => add(GT.STROKE)}>Stroke</button>
-        <button className="btn bs" onClick={() => add(GT.MATCH)}>Match</button>
+        {!is3 && <button className="btn bs" onClick={() => add(GT.MATCH)}>Match</button>}
         <button className="btn bs" onClick={() => add(GT.SKINS)}>Skins</button>
-        <button className="btn bs" onClick={() => add(GT.SIXES)}>6-6-6</button>
-        <button className="btn bs" onClick={() => add(GT.VEGAS)}>Vegas</button>
+        {!is3 && <button className="btn bs" onClick={() => add(GT.SIXES)}>6-6-6</button>}
+        {!is3 && <button className="btn bs" onClick={() => add(GT.VEGAS)}>Vegas</button>}
+        {is3 && <button className="btn bs" onClick={() => add(GT.NINES)}>9s</button>}
       </div></div>}
 
       {games.map(g => (
         <div key={g.id} className="cd">
           <div className="fxb mb6">
-            <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : g.type === GT.SIXES ? "6-6-6" : "Vegas"}</span>
+            <span className="ct" style={{ marginBottom: 0 }}>{g.type === GT.STROKE ? "Stroke" : g.type === GT.MATCH ? "Match" : g.type === GT.SKINS ? "Skins" : g.type === GT.SIXES ? "6-6-6" : g.type === GT.NINES ? "9s" : "Vegas"}</span>
             <button className="bg" style={{ color: T.red, borderColor: T.red + "33" }} onClick={() => setGames(games.filter(x => x.id !== g.id))}>Remove</button>
           </div>
           {g.type === GT.STROKE && <>
@@ -200,6 +203,11 @@ const Setup = ({ rp, course, onConfirm }) => {
               <button className="bg" onClick={() => u(g.id, { pairs: sixPairs() })}>Randomize</button>
             </div>
             <div style={{ fontSize: 13, color: T.dim }}>{(g.pairs || []).map((p, i) => <div key={i} style={{ padding: "2px 0" }}>{p.l}: {n[p.t1[0]]}&{n[p.t1[1]]} vs {n[p.t2[0]]}&{n[p.t2[1]]}</div>)}</div>
+          </>}
+          {g.type === GT.NINES && <>
+            <Tog label="Net" v={g.net} onChange={v => u(g.id, { net: v })} />
+            <div><div className="il">$/point</div><input className="inp" type="number" step="0.25" value={g.wagerPerPoint} onChange={e => u(g.id, { wagerPerPoint: parseFloat(e.target.value) || 0 })} /></div>
+            <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>9 points per hole split by score (5/3/1, 4/4/1, 5/2/2, or 3/3/3). Settlement based on point differential × $/point.</div>
           </>}
           {g.type === GT.VEGAS && <>
             <div className="fx g6 mb8" style={{ justifyContent: "center" }}>

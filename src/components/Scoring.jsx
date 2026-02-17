@@ -70,8 +70,15 @@ const Scoring = ({ round, updateScore }) => {
                   {r.status && <span style={{ fontSize: 12, color: T.accB, fontWeight: 600 }}>{r.status}</span>}
                 </div>
 
+                {/* Nines point totals */}
+                {r.ninesData && (() => {
+                  return <div className="fx g6" style={{ marginTop: 4 }}>
+                    {pl.map((_, i) => <span key={i} className={`pc${i}`} style={{ fontSize: 12, fontWeight: 600 }}>{n[i]}:{r.ninesData.pts[i]}</span>)}
+                  </div>;
+                })()}
+
                 {/* Skins hole results */}
-                {r.holeResults && (() => {
+                {r.holeResults && !r.ninesData && (() => {
                   const sc = [0, 0, 0, 0]; r.holeResults.forEach(h => { if (h.w != null) sc[h.w] += h.v; });
                   const carry = r.holeResults.filter(h => h.r === "C").length;
                   return <div className="fx g6" style={{ marginTop: 4 }}>
@@ -210,6 +217,71 @@ const Scoring = ({ round, updateScore }) => {
         </div>}
 
         {results.map((r, ri) => {
+          // Nines games - rich display with hole-by-hole points table
+          if (r.title.includes("9s") && r.ninesData) {
+            return (
+              <div key={ri} className="cd" style={{ cursor: "pointer" }} onClick={() => setExpGame(expGame === ri ? null : ri)}>
+                <div className="fxb mb6"><span className="ct" style={{ marginBottom: 0 }}>{r.title}</span>{r.wager && <span className="tag ty">{r.wager}</span>}</div>
+                {r.status && <div style={{ fontSize: 14, fontWeight: 700, color: T.accB, marginBottom: 8 }}>{r.status}</div>}
+
+                {/* Player point totals */}
+                <div style={{ marginBottom: 12 }}>
+                  {pl.map((_, i) => (
+                    <div key={i} className="fxb" style={{ padding: '8px 12px', borderRadius: 8, background: T.card, marginBottom: 4 }}>
+                      <span className={`pc${i}`} style={{ fontSize: 14, fontWeight: 600 }}>{n[i]}</span>
+                      <span style={{ fontSize: 16, fontWeight: 700 }}>{r.ninesData.pts[i]} pts</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Hole-by-hole points table */}
+                <div className="sw">
+                  {[{ l: "Front 9", s: 0, e: 9 }, { l: "Back 9", s: 9, e: 18 }].map(nine => (
+                    <div key={nine.l} className="mb6"><table className="sct"><thead><tr>
+                      <th style={{ minWidth: 44, textAlign: "left", paddingLeft: 4 }}>{nine.l}</th>
+                      {Array.from({ length: 9 }, (_, i) => <th key={i} className="hn">{nine.s + i + 1}</th>)}
+                      <th className="tc">Tot</th>
+                    </tr></thead><tbody>
+                      {pl.map((_, pi) => (
+                        <tr key={pi}><td style={{ textAlign: "left", paddingLeft: 4 }}><span className={`pc${pi}`} style={{ fontWeight: 600, fontSize: 12 }}>{n[pi]}</span></td>
+                          {Array.from({ length: 9 }, (_, i) => {
+                            const hr = r.holeResults[nine.s + i];
+                            const pts = hr.played ? hr.pts[pi] : null;
+                            return <td key={i} style={{ fontSize: 12, fontWeight: pts === 5 ? 800 : 600, color: pts === 5 ? T.accB : pts === 1 ? T.red : pts != null ? T.txt : T.mut }}>
+                              {pts != null ? pts : '|'}
+                            </td>;
+                          })}
+                          <td className="tc" style={{ fontWeight: 700 }}>
+                            {r.holeResults.slice(nine.s, nine.s + 9).reduce((a, h) => a + (h.played ? h.pts[pi] : 0), 0)}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr style={{ color: T.dim, fontSize: 11 }}><td style={{ textAlign: "left", paddingLeft: 4 }}>Score</td>
+                        {Array.from({ length: 9 }, (_, i) => {
+                          const hr = r.holeResults[nine.s + i];
+                          return <td key={i}>{hr.played ? hr.scores.join('/') : '|'}</td>;
+                        })}
+                        <td />
+                      </tr>
+                    </tbody></table></div>
+                  ))}
+                </div>
+
+                {/* Expandable payouts */}
+                {expGame === ri && r.payouts && r.payouts.length > 0 && <div className="mt8">
+                  <div className="il mb6">Payouts</div>
+                  {r.payouts.map((p, j) => (
+                    <div key={j} style={{ fontSize: 13, marginBottom: 4 }}>
+                      <span className={`pc${p.f}`} style={{ fontWeight: 600 }}>{n[p.f]}</span> → <span className={`pc${p.t}`} style={{ fontWeight: 600 }}>{n[p.t]}</span>: <span style={{ fontWeight: 700 }}>{fmt$(p.a)}</span>
+                    </div>
+                  ))}
+                </div>}
+
+                <div style={{ textAlign: "center", fontSize: 12, color: T.mut, marginTop: 6 }}>{expGame === ri ? "Hide" : "Tap for details"}</div>
+              </div>
+            );
+          }
+
           // Vegas games - rich display with expandable payouts
           if (r.title.includes("Vegas") && r.vegasData) {
             return (

@@ -20,7 +20,7 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
 
   const tog = id => {
     if (sel.includes(id)) setSel(sel.filter(s => s !== id));
-    else if (sel.length < 4) {
+    else if (sel.length < 4) { // max 4 players
       setSel([...sel, id]);
       if (!tees[id] && course) setTees({ ...tees, [id]: course.tees[0]?.name || "" });
     }
@@ -255,7 +255,7 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
             </div>
           )}
         </div>
-        {sel.length === 4 && rdy && course && <button className="btn bp" style={{ fontSize: 16, padding: 16 }} onClick={() => {
+        {(sel.length === 3 || sel.length === 4) && rdy && course && <button className="btn bp" style={{ fontSize: 16, padding: 16 }} onClick={() => {
           // Use the current players list which may include guests
           const currentPlayers = [...players];
           const rp = sel.map((id, i) => {
@@ -271,7 +271,7 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
           });
           onStart(rp, course);
         }}>Set Up Games {">"}</button>}
-        {showPlayers && sel.length > 0 && sel.length < 4 && <p style={{ fontSize: 13, color: T.dim, textAlign: "center", marginTop: 8 }}>Select {4 - sel.length} more player{4 - sel.length !== 1 ? "s" : ""}</p>}
+        {showPlayers && sel.length > 0 && sel.length < 3 && <p style={{ fontSize: 13, color: T.dim, textAlign: "center", marginTop: 8 }}>Select {3 - sel.length} more player{3 - sel.length !== 1 ? "s" : ""} (3 or 4 needed)</p>}
       </>
     );
   };

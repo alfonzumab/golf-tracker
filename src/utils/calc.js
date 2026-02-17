@@ -13,6 +13,7 @@ export function calcAll(games, players) {
     else if (g.type === GT.SKINS) r = cSkins(g, players);
     else if (g.type === GT.SIXES) r = cSixes(g, players);
     else if (g.type === GT.VEGAS) r = cVegas(g, players);
+    else if (g.type === GT.NINES) r = cNines(g, players);
     if (r) { res.push(r); (r.payouts || []).forEach(p => pay(p.f, p.t, p.a)); }
   }
   const bal = Array(n).fill(0);
@@ -350,5 +351,75 @@ function cVegas(g, pl) {
     wager: "$" + w + "/pt",
     holeResults,
     vegasData: { team1TotalPoints, team2TotalPoints, t1N, t2N, netDiff, w }
+  };
+}
+
+function cNines(g, pl) {
+  if (pl.length !== 3) return null;
+  const n = pl.map(p => p.name.split(" ")[0]);
+  const w = g.wagerPerPoint || 1;
+  const pts = [0, 0, 0]; // running point totals
+  const hr = []; // hole results
+
+  for (let h = 0; h < 18; h++) {
+    if (!pl.every(p => p.scores[h] != null)) {
+      hr.push({ h: h + 1, played: false, pts: [0, 0, 0], scores: [null, null, null] });
+      continue;
+    }
+    const sc = pl.map((p, i) => ({ i, net: g.net ? p.scores[h] - p.strokeHoles[h] : p.scores[h] }));
+    sc.sort((a, b) => a.net - b.net);
+
+    // Determine point distribution
+    const hp = [0, 0, 0]; // hole points indexed by player
+    if (sc[0].net === sc[1].net && sc[1].net === sc[2].net) {
+      // All three tie: 3/3/3
+      hp[sc[0].i] = 3; hp[sc[1].i] = 3; hp[sc[2].i] = 3;
+    } else if (sc[0].net === sc[1].net) {
+      // Two-way tie for best: 4/4/1
+      hp[sc[0].i] = 4; hp[sc[1].i] = 4; hp[sc[2].i] = 1;
+    } else if (sc[1].net === sc[2].net) {
+      // Two-way tie for worst: 5/2/2
+      hp[sc[0].i] = 5; hp[sc[1].i] = 2; hp[sc[2].i] = 2;
+    } else {
+      // All unique: 5/3/1
+      hp[sc[0].i] = 5; hp[sc[1].i] = 3; hp[sc[2].i] = 1;
+    }
+
+    pts[0] += hp[0]; pts[1] += hp[1]; pts[2] += hp[2];
+    hr.push({ h: h + 1, played: true, pts: [...hp], scores: pl.map(p => g.net ? p.scores[h] - p.strokeHoles[h] : p.scores[h]) });
+  }
+
+  // Settlement: each pair settles based on point differential
+  // Player A owes Player B = (B_pts - A_pts) * wager if positive
+  const pay = [];
+  for (let i = 0; i < 3; i++) {
+    for (let j = i + 1; j < 3; j++) {
+      const diff = pts[j] - pts[i]; // positive means j has more points (j wins from i)
+      if (diff > 0) {
+        pay.push({ f: i, t: j, a: diff * w });
+      } else if (diff < 0) {
+        pay.push({ f: j, t: i, a: Math.abs(diff) * w });
+      }
+    }
+  }
+
+  const played = hr.filter(h => h.played).length;
+  const totalPts = pts[0] + pts[1] + pts[2];
+  const leader = pts.indexOf(Math.max(...pts));
+  const status = played > 0 ? n[leader] + " leads " + pts[leader] + " pts" : "";
+  
+  const det = [
+    ...pl.map((_, i) => n[i] + ": " + pts[i] + " pts"),
+    played + "/18 holes | " + totalPts + " total pts"
+  ];
+
+  return {
+    title: "9s (" + (g.net ? "Net" : "Gross") + ")",
+    details: det,
+    status,
+    payouts: pay,
+    wager: "$" + w + "/pt",
+    holeResults: hr,
+    ninesData: { pts, playerNames: n }
   };
 }

@@ -11,6 +11,7 @@ const Profile = ({ session, profile, courses, players, rounds, tournamentHistory
   const [ghin, setGhin] = useState(profile?.ghin_number || '');
   const [preferredCourse, setPreferredCourse] = useState(profile?.preferred_course_id || '');
   const [linkedPlayer, setLinkedPlayer] = useState(profile?.linked_player_id || '');
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number || '');
   
   const [email, setEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -39,6 +40,7 @@ const Profile = ({ session, profile, courses, players, rounds, tournamentHistory
       setGhin(profile.ghin_number || '');
       setPreferredCourse(profile.preferred_course_id || '');
       setLinkedPlayer(profile.linked_player_id || '');
+      setPhoneNumber(profile.phone_number || '');
     }
   }, [profile]);
 
@@ -67,7 +69,8 @@ const Profile = ({ session, profile, courses, players, rounds, tournamentHistory
         handicap_index: handicap ? parseFloat(handicap) : null,
         ghin_number: ghin || null,
         preferred_course_id: preferredCourse || null,
-        linked_player_id: linkedPlayer || null
+        linked_player_id: linkedPlayer || null,
+        phone_number: phoneNumber || null
       };
 
       const { error: updateError } = await supabase
@@ -315,6 +318,20 @@ const Profile = ({ session, profile, courses, players, rounds, tournamentHistory
               <option key={c.id} value={c.id}>{c.name} - {c.city}</option>
             ))}
           </select>
+        </div>
+
+        <div className="mb12">
+          <div className="il">Phone Number</div>
+          <input
+            className="inp"
+            type="tel"
+            value={phoneNumber}
+            onChange={e => setPhoneNumber(e.target.value)}
+            placeholder="+1 (555) 123-4567"
+          />
+          <div style={{ fontSize: 11, color: T.dim, marginTop: 4 }}>
+            Your number is private and only used to auto-populate group texts when sharing results
+          </div>
         </div>
 
         <button 

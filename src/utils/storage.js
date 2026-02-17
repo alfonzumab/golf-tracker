@@ -461,6 +461,20 @@ export async function saveProfile(updates) {
   }
 }
 
+export async function savePhoneNumber(phoneNumber) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ phone_number: phoneNumber || null })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('savePhoneNumber: Failed to save phone number:', error.message);
+  }
+}
+
 // ========== Player Links ==========
 
 export async function loadPlayerLinks() {

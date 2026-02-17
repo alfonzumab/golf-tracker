@@ -136,7 +136,7 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
           )}
           {showPlayers && (
             <>
-              <div className="il mb6">Select 4 Players</div>
+              <div className="il mb6">Select 3-4 Players</div>
               <div className="fxb mb8">
                 <input
                   className="inp"

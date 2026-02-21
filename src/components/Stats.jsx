@@ -17,7 +17,6 @@ const Sparkline = ({ data }) => {
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
   const isPos = vals[vals.length - 1] >= 0;
-  // Zero line
   const zeroY = 90 - ((0 - min) / range) * 80;
   return (
     <svg
@@ -66,7 +65,7 @@ const BarRow = ({ label, count, maxCount, color }) => {
 };
 
 // ─── Hero Card ────────────────────────────────────────────────────────────────
-const HeroCard = ({ stats }) => {
+const HeroCard = ({ stats, period }) => {
   const total = stats.trends.lifetimeTotal;
   const isPos = total >= 0;
   const streak = stats.fun.currentStreak;
@@ -75,9 +74,11 @@ const HeroCard = ({ stats }) => {
     ? `${streak}-round ${streakType === 'win' ? 'win' : 'loss'} streak`
     : 'No current streak';
 
+  const periodLabel = period === 'lifetime' ? 'Lifetime' : period === 'ytd' ? 'YTD' : period;
+
   return (
     <div className="cd">
-      <div className="tkt" style={{ marginBottom: 8 }}>Lifetime Earnings</div>
+      <div className="tkt" style={{ marginBottom: 8 }}>{periodLabel} Earnings</div>
       <div className="st-num" style={{ color: isPos ? T.accB : T.red, textAlign: 'center' }}>
         {fmt$(total)}
       </div>
@@ -94,10 +95,21 @@ const HeroCard = ({ stats }) => {
 };
 
 // ─── Scoring Card ─────────────────────────────────────────────────────────────
-const ScoringCard = ({ stats, exp, toggle }) => {
-  const d = stats.distribution;
+const ScoringCard = ({ stats, trends, exp, toggle }) => {
+  const [courseFilter, setCourseFilter] = useState('all');
+
+  // Determine which data to display based on course filter
+  const activeCourse = courseFilter !== 'all' ? stats.byCourse.find(c => c.name === courseFilter) : null;
+  const d = activeCourse ? activeCourse.distribution : stats.distribution;
+  const grossAvg = activeCourse ? activeCourse.grossAvg : stats.grossAvg;
+  const netAvg = activeCourse ? activeCourse.netAvg : stats.netAvg;
   const total = d.eagles + d.birdies + d.pars + d.bogeys + d.doubles;
   const maxCount = Math.max(d.eagles, d.birdies, d.pars, d.bogeys, d.doubles);
+
+  // Recent form
+  const formArrow = trends?.recentForm === 'hot' ? '↑' : trends?.recentForm === 'cold' ? '↓' : '→';
+  const formColor = trends?.recentForm === 'hot' ? T.accB : trends?.recentForm === 'cold' ? T.red : T.dim;
+  const formLabel = trends?.recentForm === 'hot' ? 'Hot' : trends?.recentForm === 'cold' ? 'Cold' : 'Neutral';
 
   return (
     <div className="cd" onClick={toggle} style={{ cursor: 'pointer' }}>
@@ -108,18 +120,42 @@ const ScoringCard = ({ stats, exp, toggle }) => {
       <div style={{ fontSize: 14, color: T.dim, marginTop: 6 }}>
         Avg: <span style={{ color: T.txt }}>{stats.grossAvg}</span> gross · <span style={{ color: T.txt }}>{stats.netAvg}</span> net
       </div>
-      {total > 0 && (
+      {stats.distribution && (stats.distribution.eagles + stats.distribution.birdies + stats.distribution.pars + stats.distribution.bogeys + stats.distribution.doubles) > 0 && (
         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap' }}>
-          <Dot color={T.blue} count={d.eagles} label="Eagles" />
-          <Dot color={T.accB} count={d.birdies} label="Birdies" />
-          <Dot color="#e8f5e9" count={d.pars} label="Pars" />
-          <Dot color={T.gold} count={d.bogeys} label="Bogeys" />
-          <Dot color={T.red} count={d.doubles} label="Dbl+" />
+          <Dot color={T.blue} count={stats.distribution.eagles} label="Eagles" />
+          <Dot color={T.accB} count={stats.distribution.birdies} label="Birdies" />
+          <Dot color="#e8f5e9" count={stats.distribution.pars} label="Pars" />
+          <Dot color={T.gold} count={stats.distribution.bogeys} label="Bogeys" />
+          <Dot color={T.red} count={stats.distribution.doubles} label="Dbl+" />
         </div>
       )}
       {exp && (
         <div style={{ marginTop: 16 }} onClick={e => e.stopPropagation()}>
           <div className="dvd" style={{ marginBottom: 12 }} />
+
+          {/* Course filter */}
+          {stats.byCourse.length > 1 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: T.dim, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>Filter by Course</div>
+              <select
+                className="inp"
+                value={courseFilter}
+                onChange={e => setCourseFilter(e.target.value)}
+                style={{ fontSize: 13 }}
+              >
+                <option value="all">All Courses</option>
+                {stats.byCourse.map(c => (
+                  <option key={c.name} value={c.name}>{c.name} ({c.roundCount})</option>
+                ))}
+              </select>
+              {activeCourse && (
+                <div style={{ fontSize: 13, color: T.dim, marginTop: 8 }}>
+                  Avg: <span style={{ color: T.txt }}>{grossAvg}</span> gross · <span style={{ color: T.txt }}>{netAvg}</span> net · {activeCourse.roundCount} round{activeCourse.roundCount !== 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Distribution bars */}
           {total > 0 ? (
             <div style={{ marginBottom: 16 }}>
@@ -133,28 +169,72 @@ const ScoringCard = ({ stats, exp, toggle }) => {
           ) : (
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 12 }}>No score data yet</div>
           )}
-          {/* Front/back */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <div className="cd" style={{ flex: 1, margin: 0, textAlign: 'center', padding: 12 }}>
-              <div style={{ fontSize: 11, color: T.dim, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.4px' }}>Front 9</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: T.txt }}>{stats.front9Avg}</div>
-            </div>
-            <div className="cd" style={{ flex: 1, margin: 0, textAlign: 'center', padding: 12 }}>
-              <div style={{ fontSize: 11, color: T.dim, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.4px' }}>Back 9</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: T.txt }}>{stats.back9Avg}</div>
-            </div>
-          </div>
-          {/* Best/worst */}
-          {stats.bestRound && (
-            <div className="fxb" style={{ marginBottom: 6 }}>
-              <span style={{ fontSize: 13, color: T.dim }}>Best round</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: T.accB }}>{stats.bestRound.score} at {stats.bestRound.courseName}</span>
+
+          {/* Front/back — only for all courses view */}
+          {!activeCourse && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <div className="cd" style={{ flex: 1, margin: 0, textAlign: 'center', padding: 12 }}>
+                <div style={{ fontSize: 11, color: T.dim, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.4px' }}>Front 9</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: T.txt }}>{stats.front9Avg}</div>
+              </div>
+              <div className="cd" style={{ flex: 1, margin: 0, textAlign: 'center', padding: 12 }}>
+                <div style={{ fontSize: 11, color: T.dim, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.4px' }}>Back 9</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: T.txt }}>{stats.back9Avg}</div>
+              </div>
             </div>
           )}
-          {stats.worstRound && (
-            <div className="fxb">
-              <span style={{ fontSize: 13, color: T.dim }}>Worst round</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: T.red }}>{stats.worstRound.score} at {stats.worstRound.courseName}</span>
+
+          {/* Scoring by par type */}
+          {stats.byParType && (stats.byParType.par3.count > 0 || stats.byParType.par4.count > 0 || stats.byParType.par5.count > 0) && !activeCourse && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: T.dim, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>Avg by Par</div>
+              {[
+                { label: 'Par 3s', par: 3, data: stats.byParType.par3 },
+                { label: 'Par 4s', par: 4, data: stats.byParType.par4 },
+                { label: 'Par 5s', par: 5, data: stats.byParType.par5 },
+              ].map(({ label, par, data }) => {
+                if (data.count === 0) return null;
+                const avg = parseFloat(data.avg);
+                const isGood = avg <= par + 0.5;
+                return (
+                  <div key={par} className="fxb" style={{ padding: '5px 0' }}>
+                    <span style={{ fontSize: 13, color: T.dim }}>{label}</span>
+                    <span style={{ fontSize: 13 }}>
+                      <span style={{ fontWeight: 700, color: isGood ? T.accB : T.gold }}>{data.avg}</span>
+                      <span style={{ color: T.mut, marginLeft: 4 }}>({data.count} holes)</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Best/worst — only for all courses */}
+          {!activeCourse && (
+            <>
+              {stats.bestRound && (
+                <div className="fxb" style={{ marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, color: T.dim }}>Best round</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.accB }}>{stats.bestRound.score} at {stats.bestRound.courseName}</span>
+                </div>
+              )}
+              {stats.worstRound && (
+                <div className="fxb" style={{ marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: T.dim }}>Worst round</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.red }}>{stats.worstRound.score} at {stats.worstRound.courseName}</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Recent form */}
+          {trends && (
+            <div style={{ paddingTop: 8, borderTop: `1px solid ${T.bdr}` }}>
+              <span style={{ fontSize: 13, color: T.dim }}>Recent form: </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: formColor }}>{formArrow} {formLabel}</span>
+              <span style={{ fontSize: 12, color: T.mut, marginLeft: 6 }}>
+                ({fmt$(trends.recentAvg)}/round vs {fmt$(trends.allTimeAvg)} avg)
+              </span>
             </div>
           )}
         </div>
@@ -244,7 +324,7 @@ const SkinsCard = ({ stats, exp, toggle }) => {
           </div>
           {stats.topHole && (
             <div className="fxb" style={{ marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: T.dim }}>Best hole</span>
+              <span style={{ fontSize: 13, color: T.dim }}>Best hole (overall)</span>
               <span style={{ fontSize: 14, fontWeight: 600, color: T.txt }}>Hole {stats.topHole}</span>
             </div>
           )}
@@ -259,6 +339,27 @@ const SkinsCard = ({ stats, exp, toggle }) => {
               ))}
             </>
           )}
+          {/* Per-hole-per-course breakdown */}
+          {stats.byHoleByCourse && stats.byHoleByCourse.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, color: T.dim, marginBottom: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>Holes Won by Course</div>
+              {stats.byHoleByCourse.map(({ courseName, holes }) => (
+                <div key={courseName} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.txt, marginBottom: 6 }}>{courseName}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {holes.map(({ hole, count }) => (
+                      <span key={hole} style={{
+                        fontSize: 12, padding: '3px 8px', borderRadius: 20,
+                        background: T.gold + '22', color: T.gold, fontWeight: 600, border: `1px solid ${T.gold}44`
+                      }}>
+                        H{hole}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -267,8 +368,9 @@ const SkinsCard = ({ stats, exp, toggle }) => {
 
 // ─── Head-to-Head Card ────────────────────────────────────────────────────────
 const H2HCard = ({ stats, exp, toggle }) => {
-  const { rivalries, bestRival, mostFrequent } = stats;
+  const { rivalries, bestRival, mostFrequent, partners, bestPartner, worstPartner } = stats;
   const hasData = rivalries.length > 0;
+  const hasPartners = partners && partners.length > 0;
 
   return (
     <div className="cd" onClick={toggle} style={{ cursor: 'pointer' }}>
@@ -278,12 +380,20 @@ const H2HCard = ({ stats, exp, toggle }) => {
       </div>
       {hasData ? (
         <>
-          {bestRival && (
+          {bestPartner && (
             <div style={{ fontSize: 14, color: T.dim, marginTop: 6 }}>
-              Best vs: <span style={{ color: T.accB }}>{bestRival.name}</span> ({fmt$(bestRival.net)})
+              Best partner: <span style={{ color: T.accB }}>{bestPartner.name}</span> ({fmt$(bestPartner.teamNet)} in {bestPartner.teamGames} team game{bestPartner.teamGames !== 1 ? 's' : ''})
             </div>
           )}
-          {mostFrequent && (
+          {bestRival && (
+            <div style={{ fontSize: 13, color: T.dim, marginTop: 3 }}>
+              Best rival: <span style={{ color: T.accB }}>{bestRival.name}</span> ({fmt$(bestRival.net)})
+              {mostFrequent && mostFrequent.id !== bestRival.id && (
+                <> · Most played: <span style={{ color: T.txt }}>{mostFrequent.name}</span></>
+              )}
+            </div>
+          )}
+          {!bestPartner && mostFrequent && (
             <div style={{ fontSize: 13, color: T.dim, marginTop: 3 }}>
               Most played with: <span style={{ color: T.txt }}>{mostFrequent.name}</span> ({mostFrequent.rounds} round{mostFrequent.rounds !== 1 ? 's' : ''})
             </div>
@@ -295,6 +405,34 @@ const H2HCard = ({ stats, exp, toggle }) => {
       {exp && hasData && (
         <div style={{ marginTop: 16 }} onClick={e => e.stopPropagation()}>
           <div className="dvd" style={{ marginBottom: 12 }} />
+
+          {/* Partners section */}
+          {hasPartners && (
+            <>
+              <div style={{ fontSize: 12, color: T.dim, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>Partners</div>
+              {partners.map(p => {
+                const isPos = p.teamNet >= 0;
+                return (
+                  <div key={p.id} className="fxb" style={{ padding: '10px 0', borderBottom: `1px solid ${T.bdr}` }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: T.txt }}>{p.name}</div>
+                      <div style={{ fontSize: 12, color: T.dim }}>{p.teamGames} team game{p.teamGames !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: isPos ? T.accB : T.red }}>
+                      {fmt$(p.teamNet)}
+                    </div>
+                  </div>
+                );
+              })}
+              {worstPartner && bestPartner && worstPartner.id !== bestPartner.id && (
+                <div style={{ fontSize: 12, color: T.dim, marginTop: 6, marginBottom: 12 }}>
+                  Worst partner: <span style={{ color: T.red }}>{worstPartner.name}</span> ({fmt$(worstPartner.teamNet)})
+                </div>
+              )}
+              <div style={{ marginTop: 16, marginBottom: 8 }} />
+            </>
+          )}
+
           <div style={{ fontSize: 12, color: T.dim, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>Top Opponents</div>
           {rivalries.map(r => {
             const isPos = r.net >= 0;
@@ -369,13 +507,81 @@ const CoursesCard = ({ stats, exp, toggle }) => {
   );
 };
 
+// ─── Records Card ─────────────────────────────────────────────────────────────
+const RecordsCard = ({ stats, exp, toggle }) => {
+  const { fun, trends } = stats;
+
+  const formArrow = trends?.recentForm === 'hot' ? '↑' : trends?.recentForm === 'cold' ? '↓' : '→';
+  const formColor = trends?.recentForm === 'hot' ? T.accB : trends?.recentForm === 'cold' ? T.red : T.dim;
+  const formLabel = trends?.recentForm === 'hot' ? 'Hot' : trends?.recentForm === 'cold' ? 'Cold' : 'Neutral';
+
+  return (
+    <div className="cd" onClick={toggle} style={{ cursor: 'pointer' }}>
+      <div className="fxb">
+        <span className="ct" style={{ marginBottom: 0 }}>Records</span>
+        <span style={{ color: T.dim, fontSize: 16 }}>{exp ? '▾' : '▸'}</span>
+      </div>
+      <div style={{ fontSize: 14, color: T.dim, marginTop: 6 }}>
+        {fun.biggestWin > 0 && <>Best: <span style={{ color: T.accB }}>{fmt$(fun.biggestWin)}</span> single round</>}
+        {fun.longestWinStreak > 0 && <> · <span style={{ color: T.accB }}>{fun.longestWinStreak}</span>-round win streak</>}
+      </div>
+      {exp && (
+        <div style={{ marginTop: 16 }} onClick={e => e.stopPropagation()}>
+          <div className="dvd" style={{ marginBottom: 12 }} />
+          <div className="fxb" style={{ padding: '8px 0', borderBottom: `1px solid ${T.bdr}` }}>
+            <span style={{ fontSize: 13, color: T.dim }}>Biggest win</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.accB }}>{fmt$(fun.biggestWin)}</span>
+          </div>
+          <div className="fxb" style={{ padding: '8px 0', borderBottom: `1px solid ${T.bdr}` }}>
+            <span style={{ fontSize: 13, color: T.dim }}>Biggest loss</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.red }}>{fmt$(fun.biggestLoss)}</span>
+          </div>
+          <div className="fxb" style={{ padding: '8px 0', borderBottom: `1px solid ${T.bdr}` }}>
+            <span style={{ fontSize: 13, color: T.dim }}>Longest win streak</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.accB }}>{fun.longestWinStreak} round{fun.longestWinStreak !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="fxb" style={{ padding: '8px 0', borderBottom: `1px solid ${T.bdr}` }}>
+            <span style={{ fontSize: 13, color: T.dim }}>Longest losing streak</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.red }}>{fun.longestLoseStreak} round{fun.longestLoseStreak !== 1 ? 's' : ''}</span>
+          </div>
+          {fun.currentStreak > 0 && (
+            <div className="fxb" style={{ padding: '8px 0', borderBottom: `1px solid ${T.bdr}` }}>
+              <span style={{ fontSize: 13, color: T.dim }}>Current streak</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: fun.currentStreakType === 'win' ? T.accB : T.red }}>
+                {fun.currentStreak}-round {fun.currentStreakType === 'win' ? 'win' : 'loss'}
+              </span>
+            </div>
+          )}
+          {trends && (
+            <div style={{ padding: '8px 0' }}>
+              <span style={{ fontSize: 13, color: T.dim }}>Recent form: </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: formColor }}>{formArrow} {formLabel}</span>
+              <span style={{ fontSize: 12, color: T.mut, marginLeft: 6 }}>
+                ({fmt$(trends.recentAvg)}/round vs {fmt$(trends.allTimeAvg)} avg)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Stats Page ──────────────────────────────────────────────────────────
 const Stats = ({ profile, rounds, tournamentHistory, go }) => {
   const [exp, setExp] = useState(null);
+  const [period, setPeriod] = useState('lifetime');
+
+  // Compute available years from all data (unfiltered)
+  const allStats = useMemo(
+    () => calcAllStats(profile?.linked_player_id, rounds, tournamentHistory, 'lifetime'),
+    [profile?.linked_player_id, rounds, tournamentHistory]
+  );
+  const availableYears = allStats?.availableYears || [];
 
   const stats = useMemo(
-    () => calcAllStats(profile?.linked_player_id, rounds, tournamentHistory),
-    [profile?.linked_player_id, rounds, tournamentHistory]
+    () => calcAllStats(profile?.linked_player_id, rounds, tournamentHistory, period),
+    [profile?.linked_player_id, rounds, tournamentHistory, period]
   );
 
   if (!profile?.linked_player_id) {
@@ -393,7 +599,7 @@ const Stats = ({ profile, rounds, tournamentHistory, go }) => {
     );
   }
 
-  if (!stats) {
+  if (!allStats) {
     return (
       <div className="pg">
         <div className="cd" style={{ textAlign: 'center', padding: '32px 16px' }}>
@@ -409,19 +615,58 @@ const Stats = ({ profile, rounds, tournamentHistory, go }) => {
 
   const toggle = i => setExp(exp === i ? null : i);
 
+  const periodOptions = [
+    { value: 'lifetime', label: 'Lifetime' },
+    { value: 'ytd', label: 'YTD' },
+    ...availableYears.map(y => ({ value: String(y), label: String(y) })),
+  ];
+
+  // For empty period (e.g., selected year with no data)
+  const hasStats = stats && stats.roundCount > 0;
+
   return (
     <div className="pg">
-      <HeroCard stats={stats} />
+      {/* Time period filter pills */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 8 }}>
+        {periodOptions.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setPeriod(opt.value)}
+            style={{
+              flexShrink: 0,
+              padding: '5px 14px',
+              borderRadius: 20,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: `1.5px solid ${period === opt.value ? T.accB : T.bdr}`,
+              background: period === opt.value ? T.accB + '22' : 'transparent',
+              color: period === opt.value ? T.accB : T.dim,
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
-      <div className="tkt" style={{ margin: '16px 0 8px' }}>Premium Stats</div>
-
-      <PremiumGate profile={profile}>
-        <ScoringCard stats={stats.scoring} exp={exp === 0} toggle={() => toggle(0)} />
-        <GamesCard stats={stats.games} exp={exp === 1} toggle={() => toggle(1)} />
-        <SkinsCard stats={stats.skins} exp={exp === 2} toggle={() => toggle(2)} />
-        <H2HCard stats={stats.h2h} exp={exp === 3} toggle={() => toggle(3)} />
-        <CoursesCard stats={stats.courses} exp={exp === 4} toggle={() => toggle(4)} />
-      </PremiumGate>
+      {!hasStats ? (
+        <div className="cd" style={{ textAlign: 'center', padding: '24px 16px' }}>
+          <div style={{ fontSize: 13, color: T.dim }}>No rounds for this period</div>
+        </div>
+      ) : (
+        <>
+          <HeroCard stats={stats} period={period} />
+          <div className="tkt" style={{ margin: '16px 0 8px' }}>Premium Stats</div>
+          <PremiumGate profile={profile}>
+            <ScoringCard stats={stats.scoring} trends={stats.trends} exp={exp === 0} toggle={() => toggle(0)} />
+            <GamesCard stats={stats.games} exp={exp === 1} toggle={() => toggle(1)} />
+            <SkinsCard stats={stats.skins} exp={exp === 2} toggle={() => toggle(2)} />
+            <H2HCard stats={stats.h2h} exp={exp === 3} toggle={() => toggle(3)} />
+            <CoursesCard stats={stats.courses} exp={exp === 4} toggle={() => toggle(4)} />
+            <RecordsCard stats={stats} exp={exp === 5} toggle={() => toggle(5)} />
+          </PremiumGate>
+        </>
+      )}
     </div>
   );
 };

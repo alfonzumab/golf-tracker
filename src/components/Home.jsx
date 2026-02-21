@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { T, PC } from '../theme';
-import { calcCH, getStrokes } from '../utils/golf';
+import { calcCH, getStrokes, fmt$ } from '../utils/golf';
 
-const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId, onStart, round, go, onJoinRound, tournament, onLeaveTournament }) => {
+const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId, onStart, round, go, onJoinRound, tournament, onLeaveTournament, quickStats, profile }) => {
   const [sel, setSel] = useState([]);
   const [tees, setTees] = useState({});
   const [showNewRound, setShowNewRound] = useState(false);
@@ -337,6 +337,36 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
           <button className="btn bg" style={{ color: T.red, borderColor: T.red + '33', fontSize: 13 }} onClick={onLeaveTournament}>
             Leave Tournament
           </button>
+        </div>
+      )}
+
+      {/* Stats teaser card */}
+      {profile?.linked_player_id && quickStats && (
+        <div className="cd mb10" onClick={() => go('stats')} style={{ cursor: 'pointer' }}>
+          <div className="fxb">
+            <span className="ct" style={{ marginBottom: 0 }}>Your Stats</span>
+            <span style={{ color: T.dim, fontSize: 14 }}>▸</span>
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+            <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: quickStats.lifetimeTotal >= 0 ? T.accB : T.red }}>
+                {fmt$(quickStats.lifetimeTotal)}
+              </div>
+              <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>Earnings</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: T.txt }}>{quickStats.roundCount}</div>
+              <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>Rounds</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: quickStats.currentStreakType === 'win' ? T.accB : quickStats.currentStreakType === 'lose' ? T.red : T.dim }}>
+                {quickStats.currentStreak > 0 ? quickStats.currentStreak : '—'}
+              </div>
+              <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>
+                {quickStats.currentStreakType === 'win' ? 'W Streak' : quickStats.currentStreakType === 'lose' ? 'L Streak' : 'Streak'}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

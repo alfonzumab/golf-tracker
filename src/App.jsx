@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import './styles.css';
 import { T } from './theme';
 import { supabase } from './lib/supabase';
@@ -28,6 +28,7 @@ import Scoring from './components/Scoring';
 import Hist from './components/History';
 import Profile from './components/Profile';
 import Stats from './components/Stats';
+import { calcAllStats } from './utils/statsCalc';
 import TournamentHub from './components/tournament/TournamentHub';
 import TournamentSetup from './components/tournament/TournamentSetup';
 import TournamentLobby from './components/tournament/TournamentLobby';
@@ -575,6 +576,18 @@ export default function App() {
     }
   };
 
+  // Quick stats for home page teaser card (memoized for perf)
+  const quickStats = useMemo(() => {
+    const s = calcAllStats(profile?.linked_player_id, rounds, tournamentHistory, 'lifetime');
+    if (!s) return null;
+    return {
+      lifetimeTotal: s.trends.lifetimeTotal,
+      roundCount: s.roundCount,
+      currentStreak: s.fun.currentStreak,
+      currentStreakType: s.fun.currentStreakType,
+    };
+  }, [profile?.linked_player_id, rounds, tournamentHistory]);
+
   // Loading state
   if (session === undefined) {
     return (
@@ -600,7 +613,7 @@ export default function App() {
     <div className="app">
       <Toast />
       <div className="hdr">
-        {["setup", "score", "bets", "profile", "stats"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else if (pg === "profile") { go("home"); } else if (pg === "stats") { go("profile"); } else go("home"); }}>{"<"}</button>}
+        {["setup", "score", "bets", "profile", "stats"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
         {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={() => go('home')}>{"<"}</button>}
         <div><div className="hdr-t">{titles[pg] || "Settle Up Golf"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
@@ -611,7 +624,7 @@ export default function App() {
           </>}
         </div>
       </div>
-      {pg === "home" && <Home courses={courses} players={players} rounds={rounds} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} />}
+      {pg === "home" && <Home courses={courses} players={players} rounds={rounds} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} onStart={(rp, course) => { setSetup(rp); setSetupCourse(course); go("setup"); }} round={round} go={go} onJoinRound={handleJoinRound} tournament={tournament} onLeaveTournament={leaveTournament} profile={profile} quickStats={quickStats} />}
       {pg === "players" && <Players players={players} setPlayers={handleSetPlayers} courses={courses} playerLinks={playerLinks} />}
       {pg === "courses" && <Courses courses={courses} setCourses={handleSetCourses} selectedCourseId={selectedCourseId} setSelectedCourseId={handleSetSelectedCourse} />}
       {pg === "setup" && setup && setupCourse && <Setup rp={setup} course={setupCourse} onConfirm={(games, updatedPlayers) => {

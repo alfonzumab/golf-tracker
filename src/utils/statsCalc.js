@@ -1,11 +1,30 @@
 import { calcAll } from './calc';
 
 // Main entry point — returns null if no linked player or no data.
-export function calcAllStats(linkedPlayerId, rounds, tournamentHistory) {
+// timePeriod: 'lifetime' | 'ytd' | '2025' (4-digit year string)
+export function calcAllStats(linkedPlayerId, rounds, tournamentHistory, timePeriod = 'lifetime') {
   if (!linkedPlayerId) return null;
 
-  const processed = processRounds(linkedPlayerId, rounds, tournamentHistory);
-  if (processed.length === 0) return null;
+  const allProcessed = processRounds(linkedPlayerId, rounds, tournamentHistory);
+  if (allProcessed.length === 0) return null;
+
+  // Compute available years from all rounds (before filtering)
+  const yearSet = new Set(allProcessed.map(r => new Date(r.date).getFullYear()).filter(Boolean));
+  const availableYears = [...yearSet].sort((a, b) => b - a);
+
+  // Filter by time period
+  const currentYear = new Date().getFullYear();
+  let processed = allProcessed;
+  if (timePeriod === 'ytd') {
+    processed = allProcessed.filter(r => new Date(r.date).getFullYear() === currentYear);
+  } else if (timePeriod !== 'lifetime') {
+    const yr = parseInt(timePeriod, 10);
+    if (!isNaN(yr)) processed = allProcessed.filter(r => new Date(r.date).getFullYear() === yr);
+  }
+
+  if (processed.length === 0) {
+    return { roundCount: 0, scoring: null, games: null, skins: null, h2h: null, courses: null, trends: null, fun: null, availableYears };
+  }
 
   const roundCount = processed.length;
   const scoring = calcScoringStats(processed);
@@ -16,7 +35,7 @@ export function calcAllStats(linkedPlayerId, rounds, tournamentHistory) {
   const trends = calcTrends(processed);
   const fun = calcFunStats(processed);
 
-  return { roundCount, scoring, games, skins, h2h, courses, trends, fun };
+  return { roundCount, scoring, games, skins, h2h, courses, trends, fun, availableYears };
 }
 
 // ─── Internal Helpers ────────────────────────────────────────────────────────
@@ -84,6 +103,8 @@ function calcScoringStats(processed) {
     distribution: { eagles: 0, birdies: 0, pars: 0, bogeys: 0, doubles: 0 },
     front9Avg: '--', back9Avg: '--',
     bestRound: null, worstRound: null,
+    byParType: { par3: { avg: '--', count: 0 }, par4: { avg: '--', count: 0 }, par5: { avg: '--', count: 0 } },
+    byCourse: [],
   };
 
   const scoringRounds = processed.filter(r => r.pars);
@@ -95,6 +116,12 @@ function calcScoringStats(processed) {
   let bestGross = Infinity, worstGross = -Infinity;
   let bestRound = null, worstRound = null;
 
+  // Par type accumulators
+  const parType = { 3: { sum: 0, count: 0 }, 4: { sum: 0, count: 0 }, 5: { sum: 0, count: 0 } };
+
+  // Per-course accumulators
+  const courseMap = {};
+
   for (const r of scoringRounds) {
     const player = r.players[r.playerIdx];
     const scores = player.scores || [];
@@ -102,24 +129,46 @@ function calcScoringStats(processed) {
     let gross = 0, net = 0, holes = 0;
     let front = 0, frontH = 0, back = 0, backH = 0;
 
+    // Ensure course entry
+    if (!courseMap[r.courseName]) {
+      courseMap[r.courseName] = {
+        name: r.courseName,
+        grossSum: 0, grossRounds: 0,
+        netSum: 0, netRounds: 0,
+        dist: { eagles: 0, birdies: 0, pars: 0, bogeys: 0, doubles: 0 },
+      };
+    }
+    const cm = courseMap[r.courseName];
+    let cGross = 0, cNet = 0, cHoles = 0;
+
     for (let h = 0; h < 18; h++) {
       if (scores[h] == null) continue;
       const par = r.pars[h];
       const score = scores[h];
       const diff = score - par;
 
-      if (diff <= -2) dist.eagles++;
-      else if (diff === -1) dist.birdies++;
-      else if (diff === 0) dist.pars++;
-      else if (diff === 1) dist.bogeys++;
-      else dist.doubles++;
+      if (diff <= -2) { dist.eagles++; cm.dist.eagles++; }
+      else if (diff === -1) { dist.birdies++; cm.dist.birdies++; }
+      else if (diff === 0) { dist.pars++; cm.dist.pars++; }
+      else if (diff === 1) { dist.bogeys++; cm.dist.bogeys++; }
+      else { dist.doubles++; cm.dist.doubles++; }
 
       gross += score;
       net += score - strokeHoles[h];
       holes++;
 
+      cGross += score;
+      cNet += score - strokeHoles[h];
+      cHoles++;
+
       if (h < 9) { front += score; frontH++; }
       else { back += score; backH++; }
+
+      // Par type
+      if (par === 3 || par === 4 || par === 5) {
+        parType[par].sum += score;
+        parType[par].count++;
+      }
     }
 
     if (holes > 0) {
@@ -135,7 +184,28 @@ function calcScoringStats(processed) {
         if (gross > worstGross) { worstGross = gross; worstRound = { date: r.date, courseName: r.courseName, score: gross }; }
       }
     }
+
+    if (cHoles > 0) {
+      cm.grossSum += cGross;
+      cm.grossRounds++;
+      cm.netSum += cNet;
+      cm.netRounds++;
+    }
   }
+
+  const byParType = {
+    par3: parType[3].count > 0 ? { avg: (parType[3].sum / parType[3].count).toFixed(2), count: parType[3].count } : { avg: '--', count: 0 },
+    par4: parType[4].count > 0 ? { avg: (parType[4].sum / parType[4].count).toFixed(2), count: parType[4].count } : { avg: '--', count: 0 },
+    par5: parType[5].count > 0 ? { avg: (parType[5].sum / parType[5].count).toFixed(2), count: parType[5].count } : { avg: '--', count: 0 },
+  };
+
+  const byCourse = Object.values(courseMap).map(c => ({
+    name: c.name,
+    grossAvg: c.grossRounds > 0 ? (c.grossSum / c.grossRounds).toFixed(1) : '--',
+    netAvg: c.netRounds > 0 ? (c.netSum / c.netRounds).toFixed(1) : '--',
+    roundCount: c.grossRounds,
+    distribution: c.dist,
+  })).sort((a, b) => a.name.localeCompare(b.name));
 
   return {
     grossAvg: validRounds > 0 ? (grossSum / validRounds).toFixed(1) : '--',
@@ -145,6 +215,8 @@ function calcScoringStats(processed) {
     back9Avg: backRounds > 0 ? (backSum / backRounds).toFixed(1) : '--',
     bestRound,
     worstRound,
+    byParType,
+    byCourse,
   };
 }
 
@@ -199,6 +271,8 @@ function calcSkinsStats(processed) {
   let biggestSkin = 0;
   const byCourseMap = {};
   const byHole = Array(18).fill(0);
+  // per-hole-per-course: key = `${courseName}:${hole}`
+  const holeCourseMap = {};
 
   for (const r of processed) {
     for (const game of r.games) {
@@ -219,7 +293,11 @@ function calcSkinsStats(processed) {
           if (hr.w === r.playerIdx && hr.v > 0) {
             totalWon += hr.v;
             if (hr.v > biggestSkin) biggestSkin = hr.v;
-            if (hr.h >= 1 && hr.h <= 18) byHole[hr.h - 1]++;
+            if (hr.h >= 1 && hr.h <= 18) {
+              byHole[hr.h - 1]++;
+              const key = `${r.courseName}:${hr.h}`;
+              holeCourseMap[key] = (holeCourseMap[key] || 0) + hr.v;
+            }
 
             if (!byCourseMap[r.courseName]) byCourseMap[r.courseName] = { name: r.courseName, count: 0 };
             byCourseMap[r.courseName].count += hr.v;
@@ -236,6 +314,22 @@ function calcSkinsStats(processed) {
   const topHoleIdx = byHole.indexOf(Math.max(...byHole));
   const topHole = Math.max(...byHole) > 0 ? topHoleIdx + 1 : null;
 
+  // Build byHoleByCourse: group by course, sort holes
+  const courseHoleMap = {};
+  for (const [key, count] of Object.entries(holeCourseMap)) {
+    const colonIdx = key.lastIndexOf(':');
+    const courseName = key.slice(0, colonIdx);
+    const hole = parseInt(key.slice(colonIdx + 1), 10);
+    if (!courseHoleMap[courseName]) courseHoleMap[courseName] = [];
+    courseHoleMap[courseName].push({ hole, count });
+  }
+  const byHoleByCourse = Object.entries(courseHoleMap)
+    .map(([courseName, holes]) => ({
+      courseName,
+      holes: holes.sort((a, b) => a.hole - b.hole),
+    }))
+    .sort((a, b) => a.courseName.localeCompare(b.courseName));
+
   return {
     totalWon,
     totalGames,
@@ -245,11 +339,13 @@ function calcSkinsStats(processed) {
     byCourse,
     byHole,
     topHole,
+    byHoleByCourse,
   };
 }
 
 function calcHeadToHead(processed) {
   const opponents = {};
+  const partners = {};
 
   for (const r of processed) {
     const { settlements } = r.calcResult || {};
@@ -272,6 +368,56 @@ function calcHeadToHead(processed) {
         if (opponents[opp.id]) opponents[opp.id].net += s.amount;
       }
     }
+
+    // Partner tracking: inspect team game structures
+    for (const game of r.games) {
+      try {
+        let partnerIdx = -1;
+
+        if ((game.type === 'stroke' || game.type === 'match' || game.type === 'vegas') && game.team1) {
+          // 2v2 team game: find which team playerIdx is on
+          if (game.team1.includes(r.playerIdx)) {
+            partnerIdx = game.team1.find(i => i !== r.playerIdx);
+          } else if (game.team2 && game.team2.includes(r.playerIdx)) {
+            partnerIdx = game.team2.find(i => i !== r.playerIdx);
+          }
+        } else if (game.type === 'sixes' && game.pairs) {
+          // 6-6-6: pairs is array of { t1: [idx,idx], t2: [idx,idx] }
+          for (const pair of game.pairs) {
+            if (pair.t1 && pair.t1.includes(r.playerIdx)) {
+              partnerIdx = pair.t1.find(i => i !== r.playerIdx);
+              break;
+            } else if (pair.t2 && pair.t2.includes(r.playerIdx)) {
+              partnerIdx = pair.t2.find(i => i !== r.playerIdx);
+              break;
+            }
+          }
+        }
+
+        if (partnerIdx !== -1 && partnerIdx !== undefined) {
+          const partner = r.players[partnerIdx];
+          if (!partner) continue;
+
+          // Calculate player net for this specific game
+          const { results } = calcAll([game], r.players);
+          if (results.length === 0) continue;
+          const result = results[0];
+          let playerNet = 0;
+          for (const p of (result.payouts || [])) {
+            if (p.t === r.playerIdx) playerNet += p.a;
+            if (p.f === r.playerIdx) playerNet -= p.a;
+          }
+
+          if (!partners[partner.id]) {
+            partners[partner.id] = { id: partner.id, name: partner.name, teamGames: 0, teamNet: 0 };
+          }
+          partners[partner.id].teamGames++;
+          partners[partner.id].teamNet += playerNet;
+        }
+      } catch {
+        // skip game
+      }
+    }
   }
 
   const rivals = Object.values(opponents)
@@ -283,7 +429,22 @@ function calcHeadToHead(processed) {
   const worstRival = byNet.length > 0 ? byNet[byNet.length - 1] : null;
   const mostFrequent = rivals.length > 0 ? rivals[0] : null;
 
-  return { rivalries: rivals.slice(0, 5), bestRival, worstRival, mostFrequent };
+  const partnerArr = Object.values(partners)
+    .map(p => ({ ...p, teamNet: Math.round(p.teamNet * 100) / 100 }))
+    .sort((a, b) => b.teamNet - a.teamNet);
+
+  const bestPartner = partnerArr.length > 0 ? partnerArr[0] : null;
+  const worstPartner = partnerArr.length > 0 ? partnerArr[partnerArr.length - 1] : null;
+
+  return {
+    rivalries: rivals.slice(0, 5),
+    bestRival,
+    worstRival,
+    mostFrequent,
+    partners: partnerArr,
+    bestPartner,
+    worstPartner,
+  };
 }
 
 function calcCoursePerformance(processed) {

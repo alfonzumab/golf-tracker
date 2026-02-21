@@ -13,11 +13,8 @@ export function calcAllStats(linkedPlayerId, rounds, tournamentHistory, timePeri
   const availableYears = [...yearSet].sort((a, b) => b - a);
 
   // Filter by time period
-  const currentYear = new Date().getFullYear();
   let processed = allProcessed;
-  if (timePeriod === 'ytd') {
-    processed = allProcessed.filter(r => new Date(r.date).getFullYear() === currentYear);
-  } else if (timePeriod !== 'lifetime') {
+  if (timePeriod !== 'lifetime') {
     const yr = parseInt(timePeriod, 10);
     if (!isNaN(yr)) processed = allProcessed.filter(r => new Date(r.date).getFullYear() === yr);
   }
@@ -438,6 +435,7 @@ function calcHeadToHead(processed) {
 
   return {
     rivalries: rivals.slice(0, 5),
+    allOpponentsByNet: byNet,
     bestRival,
     worstRival,
     mostFrequent,

@@ -567,6 +567,52 @@ const RecordsCard = ({ stats, exp, toggle }) => {
   );
 };
 
+// ─── Earnings by Player Card ──────────────────────────────────────────────────
+const EarningsByPlayerCard = ({ stats, exp, toggle }) => {
+  const players = stats.h2h.allOpponentsByNet || [];
+  const hasData = players.length > 0;
+
+  return (
+    <div className="cd" onClick={toggle} style={{ cursor: 'pointer' }}>
+      <div className="fxb">
+        <span className="ct" style={{ marginBottom: 0 }}>Net Earnings by Player</span>
+        <span style={{ color: T.dim, fontSize: 16 }}>{exp ? '▾' : '▸'}</span>
+      </div>
+      {hasData ? (
+        <div style={{ fontSize: 14, color: T.dim, marginTop: 6 }}>
+          {players[0] && (
+            <>Best: <span style={{ color: T.accB }}>{players[0].name}</span> ({fmt$(players[0].net)})</>
+          )}
+          {players[players.length - 1] && players.length > 1 && players[players.length - 1].id !== players[0].id && (
+            <> · Worst: <span style={{ color: T.red }}>{players[players.length - 1].name}</span> ({fmt$(players[players.length - 1].net)})</>
+          )}
+        </div>
+      ) : (
+        <div style={{ fontSize: 14, color: T.dim, marginTop: 6 }}>No data yet</div>
+      )}
+      {exp && hasData && (
+        <div style={{ marginTop: 16 }} onClick={e => e.stopPropagation()}>
+          <div className="dvd" style={{ marginBottom: 12 }} />
+          {players.map((p, idx) => {
+            const isPos = p.net >= 0;
+            return (
+              <div key={p.id} className="fxb" style={{ padding: '10px 0', borderBottom: idx < players.length - 1 ? `1px solid ${T.bdr}` : 'none' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: T.txt }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: T.dim }}>{p.rounds} round{p.rounds !== 1 ? 's' : ''}</div>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: isPos ? T.accB : T.red }}>
+                  {fmt$(p.net)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Stats Page ──────────────────────────────────────────────────────────
 const Stats = ({ profile, rounds, tournamentHistory, go }) => {
   const [exp, setExp] = useState(null);
@@ -617,7 +663,6 @@ const Stats = ({ profile, rounds, tournamentHistory, go }) => {
 
   const periodOptions = [
     { value: 'lifetime', label: 'Lifetime' },
-    { value: 'ytd', label: 'YTD' },
     ...availableYears.map(y => ({ value: String(y), label: String(y) })),
   ];
 
@@ -663,7 +708,8 @@ const Stats = ({ profile, rounds, tournamentHistory, go }) => {
             <SkinsCard stats={stats.skins} exp={exp === 2} toggle={() => toggle(2)} />
             <H2HCard stats={stats.h2h} exp={exp === 3} toggle={() => toggle(3)} />
             <CoursesCard stats={stats.courses} exp={exp === 4} toggle={() => toggle(4)} />
-            <RecordsCard stats={stats} exp={exp === 5} toggle={() => toggle(5)} />
+            <EarningsByPlayerCard stats={stats} exp={exp === 5} toggle={() => toggle(5)} />
+            <RecordsCard stats={stats} exp={exp === 6} toggle={() => toggle(6)} />
           </PremiumGate>
         </>
       )}

@@ -1,23 +1,23 @@
 # Active Context — Golf Tracker
 
 ## Current State
-**Premium Stats & Analytics Phase 1 shipped to `dev`.** Awaiting Supabase migration + test.
+**Premium Stats Phase 1.5 shipped to `dev`.** Ready to test on Vercel preview URL.
 
 ## Just Built (2026-02-21)
-- **Premium Stats page** — `/stats` route (Stats.jsx) with hero card + 5 collapsible analytics cards
-  - Hero: lifetime earnings, round count, win/loss streak, earnings sparkline
-  - Scoring: gross/net avg, score distribution (eagle/birdie/par/bogey/dbl), front/back 9, best/worst round
-  - Games: profitability by game type (net, win rate, avg per game)
-  - Skins: total skins won, biggest carry, top hole, by-course breakdown
-  - Head-to-Head: top opponents by rounds + net earnings
-  - Courses: earnings + scoring avg per course
-- **PremiumGate.jsx** — Blurs premium cards + floating overlay with lock icon + "Coming Soon" for free users
-- **statsCalc.js** — Pure calculation engine; handles regular rounds + tournament groups
-- **Profile "View Full Stats" button** — Added to earnings tab
-- **premium-stats-migration.sql** — `subscription_tier TEXT DEFAULT 'free'` on profiles table
+- **Phase 1.5 enhancements** to statsCalc.js + Stats.jsx:
+  - **Time period filter** — Lifetime / YTD / per-year pills at top of Stats page
+  - **Scoring by par type** — Par 3/4/5 average scores (holes count)
+  - **Scoring by course** — Course dropdown filter; distribution bars + avgs update reactively
+  - **Recent form indicator** — Hot/Cold/Neutral with avg comparison
+  - **Skins per-hole-per-course** — Chip tags showing holes won at each course
+  - **Partner tracking** — H2H card shows best/worst partner (team games: stroke/match/vegas 2v2, sixes pairs)
+  - **Records card** — 6th premium card: biggest win/loss, win/loss streaks, current streak, recent form
+  - **Home stats teaser** — Mini card with Earnings/Rounds/Streak; navigates to Stats page
+  - **Stats nav icon** — Bar chart icon added to Nav between History and Profile
+  - **Back button** — Stats page back always goes to home (reachable from both nav + profile)
 
 ## Status
-Tested and working on dev. Ready to promote to production when desired.
+Committed on dev (1d59c10). Test on Vercel preview URL.
 
 ## Environment Setup
 - **Branches:** `main` = production, `dev` = staging

@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| `1d59c10` | Add Premium Stats Phase 1.5: time filter, par type, skins by hole, partner tracking, records, nav icon |
 | `5494267` | Add Premium Stats & Analytics Phase 1 |
 | `16a9e14` | Fix phone-number-migration.sql: remove destructive RLS policy changes |
 | `082fafd` | Add SMS group text sharing for rounds and tournaments |
@@ -38,6 +39,7 @@
 - ErrorBoundary crash recovery UI
 - Score validation (rejects scores > 15 or < 1)
 - Premium Stats & Analytics Phase 1 (Stats page, PremiumGate blur, statsCalc engine, DB migration)
+- Premium Stats Phase 1.5 (time period filter, scoring by par type + course, skins by hole/course, partner tracking, Records card, Home teaser, Stats nav icon)
 
 ## What's Left to Build
 

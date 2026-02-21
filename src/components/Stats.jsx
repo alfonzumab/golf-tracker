@@ -703,7 +703,7 @@ const Stats = ({ profile, rounds, tournamentHistory, go }) => {
           <HeroCard stats={stats} period={period} />
           <div className="tkt" style={{ margin: '16px 0 8px' }}>Premium Stats</div>
           <PremiumGate profile={profile}>
-            <ScoringCard stats={stats.scoring} trends={stats.trends} exp={exp === 0} toggle={() => toggle(0)} />
+            <ScoringCard key={period} stats={stats.scoring} trends={stats.trends} exp={exp === 0} toggle={() => toggle(0)} />
             <GamesCard stats={stats.games} exp={exp === 1} toggle={() => toggle(1)} />
             <SkinsCard stats={stats.skins} exp={exp === 2} toggle={() => toggle(2)} />
             <H2HCard stats={stats.h2h} exp={exp === 3} toggle={() => toggle(3)} />

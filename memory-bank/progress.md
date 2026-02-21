@@ -4,7 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
-| (pending) | Codebase cleanup: delete legacy files, archive migrations, update docs |
+| `fd2f562` | Codebase cleanup: delete legacy files, archive migrations, update docs |
 | `0f62b9f` | Fix Stats period filter: key ScoringCard on period to reset course dropdown |
 | `1159309` | UX refinements: home teaser top, remove profile earnings tab, net earnings card, no YTD pill |
 | `2c3c78a` | Update memory bank: dev features merged to production |

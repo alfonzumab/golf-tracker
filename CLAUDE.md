@@ -244,20 +244,20 @@ VITE_SUPABASE_URL=https://ocjhtvnsfdroovnumehk.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_Kq7A0cxio01HOxQ3zkkZSg_Ok-eb6jG
 ```
 
-**Database Migrations** (run in Supabase SQL Editor, in order):
+**Database Migrations** — all applied to production, archived in `migrations/archive/`:
 - `migration-global-db.sql` — global players/courses with admin RLS, profiles table, user_favorites
 - `tournament-schema.sql` — tournaments table, RPC functions with row locking
 - `history-migration.sql` — round_participants, tournament_participants tables + history RPCs (finish_round, register_round_participant, reopen_round, load_tournament_history)
 - `player-links-migration.sql` — player_links view exposing linked_player_id + preferred_course_id
+- `phone-number-migration.sql` — phone_number column on profiles
+- `premium-stats-migration.sql` — premium_access column on profiles + RPC for granting access
 
 After migration, manually set admin role: `UPDATE public.profiles SET role = 'admin' WHERE email = 'YOUR_EMAIL';`
 
 **SQL File Management:**
-- After a migration is successfully applied to production, move it to `migrations/archive/` folder to keep the root directory clean
-- One-time utility scripts (fixes, cleanups) should be deleted after use or archived with a dated filename (e.g., `fix-duplicate-rounds-2026-02-16.sql`)
-- Active migrations needed for fresh deployments stay in root; everything else gets archived or deleted
-
-**Legacy files** (outdated, do not use as reference): `PROJECT.md`, `CLAUDE-CODE-PROMPT.md`, `protected-db-migration.sql` (empty) — describe the pre-migration single-file monolith.
+- All applied migrations live in `migrations/archive/` — do not re-run these
+- New migrations: write to root, apply, then move to `migrations/archive/`
+- One-time utility scripts (fixes, cleanups) go in `migrations/archive/` with a descriptive name
 
 ## AI Workflow & Memory Bank
 

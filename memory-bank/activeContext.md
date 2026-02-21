@@ -1,23 +1,29 @@
 # Active Context — Golf Tracker
 
 ## Current State
-**Premium Stats Phase 1.5 shipped to `dev`.** Ready to test on Vercel preview URL.
+**Premium Stats Phase 1.5 + UX refinements shipped to production.** Codebase cleanup complete.
 
-## Just Built (2026-02-21)
-- **Phase 1.5 enhancements** to statsCalc.js + Stats.jsx:
-  - **Time period filter** — Lifetime / YTD / per-year pills at top of Stats page
-  - **Scoring by par type** — Par 3/4/5 average scores (holes count)
-  - **Scoring by course** — Course dropdown filter; distribution bars + avgs update reactively
-  - **Recent form indicator** — Hot/Cold/Neutral with avg comparison
-  - **Skins per-hole-per-course** — Chip tags showing holes won at each course
-  - **Partner tracking** — H2H card shows best/worst partner (team games: stroke/match/vegas 2v2, sixes pairs)
-  - **Records card** — 6th premium card: biggest win/loss, win/loss streaks, current streak, recent form
-  - **Home stats teaser** — Mini card with Earnings/Rounds/Streak; navigates to Stats page
-  - **Stats nav icon** — Bar chart icon added to Nav between History and Profile
-  - **Back button** — Stats page back always goes to home (reachable from both nav + profile)
-
-## Status
-Committed on dev (1d59c10). Test on Vercel preview URL.
+## Recently Shipped (2026-02-21)
+- **Phase 1.5 enhancements** (statsCalc.js + Stats.jsx + Nav.jsx + Home.jsx + App.jsx):
+  - Time period filter — Lifetime / per-year pills (no YTD; current year is effectively YTD)
+  - Scoring by par type — Par 3/4/5 average scores with hole counts
+  - Scoring by course — Course dropdown filter; distribution bars + avgs update reactively
+  - Recent form indicator — Hot/Cold/Neutral with avg comparison
+  - Skins per-hole-per-course — Chip tags showing which holes won at each course
+  - Partner tracking — H2H card shows best/worst partner (team games: stroke/match/vegas 2v2, sixes pairs)
+  - Records card — 7th premium card: biggest win/loss, win/loss streaks, current streak, recent form
+  - Home stats teaser — Always at top of Home page; mini card with Earnings/Rounds/Streak
+  - Stats nav icon — Bar chart icon in Nav between History and Profile
+- **UX refinements** (all on production):
+  - Stats teaser card moved to very top of Home page
+  - Earnings tab removed from Profile (Stats tab replaces it entirely)
+  - Net Earnings by Player card added to Stats page (uses h2h.allOpponentsByNet)
+  - YTD pill removed from period filter; year buttons serve as per-year filter
+  - `key={period}` on ScoringCard forces remount + resets courseFilter on period change
+- **Codebase cleanup**:
+  - Deleted: `PROJECT.md`, `CLAUDE-CODE-PROMPT.md`, `plan-protectedDbUserAccounts.prompt.md`, `README.md`, `plan.md`
+  - Deleted: `src/App.css`, `src/index.css`, `src/assets/react.svg` (unused Vite scaffold)
+  - Archived all applied SQL migrations to `migrations/archive/`
 
 ## Environment Setup
 - **Branches:** `main` = production, `dev` = staging

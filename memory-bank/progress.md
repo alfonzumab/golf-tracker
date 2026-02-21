@@ -4,7 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
-| *(pending)* | Add Premium Stats & Analytics Phase 1 |
+| `5494267` | Add Premium Stats & Analytics Phase 1 |
 | `16a9e14` | Fix phone-number-migration.sql: remove destructive RLS policy changes |
 | `082fafd` | Add SMS group text sharing for rounds and tournaments |
 | `c48c736` | Add phone number field to user profiles |

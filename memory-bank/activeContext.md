@@ -1,34 +1,44 @@
 # Active Context — Golf Tracker
 
 ## Current State
-**All dev features merged to production.** Dual-environment workflow established.
+**Premium Stats & Analytics Phase 1 shipped to `dev`.** Awaiting Supabase migration + test.
 
-## Just Deployed to Production (2026-02-17)
-- **SMS group text sharing** — "Text" button on rounds and tournaments in History; fetches participant phone numbers via RPC, opens native SMS app with pre-filled recipients and results
-- **Phone number in profiles** — Optional phone_number field with `get_participant_phones` RPC
-- **ErrorBoundary** — Crash recovery UI ("Something went wrong" + Reload button)
-- **Toast notification system** — Infrastructure in place (no visible toasts yet)
-- **Score validation** — Rejects scores > 15 or < 1
-- **Fixed phone-number-migration.sql** — Removed destructive RLS policy changes that broke profile saves
+## Just Built (2026-02-21)
+- **Premium Stats page** — `/stats` route (Stats.jsx) with hero card + 5 collapsible analytics cards
+  - Hero: lifetime earnings, round count, win/loss streak, earnings sparkline
+  - Scoring: gross/net avg, score distribution (eagle/birdie/par/bogey/dbl), front/back 9, best/worst round
+  - Games: profitability by game type (net, win rate, avg per game)
+  - Skins: total skins won, biggest carry, top hole, by-course breakdown
+  - Head-to-Head: top opponents by rounds + net earnings
+  - Courses: earnings + scoring avg per course
+- **PremiumGate.jsx** — Blurs premium cards + floating overlay with lock icon + "Coming Soon" for free users
+- **statsCalc.js** — Pure calculation engine; handles regular rounds + tournament groups
+- **Profile "View Full Stats" button** — Added to earnings tab
+- **premium-stats-migration.sql** — `subscription_tier TEXT DEFAULT 'free'` on profiles table
+
+## Pending Before Testing
+1. Run `premium-stats-migration.sql` on dev Supabase SQL Editor
+2. Test on `localhost:5173` — Profile > Earnings > "View Full Stats"
+3. To test premium: `UPDATE public.profiles SET subscription_tier = 'premium' WHERE email = '...';`
+4. Push to dev → test on Vercel preview URL
 
 ## Environment Setup
 - **Branches:** `main` = production, `dev` = staging
-- **Vercel project:** `golf-tracker-app` (duplicate `golf-tracker` project deleted)
-- **Vercel env vars:** Production vars → prod Supabase, Preview vars → dev Supabase
-- **Dev Supabase:** `https://ocjhtvnsfdroovnumehk.supabase.co` — 9 test players, 3 courses, email confirmations disabled
-- **Workflow:** All new work on `dev` → test on preview URL → merge to `main` for production
+- **Vercel project:** `golf-tracker-app`
+- **Dev Supabase:** `https://ocjhtvnsfdroovnumehk.supabase.co`
+- **Workflow:** All new work on `dev` → test on preview URL → merge to `main`
 
 ## What's Next
+- Phase 2: Stripe Checkout + Vercel `/api` serverless for real payments
 - Wire up toast notifications to error handling
-- Future: GHIN API integration for auto handicap sync
+- Future: GHIN API integration
 
 ## Session Start Checklist
 1. Read this file and `progress.md`
 2. `git checkout dev` — ensure you're on the dev branch
 3. Check git status for uncommitted work
 4. Follow CLAUDE.md build/lint/deploy procedure for any changes
-5. Update memory-bank files on every commit (see CLAUDE.md "AI Workflow & Memory Bank")
 
 ---
 
-*Last Updated: 2026-02-17*
+*Last Updated: 2026-02-21*

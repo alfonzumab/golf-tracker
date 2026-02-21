@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| *(pending)* | Add Premium Stats & Analytics Phase 1 |
 | `16a9e14` | Fix phone-number-migration.sql: remove destructive RLS policy changes |
 | `082fafd` | Add SMS group text sharing for rounds and tournaments |
 | `c48c736` | Add phone number field to user profiles |
@@ -36,6 +37,7 @@
 - Dev/staging environment (separate Supabase project, dual-branch workflow)
 - ErrorBoundary crash recovery UI
 - Score validation (rejects scores > 15 or < 1)
+- Premium Stats & Analytics Phase 1 (Stats page, PremiumGate blur, statsCalc engine, DB migration)
 
 ## What's Left to Build
 

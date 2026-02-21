@@ -27,6 +27,7 @@ import Setup from './components/Setup';
 import Scoring from './components/Scoring';
 import Hist from './components/History';
 import Profile from './components/Profile';
+import Stats from './components/Stats';
 import TournamentHub from './components/tournament/TournamentHub';
 import TournamentSetup from './components/tournament/TournamentSetup';
 import TournamentLobby from './components/tournament/TournamentLobby';
@@ -592,14 +593,14 @@ export default function App() {
     home: "Settle Up Golf", score: "Scoring",
     players: "Players", courses: "Courses", hist: "History", setup: "Game Setup",
     thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament",
-    tscore: "Scoring", tboard: "Leaderboard", profile: "Profile"
+    tscore: "Scoring", tboard: "Leaderboard", profile: "Profile", stats: "Stats"
   };
 
   return (
     <div className="app">
       <Toast />
       <div className="hdr">
-        {["setup", "score", "bets", "profile"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else if (pg === "profile") { go("home"); } else go("home"); }}>{"<"}</button>}
+        {["setup", "score", "bets", "profile", "stats"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else if (pg === "profile") { go("home"); } else if (pg === "stats") { go("profile"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
         {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={() => go('home')}>{"<"}</button>}
         <div><div className="hdr-t">{titles[pg] || "Settle Up Golf"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
@@ -636,7 +637,8 @@ export default function App() {
         isHost={(t) => t && session && t.hostUserId === session.user.id}
         onViewTournament={(t) => { setTournament(t); setViewingFinishedTournament(true); go('tboard'); }}
       />}
-      {pg === "profile" && <Profile session={session} profile={profile} courses={courses} players={players} rounds={rounds} tournamentHistory={tournamentHistory} onLogout={logout} onUpdateProfile={handleUpdateProfile} />}
+      {pg === "profile" && <Profile session={session} profile={profile} courses={courses} players={players} rounds={rounds} tournamentHistory={tournamentHistory} onLogout={logout} onUpdateProfile={handleUpdateProfile} go={go} />}
+      {pg === "stats" && <Stats profile={profile} rounds={rounds} tournamentHistory={tournamentHistory} players={players} go={go} />}
 
       {/* Tournament pages */}
       {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}

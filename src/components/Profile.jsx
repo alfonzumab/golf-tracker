@@ -4,7 +4,7 @@ import { T } from '../theme';
 import { calcAll } from '../utils/calc';
 import { fmt$ } from '../utils/golf';
 
-const Profile = ({ session, profile, courses, players, rounds, tournamentHistory, onLogout, onUpdateProfile }) => {
+const Profile = ({ session, profile, courses, players, rounds, tournamentHistory, onLogout, onUpdateProfile, go }) => {
   const [view, setView] = useState("profile");
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [handicap, setHandicap] = useState(profile?.handicap_index || '');
@@ -587,6 +587,19 @@ const Profile = ({ session, profile, courses, players, rounds, tournamentHistory
               </div>
             </div>
           )}
+
+          {/* Premium Stats CTA */}
+          <div className="cd" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
+              Want deeper insights?
+            </div>
+            <div style={{ fontSize: 13, color: T.dim, marginBottom: 16 }}>
+              Scoring averages, skins breakdown, head-to-head records, game profitability, and more
+            </div>
+            <button className="btn bp" onClick={() => go && go('stats')}>
+              View Full Stats
+            </button>
+          </div>
         </>
       )}
     </div>

@@ -16,11 +16,8 @@
 - **Profile "View Full Stats" button** — Added to earnings tab
 - **premium-stats-migration.sql** — `subscription_tier TEXT DEFAULT 'free'` on profiles table
 
-## Pending Before Testing
-1. Run `premium-stats-migration.sql` on dev Supabase SQL Editor
-2. Test on `localhost:5173` — Profile > Earnings > "View Full Stats"
-3. To test premium: `UPDATE public.profiles SET subscription_tier = 'premium' WHERE email = '...';`
-4. Push to dev → test on Vercel preview URL
+## Status
+Tested and working on dev. Ready to promote to production when desired.
 
 ## Environment Setup
 - **Branches:** `main` = production, `dev` = staging

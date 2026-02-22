@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { sv, ld } from './storage';
+import { toast } from './toast';
 
 // 6-char share code (no ambiguous chars: 0/O, 1/I/L)
 const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -114,10 +115,14 @@ export function updateTournamentScore(code, groupIdx, playerIdx, holeIdx, score)
   const key = `${groupIdx}-${playerIdx}-${holeIdx}`;
   clearTimeout(scoreTimeouts[key]);
   scoreTimeouts[key] = setTimeout(async () => {
-    await supabase.rpc('update_tournament_score', {
+    const { error } = await supabase.rpc('update_tournament_score', {
       p_code: code, p_group_idx: groupIdx, p_player_idx: playerIdx,
       p_hole_idx: holeIdx, p_score: score
     });
+    if (error) {
+      console.error('updateTournamentScore: Failed to sync:', error.message);
+      toast.error('Score failed to sync — check your connection');
+    }
     delete scoreTimeouts[key];
   }, 500);
 }

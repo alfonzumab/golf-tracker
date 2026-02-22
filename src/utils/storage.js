@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { generateShareCode } from './tournamentStorage';
+import { toast } from './toast';
 
 // Local cache (instant UI, offline fallback)
 export const sv = (k, d) => { try { localStorage.setItem("gt3-" + k, JSON.stringify(d)); } catch { /* Silently handle localStorage errors */ } };
@@ -169,11 +170,13 @@ export async function savePlayers(players) {
 
       if (upsertErr) {
         console.error('adminSavePlayers: Failed to upsert players:', upsertErr.message);
+        toast.error('Failed to save players');
       }
     }
 
   } catch (e) {
     console.error('adminSavePlayers: Unexpected error:', e);
+    toast.error('Failed to save players');
   }
 }
 
@@ -246,11 +249,13 @@ export async function saveCourses(courses) {
 
       if (upsertErr) {
         console.error('saveCourses: Failed to upsert courses:', upsertErr.message);
+        toast.error('Failed to save courses');
       }
     }
 
   } catch (e) {
     console.error('saveCourses: Unexpected error:', e);
+    toast.error('Failed to save courses');
   }
 }
 
@@ -328,11 +333,13 @@ export async function saveRound(rounds) {
 
       if (upsertErr) {
         console.error('saveRound: Failed to upsert rounds:', upsertErr.message);
+        toast.error('Failed to save round history');
       }
     }
 
   } catch (e) {
     console.error('saveRound: Unexpected error:', e);
+    toast.error('Failed to save round history');
   }
 }
 
@@ -358,31 +365,36 @@ export async function saveCurrentRound(round) {
   // Debounce Supabase writes (scoring taps happen fast)
   clearTimeout(saveCurrentTimeout);
   saveCurrentTimeout = setTimeout(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !round) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !round) return;
 
-    if (round.shareCode) {
-      // Try UPDATE by share_code (works for both owner and participants)
-      const { data } = await supabase.from('rounds')
-        .update({ players: round.players, games: round.games })
-        .eq('share_code', round.shareCode)
-        .eq('is_current', true)
-        .select();
+      if (round.shareCode) {
+        // Try UPDATE by share_code (works for both owner and participants)
+        const { data } = await supabase.from('rounds')
+          .update({ players: round.players, games: round.games })
+          .eq('share_code', round.shareCode)
+          .eq('is_current', true)
+          .select();
 
-      // If no row updated (first save), insert as owner
-      if (!data || data.length === 0) {
+        // If no row updated (first save), insert as owner
+        if (!data || data.length === 0) {
+          await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
+          await supabase.from('rounds').insert({
+            id: round.id, user_id: user.id, date: round.date, course: round.course,
+            players: round.players, games: round.games, is_current: true, share_code: round.shareCode
+          });
+        }
+      } else {
+        // Legacy flow (no share code)
         await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
         await supabase.from('rounds').insert({
-          id: round.id, user_id: user.id, date: round.date, course: round.course,
-          players: round.players, games: round.games, is_current: true, share_code: round.shareCode
+          id: round.id, user_id: user.id, date: round.date, course: round.course, players: round.players, games: round.games, is_current: true
         });
       }
-    } else {
-      // Legacy flow (no share code)
-      await supabase.from('rounds').delete().eq('is_current', true).eq('user_id', user.id);
-      await supabase.from('rounds').insert({
-        id: round.id, user_id: user.id, date: round.date, course: round.course, players: round.players, games: round.games, is_current: true
-      });
+    } catch (e) {
+      console.error('saveCurrentRound: Failed to sync:', e);
+      toast.error('Score failed to sync — check your connection');
     }
   }, 1500);
 }
@@ -459,6 +471,7 @@ export async function saveProfile(updates) {
 
   if (error) {
     console.error('saveProfile: Failed to save profile:', error.message);
+    toast.error('Failed to save profile');
   }
 }
 
@@ -473,6 +486,7 @@ export async function savePhoneNumber(phoneNumber) {
 
   if (error) {
     console.error('savePhoneNumber: Failed to save phone number:', error.message);
+    toast.error('Failed to save phone number');
   }
 }
 

@@ -584,8 +584,8 @@ export default function App() {
       return next;
     });
     
-    // If handicap_index was updated and user has a linked player, sync it to the players list
-    if (updates.handicap_index !== undefined && profile?.linked_player_id) {
+    // If handicap_index was updated and user has a linked player and is admin, sync to global players
+    if (updates.handicap_index !== undefined && profile?.linked_player_id && profile?.role === 'admin') {
       const linkedPlayerId = profile.linked_player_id;
       const updatedPlayers = players.map(p => 
         p.id === linkedPlayerId 

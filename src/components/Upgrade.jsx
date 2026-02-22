@@ -89,14 +89,14 @@ const Upgrade = ({ onBack }) => {
             background: T.gold, color: T.bg, fontSize: 11, fontWeight: 700,
             padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap', letterSpacing: '.5px',
           }}>
-            SAVE 44%
+            SAVE 33%
           </div>
           <div style={{ fontSize: 11, color: T.dim, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.5px' }}>Annual</div>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: T.txt, lineHeight: 1.1 }}>
-            $9.99
+            $11.99
           </div>
           <div style={{ fontSize: 12, color: T.dim, marginBottom: 4 }}>per year</div>
-          <div style={{ fontSize: 12, color: T.accB, fontWeight: 600, marginBottom: 20 }}>~$0.83/month</div>
+          <div style={{ fontSize: 12, color: T.accB, fontWeight: 600, marginBottom: 20 }}>~$1.00/month</div>
           <button
             className="btn"
             onClick={() => handleUpgrade('annual')}

@@ -207,6 +207,62 @@ const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile
         )}
       </div>
 
+      {/* Subscription Card */}
+      <div className="cd">
+        <div className="ct">Subscription</div>
+        {profile?.subscription_tier === 'premium' ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{
+                background: `linear-gradient(135deg, #d4a017, #f0c040)`,
+                color: '#0b1a10', fontSize: 12, fontWeight: 700,
+                padding: '3px 10px', borderRadius: 20, letterSpacing: '.4px',
+              }}>
+                PREMIUM
+              </span>
+              <span style={{ fontSize: 13, color: T.dim }}>Active subscription</span>
+            </div>
+            {profile?.stripe_subscription_id && (
+              <div style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
+                Manage billing, view invoices, or cancel anytime below.
+              </div>
+            )}
+            <button
+              className="btn bs"
+              onClick={handleManageSubscription}
+              disabled={loading}
+            >
+              {loading ? 'Opening...' : 'Manage Subscription'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{
+                background: T.bdr, color: T.dim, fontSize: 12, fontWeight: 700,
+                padding: '3px 10px', borderRadius: 20, letterSpacing: '.4px',
+              }}>
+                FREE
+              </span>
+              <span style={{ fontSize: 13, color: T.dim }}>Basic plan</span>
+            </div>
+            <div style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
+              Upgrade to unlock detailed analytics, earnings tracking, and more.
+            </div>
+            <button
+              className="btn"
+              onClick={() => onNavigate && onNavigate('upgrade')}
+              style={{
+                background: `linear-gradient(135deg, #d4a017, #f0c040)`,
+                color: '#0b1a10', fontWeight: 700, fontSize: 14,
+              }}
+            >
+              Upgrade to Premium
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Personal Info Card */}
       <div className="cd">
         <div className="ct">Personal Info</div>
@@ -415,62 +471,6 @@ const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile
       {/* Messages */}
       {error && <div className="auth-err">{error}</div>}
       {message && <div className="auth-msg">{message}</div>}
-
-      {/* Subscription Card */}
-      <div className="cd">
-        <div className="ct">Subscription</div>
-        {profile?.subscription_tier === 'premium' ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{
-                background: `linear-gradient(135deg, #d4a017, #f0c040)`,
-                color: '#0b1a10', fontSize: 12, fontWeight: 700,
-                padding: '3px 10px', borderRadius: 20, letterSpacing: '.4px',
-              }}>
-                PREMIUM
-              </span>
-              <span style={{ fontSize: 13, color: T.dim }}>Active subscription</span>
-            </div>
-            {profile?.stripe_subscription_id && (
-              <div style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
-                Manage billing, view invoices, or cancel anytime below.
-              </div>
-            )}
-            <button
-              className="btn bs"
-              onClick={handleManageSubscription}
-              disabled={loading}
-            >
-              {loading ? 'Opening...' : 'Manage Subscription'}
-            </button>
-          </>
-        ) : (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{
-                background: T.bdr, color: T.dim, fontSize: 12, fontWeight: 700,
-                padding: '3px 10px', borderRadius: 20, letterSpacing: '.4px',
-              }}>
-                FREE
-              </span>
-              <span style={{ fontSize: 13, color: T.dim }}>Basic plan</span>
-            </div>
-            <div style={{ fontSize: 13, color: T.dim, marginBottom: 12 }}>
-              Upgrade to unlock detailed analytics, earnings tracking, and more.
-            </div>
-            <button
-              className="btn"
-              onClick={() => onNavigate && onNavigate('upgrade')}
-              style={{
-                background: `linear-gradient(135deg, #d4a017, #f0c040)`,
-                color: '#0b1a10', fontWeight: 700, fontSize: 14,
-              }}
-            >
-              Upgrade to Premium
-            </button>
-          </>
-        )}
-      </div>
 
       {/* Contact Developer */}
       <div className="cd">

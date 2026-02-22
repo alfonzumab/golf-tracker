@@ -278,33 +278,61 @@ const Home = ({ courses, players, rounds, selectedCourseId, setSelectedCourseId,
 
   return (
     <div className="pg">
-      {/* Stats teaser card — always on top if linked player */}
-      {profile?.linked_player_id && quickStats && (
+      {/* Stats teaser card — always on top */}
+      {!profile?.linked_player_id ? (
+        <div className="cd mb10" onClick={() => go('profile')} style={{ cursor: 'pointer' }}>
+          <div className="fxb">
+            <span className="ct" style={{ marginBottom: 0 }}>Your Stats</span>
+            <span style={{ color: T.dim, fontSize: 14 }}>▸</span>
+          </div>
+          <div style={{ fontSize: 13, color: T.dim, marginTop: 8, marginBottom: 10 }}>
+            Link your player in Profile to track earnings and unlock premium analytics
+          </div>
+          <span style={{
+            fontSize: 12, fontWeight: 700, color: '#0b1a10',
+            background: 'linear-gradient(135deg, #d4a017, #f0c040)',
+            padding: '4px 12px', borderRadius: 20,
+          }}>
+            Set Up Profile →
+          </span>
+        </div>
+      ) : (
         <div className="cd mb10" onClick={() => go('stats')} style={{ cursor: 'pointer' }}>
           <div className="fxb">
             <span className="ct" style={{ marginBottom: 0 }}>Your Stats</span>
             <span style={{ color: T.dim, fontSize: 14 }}>▸</span>
           </div>
-          <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-            <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: quickStats.lifetimeTotal >= 0 ? T.accB : T.red }}>
-                {fmt$(quickStats.lifetimeTotal)}
+          {quickStats ? (
+            <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+              <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: quickStats.lifetimeTotal >= 0 ? T.accB : T.red }}>
+                  {fmt$(quickStats.lifetimeTotal)}
+                </div>
+                <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>Earnings</div>
               </div>
-              <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>Earnings</div>
-            </div>
-            <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: T.txt }}>{quickStats.roundCount}</div>
-              <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>Rounds</div>
-            </div>
-            <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: quickStats.currentStreakType === 'win' ? T.accB : quickStats.currentStreakType === 'lose' ? T.red : T.dim }}>
-                {quickStats.currentStreak > 0 ? quickStats.currentStreak : '—'}
+              <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: T.txt }}>{quickStats.roundCount}</div>
+                <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>Rounds</div>
               </div>
-              <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>
-                {quickStats.currentStreakType === 'win' ? 'W Streak' : quickStats.currentStreakType === 'lose' ? 'L Streak' : 'Streak'}
+              <div style={{ flex: 1, textAlign: 'center', background: T.bg2, borderRadius: 8, padding: '8px 4px' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: quickStats.currentStreakType === 'win' ? T.accB : quickStats.currentStreakType === 'lose' ? T.red : T.dim }}>
+                  {quickStats.currentStreak > 0 ? quickStats.currentStreak : '—'}
+                </div>
+                <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>
+                  {quickStats.currentStreakType === 'win' ? 'W Streak' : quickStats.currentStreakType === 'lose' ? 'L Streak' : 'Streak'}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ fontSize: 13, color: T.dim, marginTop: 8 }}>
+              Play your first round to start tracking stats
+            </div>
+          )}
+          {profile?.subscription_tier !== 'premium' && (
+            <div style={{ marginTop: 10, fontSize: 12, color: T.gold, fontWeight: 600 }}>
+              ✦ Upgrade for detailed analytics →
+            </div>
+          )}
         </div>
       )}
 

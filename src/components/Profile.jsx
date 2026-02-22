@@ -361,15 +361,24 @@ const Profile = ({ session, profile, courses, players, onLogout, onUpdateProfile
           ))}
         </select>
 
-        {linkedPlayer && (
-          <button 
-            className="btn bs"
-            style={{ marginTop: 12 }}
-            onClick={() => setLinkedPlayer('')}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button
+            className="btn bp"
+            onClick={handleSaveProfile}
+            disabled={loading}
+            style={{ flex: 1 }}
           >
-            Unlink Player
+            {loading ? 'Saving...' : 'Save'}
           </button>
-        )}
+          {linkedPlayer && (
+            <button
+              className="btn bs"
+              onClick={() => setLinkedPlayer('')}
+            >
+              Unlink
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Account Security Card */}

@@ -3,7 +3,15 @@
 ## Current State
 **Landing page live at settleup-golf.com. App at app.settleup-golf.com. Dev database fully seeded with rich test data.**
 
-## Recently Shipped (2026-02-21)
+## Recently Shipped (2026-02-21, session 3)
+- **Home page instant load fix**: Cached `profile` and `tournament` in localStorage so all three Home cards (Round in Progress, Your Stats, Active Tournament) render immediately on refresh instead of waiting 600-900ms
+  - `storage.js`: `loadProfile()` now calls `sv('profile', data)` before returning
+  - `App.jsx`: `profile` and `tournament` initialized from `ld()` (lazy useState)
+  - `App.jsx`: `loadTournamentHistory()` moved into the main `Promise.all` (was serial after)
+  - `App.jsx`: `sv('tournament', ...)` added everywhere `setTournament` is called with Supabase data; `sv('tournament', null)` on leave/finish
+  - `App.jsx`: `handleUpdateProfile` now caches the merged profile object in localStorage
+
+## Recently Shipped (2026-02-21, session 2)
 - **Landing page** (`landing/index.html`): hero, how it works, free vs premium table, bottom CTA → app.settleup-golf.com
 - **Two Vercel projects**: `settleup-landing` (root dir: `landing/`) → settleup-golf.com + www; `golf-tracker-app` → app.settleup-golf.com
 - **Cloudflare**: Added CNAME record for `app` subdomain pointing to Vercel

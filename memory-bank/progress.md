@@ -4,6 +4,7 @@
 
 | Commit | Summary |
 |--------|---------|
+| (pending) | Fix Home page instant load: cache profile + tournament in localStorage, parallelize tournament history |
 | `9f44ecc` | Make Android PWA install prompt prominent on auth screen |
 | `c0a291e` | Add landing page (landing/index.html) + Vercel config |
 | `fd2f562` | Codebase cleanup: delete legacy files, archive migrations, update docs |

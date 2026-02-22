@@ -444,6 +444,7 @@ export async function loadProfile() {
     return null;
   }
 
+  sv('profile', data);
   return data;
 }
 

@@ -39,7 +39,7 @@ import TournamentBoard from './components/tournament/TournamentBoard';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = logged out
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(() => ld("profile", null));
   const [pg, setPg] = useState("home");
   const [players, setPlayers] = useState(() => ld("players", []));
   const [courses, setCourses] = useState(() => ld("courses", []));
@@ -53,7 +53,7 @@ export default function App() {
   const [playerLinks, setPlayerLinks] = useState({});
 
   // Tournament state
-  const [tournament, setTournament] = useState(null);
+  const [tournament, setTournament] = useState(() => ld("tournament", null));
   const [tournamentGuest, setTournamentGuest] = useState(null);
   const [joinCode, setJoinCode] = useState(null);
   const [tournamentHistory, setTournamentHistory] = useState(() => ld("tournamentHistory", []));
@@ -83,8 +83,9 @@ export default function App() {
     if (dataLoaded.current) return;
     dataLoaded.current = true;
     const load = async () => {
-      const [prof, p, c, r, cr, sc, pl] = await Promise.all([
-        loadProfile(), loadPlayers(), loadCourses(), loadRounds(), loadCurrentRound(), loadSelectedCourse(), loadPlayerLinks()
+      const [prof, p, c, r, cr, sc, pl, th] = await Promise.all([
+        loadProfile(), loadPlayers(), loadCourses(), loadRounds(), loadCurrentRound(), loadSelectedCourse(), loadPlayerLinks(),
+        loadTournamentHistory()
       ]);
       setProfile(prof);
       setPlayers(p);
@@ -112,6 +113,7 @@ export default function App() {
           const { tournament: t } = await getTournament(activeCode);
           if (t) {
             setTournament(t);
+            sv('tournament', t);
             tournamentStartedRef.current = t.status === 'live';
             const guest = loadGuestInfo();
             if (guest) setTournamentGuest(guest);
@@ -121,8 +123,6 @@ export default function App() {
         }
       }
 
-      // Load tournament history
-      const th = await loadTournamentHistory();
       setTournamentHistory(th);
 
       // Auto-resume live/setup tournament from history if none loaded from localStorage
@@ -130,6 +130,7 @@ export default function App() {
         const liveTournament = th.find(t => t.status === 'live' || t.status === 'setup');
         if (liveTournament) {
           setTournament(liveTournament);
+          sv('tournament', liveTournament);
           tournamentStartedRef.current = liveTournament.status === 'live';
           saveActiveTournament(liveTournament.shareCode);
           // Restore guest info if available
@@ -382,6 +383,7 @@ export default function App() {
 
   const leaveTournament = () => {
     setTournament(null);
+    sv('tournament', null);
     setTournamentGuest(null);
     setJoinCode(null);
     setViewingFinishedTournament(false);
@@ -470,6 +472,7 @@ export default function App() {
           sv('tournamentHistory', updatedHistory);
           // Clear active tournament
           setTournament(null);
+          sv('tournament', null);
           setTournamentGuest(null);
           setViewingFinishedTournament(false);
           clearActiveTournament();
@@ -528,10 +531,12 @@ export default function App() {
           setTournament(prev => {
             if (!prev) return fresh;
             // Keep local scores for user's group, update others from server
-            return {
+            const merged = {
               ...fresh,
               groups: fresh.groups.map((g, gi) => gi === myGroup ? { ...g, players: prev.groups[gi].players } : g)
             };
+            sv('tournament', merged);
+            return merged;
           });
         }
       } catch {
@@ -558,7 +563,11 @@ export default function App() {
 
   // Handle profile updates
   const handleUpdateProfile = async (updates) => {
-    setProfile(prev => ({ ...prev, ...updates }));
+    setProfile(prev => {
+      const next = { ...prev, ...updates };
+      sv('profile', next);
+      return next;
+    });
     
     // If handicap_index was updated and user has a linked player, sync it to the players list
     if (updates.handicap_index !== undefined && profile?.linked_player_id) {

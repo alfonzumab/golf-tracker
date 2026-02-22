@@ -202,6 +202,14 @@ Seven premium cards (0-indexed, toggled by `exp` state): Scoring, Games, Skins, 
 
 `PremiumGate.jsx` — wraps any premium content. Shows a blur overlay with upgrade prompt when `profile.subscription_tier !== 'premium'`.
 
+### Supporting Utilities
+
+**Toast** (`src/utils/toast.js` + `src/components/Toast.jsx`) — module-level event emitter for in-app notifications. Call `toast.success/error/warn/info(msg)` from anywhere; `Toast.jsx` subscribes via `subscribe()` and renders transient messages. Currently not wired to storage error paths (future work).
+
+**SMS sharing** (`src/utils/sms.js`) — cross-platform SMS deep link builder. `buildSmsUrl(phones, body)` / `openSms(phones, body)` emit different URL schemes for Android (`sms:numbers?body=`) vs iOS (`sms://open?addresses=numbers&body=`). `fetchRoundParticipantPhones(roundId)` / `fetchTournamentParticipantPhones(tournamentId)` query participant phone numbers via the `get_participant_phones` RPC.
+
+**ErrorBoundary** (`src/components/ErrorBoundary.jsx`) — class component wrapping the full app in `main.jsx`. Renders a styled full-screen crash recovery UI with a Reload button when an unhandled render error is caught.
+
 ### Golf Math (`src/utils/golf.js`)
 
 `calcCH` → `getStrokes` pipeline: Player's handicap index → course handicap (via slope/rating) → per-hole stroke allocation array. `enrichPlayer(player, teeData)` computes courseHandicap + strokeHoles from a raw player object — used by both tournament scoring and leaderboard. Also: `fmt$()` for currency display, `scoreClass()` for score-to-par CSS classes, `sixPairs()` for random 6-6-6 team generation.
@@ -225,7 +233,7 @@ Seven premium cards (0-indexed, toggled by `exp` state): Scoring, Games, Skins, 
 - `round_participants` — user_id, round_id (composite PK) — tracks who played in shared rounds
 - `tournament_participants` — user_id, tournament_id (composite PK) — tracks who played in tournaments
 
-**RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `update_group_games(p_code, p_group_idx, p_games)`, `join_round(p_code)`, `finish_round(p_round_id, p_share_code)`, `register_round_participant(p_round_id)`, `reopen_round(p_round_id)`, `load_tournament_history()`. The score/games RPCs use `FOR UPDATE` row locking to prevent concurrent write races on the `groups` JSONB column.
+**RPC functions**: `get_tournament(p_code)`, `save_tournament(p_tournament)`, `update_tournament_status(p_code, p_status)`, `update_tournament_score(p_code, p_group_idx, p_player_idx, p_hole_idx, p_score)`, `update_group_games(p_code, p_group_idx, p_games)`, `join_round(p_code)`, `finish_round(p_round_id, p_share_code)`, `register_round_participant(p_round_id)`, `reopen_round(p_round_id)`, `load_tournament_history()`, `get_participant_phones(p_participant_ids)`. The score/games RPCs use `FOR UPDATE` row locking to prevent concurrent write races on the `groups` JSONB column.
 
 ### Theme & Styling
 

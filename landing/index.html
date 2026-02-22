@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Settle Up Golf — track rounds, settle bets. 5 betting games, automatic payouts, tournament mode. Free to use." />
+  <meta name="theme-color" content="#0b1a10" />
+  <title>Settle Up Golf — Track Rounds, Settle Bets</title>
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b1a10;
+      --card: #0f2518;
+      --card2: #122d1e;
+      --green: #2ecc71;
+      --green-light: #4ade80;
+      --green-dark: #1a7a42;
+      --text: #e8f5e9;
+      --dim: #6b9b7a;
+      --muted: #3d6b50;
+      --border: #1a3a25;
+      --border2: #2a5a3a;
+      --gold: #f0c040;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11,26,16,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green-light);
+      letter-spacing: -0.3px;
+    }
+
+    .nav-cta {
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #0b1a10;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: 10px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .nav-cta:hover { opacity: 0.9; transform: scale(0.98); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: calc(100vh - 60px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 64px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 40%, #1a5c2a22 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-inner { max-width: 640px; position: relative; }
+
+    .hero-icon {
+      width: 72px;
+      height: 72px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 28px;
+      box-shadow: 0 8px 32px #2ecc7133;
+      font-size: 32px;
+    }
+
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(36px, 8vw, 60px);
+      font-weight: 700;
+      color: var(--green-light);
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+
+    .hero-tagline {
+      font-size: clamp(18px, 4vw, 24px);
+      color: var(--text);
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .hero-sub {
+      font-size: 16px;
+      color: var(--dim);
+      max-width: 480px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .hero-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #0b1a10;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 16px 32px;
+      border-radius: 14px;
+      min-height: 52px;
+      transition: opacity 0.15s, transform 0.1s;
+      box-shadow: 0 4px 20px #2ecc7133;
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active { transform: scale(0.97); }
+
+    .hero-note {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── SECTION WRAPPER ── */
+    .section { padding: 80px 24px; }
+    .section-inner { max-width: 900px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(26px, 5vw, 38px);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .section-sub {
+      font-size: 16px;
+      color: var(--dim);
+      max-width: 520px;
+      line-height: 1.7;
+    }
+
+    .section-header { margin-bottom: 48px; }
+
+    /* ── HOW IT WORKS ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .steps { grid-template-columns: 1fr; }
+    }
+
+    .step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      position: relative;
+    }
+
+    .step-num {
+      width: 32px;
+      height: 32px;
+      background: #1a5c2a;
+      border: 1px solid var(--border2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green-light);
+      margin-bottom: 16px;
+    }
+
+    .step-icon { font-size: 28px; margin-bottom: 12px; }
+
+    .step h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--green-light);
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      font-size: 14px;
+      color: var(--dim);
+      line-height: 1.6;
+    }
+
+    /* ── GAMES GRID ── */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .game-chip {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .game-chip .game-icon { font-size: 24px; margin-bottom: 6px; }
+
+    .game-chip .game-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .game-chip .game-desc {
+      font-size: 12px;
+      color: var(--dim);
+    }
+
+    /* ── FEATURE TABLE ── */
+    .feature-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .ft-header {
+      display: grid;
+      grid-template-columns: 1fr 100px 120px;
+      background: var(--card2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      gap: 8px;
+    }
+
+    .ft-col-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--dim);
+      text-align: center;
+    }
+
+    .ft-col-label.feature { text-align: left; color: var(--dim); }
+
+    .ft-col-label.premium { color: var(--gold); }
+
+    .ft-group-label {
+      display: grid;
+      grid-template-columns: 1fr 100px 120px;
+      padding: 10px 24px 6px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ft-group-name {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--green);
+    }
+
+    .ft-row {
+      display: grid;
+      grid-template-columns: 1fr 100px 120px;
+      padding: 13px 24px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      transition: background 0.15s;
+    }
+
+    .ft-row:last-child { border-bottom: none; }
+    .ft-row:hover { background: var(--card2); }
+
+    .ft-feature {
+      font-size: 15px;
+      color: var(--text);
+    }
+
+    .ft-check {
+      text-align: center;
+      font-size: 18px;
+    }
+
+    .check { color: var(--green-light); }
+    .cross { color: var(--muted); font-size: 15px; }
+    .soon {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+      background: #f0c04018;
+      border: 1px solid #f0c04033;
+      border-radius: 6px;
+      padding: 3px 8px;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+
+    @media (max-width: 500px) {
+      .ft-header, .ft-group-label, .ft-row {
+        grid-template-columns: 1fr 60px 90px;
+        padding: 12px 14px;
+        gap: 4px;
+      }
+
+      .ft-feature { font-size: 13px; }
+    }
+
+    /* ── BOTTOM CTA ── */
+    .cta-section {
+      padding: 80px 24px;
+      text-align: center;
+      background: linear-gradient(180deg, transparent, #0f2518 20%, #0f2518 80%, transparent);
+      margin: 0;
+    }
+
+    .cta-inner { max-width: 560px; margin: 0 auto; }
+
+    .cta-inner h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(28px, 6vw, 44px);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .cta-inner p {
+      font-size: 16px;
+      color: var(--dim);
+      margin-bottom: 36px;
+      line-height: 1.7;
+    }
+
+    .cta-badges {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .badge {
+      font-size: 13px;
+      color: var(--dim);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 24px;
+      text-align: center;
+    }
+
+    .footer-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      color: var(--green-light);
+      margin-bottom: 8px;
+    }
+
+    .footer-copy {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <span class="nav-brand">Settle Up Golf</span>
+    <a class="nav-cta" href="https://app.settleup-golf.com">Open App</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-icon">⛳</div>
+      <h1>Settle Up Golf</h1>
+      <p class="hero-tagline">Track rounds. Settle bets — automatically.</p>
+      <p class="hero-sub">
+        Score hole by hole, run up to 5 side-action games at once, and see exactly who owes who the moment the round ends. No spreadsheets. No arguments.
+      </p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="https://app.settleup-golf.com">
+          Open App &rarr;
+        </a>
+        <span class="hero-note">Free to use &middot; No credit card required</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- HOW IT WORKS -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-label">How it works</p>
+        <h2 class="section-title">Three steps from tee to settlement</h2>
+        <p class="section-sub">Works on any phone browser. Install it like an app from your home screen — no App Store required.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-icon">🏌️</div>
+          <h3>Set up the round</h3>
+          <p>Pick your players and course, choose your betting games and wager amounts, and tee off. Setup takes under a minute.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-icon">📊</div>
+          <h3>Score as you play</h3>
+          <p>Enter scores hole by hole. Everyone in the group can track along live on their own phone with a share code.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-icon">💵</div>
+          <h3>Settle up</h3>
+          <p>The moment you finish, the app calculates every game result and tells you exactly who pays who — and how much.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- BETTING GAMES -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-label">Betting games</p>
+        <h2 class="section-title">Five games, endless combinations</h2>
+        <p class="section-sub">Mix and match betting formats in a single round. The math is handled for you.</p>
+      </div>
+      <div class="games-grid">
+        <div class="game-chip">
+          <div class="game-icon">🏆</div>
+          <div class="game-name">Stroke</div>
+          <div class="game-desc">Low score wins front, back & overall</div>
+        </div>
+        <div class="game-chip">
+          <div class="game-icon">⚔️</div>
+          <div class="game-name">Match Play</div>
+          <div class="game-desc">Head-to-head hole wins</div>
+        </div>
+        <div class="game-chip">
+          <div class="game-icon">🎰</div>
+          <div class="game-name">Skins</div>
+          <div class="game-desc">Win the hole, win the pot</div>
+        </div>
+        <div class="game-chip">
+          <div class="game-icon">🔢</div>
+          <div class="game-name">6-6-6</div>
+          <div class="game-desc">Three 6-hole team matches</div>
+        </div>
+        <div class="game-chip">
+          <div class="game-icon">🎲</div>
+          <div class="game-name">Vegas</div>
+          <div class="game-desc">Team scores combined as digits</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- FREE vs PREMIUM -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-label">Pricing</p>
+        <h2 class="section-title">Free to play. Premium to obsess.</h2>
+        <p class="section-sub">Everything you need to run a round and settle bets is completely free. Premium unlocks deep analytics for the competitive golfer.</p>
+      </div>
+
+      <div class="feature-table-wrap">
+        <div class="ft-header">
+          <span class="ft-col-label feature">Feature</span>
+          <span class="ft-col-label">Free</span>
+          <span class="ft-col-label premium">Premium</span>
+        </div>
+
+        <!-- Core -->
+        <div class="ft-group-label">
+          <span class="ft-group-name">Core</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Round tracking &amp; scoring</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">5 betting games with auto-settlement</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Share code — play together on any device</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Round history &amp; replay</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Handicap-adjusted scoring</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+
+        <!-- Tournament -->
+        <div class="ft-group-label">
+          <span class="ft-group-name">Tournament Mode</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Standard multi-group tournaments</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Ryder Cup team format</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Cross-group live leaderboard</span>
+          <span class="ft-check check">✓</span>
+          <span class="ft-check check">✓</span>
+        </div>
+
+        <!-- Premium Analytics -->
+        <div class="ft-group-label">
+          <span class="ft-group-name">Premium Analytics</span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Scoring averages, trends &amp; distribution</span>
+          <span class="ft-check cross">—</span>
+          <span class="ft-check"><span class="soon">Coming Soon</span></span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Win/loss record by game type</span>
+          <span class="ft-check cross">—</span>
+          <span class="ft-check"><span class="soon">Coming Soon</span></span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Skins won by hole &amp; course</span>
+          <span class="ft-check cross">—</span>
+          <span class="ft-check"><span class="soon">Coming Soon</span></span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Head-to-head records</span>
+          <span class="ft-check cross">—</span>
+          <span class="ft-check"><span class="soon">Coming Soon</span></span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Course performance breakdown</span>
+          <span class="ft-check cross">—</span>
+          <span class="ft-check"><span class="soon">Coming Soon</span></span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Net earnings by player (all-time)</span>
+          <span class="ft-check cross">—</span>
+          <span class="ft-check"><span class="soon">Coming Soon</span></span>
+        </div>
+        <div class="ft-row">
+          <span class="ft-feature">Win streaks &amp; records</span>
+          <span class="ft-check cross">—</span>
+          <span class="ft-check"><span class="soon">Coming Soon</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- BOTTOM CTA -->
+  <section class="cta-section">
+    <div class="cta-inner">
+      <h2>Ready to settle up?</h2>
+      <p>Start tracking your next round in seconds. Free to use, no app store required.</p>
+      <a class="btn-primary" href="https://app.settleup-golf.com">
+        Open App &rarr;
+      </a>
+      <div class="cta-badges">
+        <span class="badge">📱 Installable on Android &amp; iOS</span>
+        <span class="badge">☁️ Syncs across devices</span>
+        <span class="badge">🔒 Private per user</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p class="footer-brand">Settle Up Golf</p>
+    <p class="footer-copy">&copy; 2025 Settle Up Golf. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

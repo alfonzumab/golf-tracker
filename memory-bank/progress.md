@@ -4,7 +4,8 @@
 
 | Commit | Summary |
 |--------|---------|
-| (pending) | Fix Home page instant load: cache profile + tournament in localStorage, parallelize tournament history |
+| `b735ee2` | Wire toast notifications to storage error paths |
+| `d61764b` | Fix Home page instant load: cache profile + tournament in localStorage, parallelize tournament history |
 | `9f44ecc` | Make Android PWA install prompt prominent on auth screen |
 | `c0a291e` | Add landing page (landing/index.html) + Vercel config |
 | `fd2f562` | Codebase cleanup: delete legacy files, archive migrations, update docs |
@@ -46,12 +47,14 @@
 - Two Vercel projects from one repo: `golf-tracker-app` → app subdomain, `settleup-landing` → root domain
 - Android PWA install banner: prominent green gradient block above auth card (not buried in form)
 - Dev database seeded: `seed-dev.sql` — 12 players, 4 courses, 40 finished rounds, 3 tournaments (Spring Scramble, Summer Classic, Ryder Cup 2026), all game types covered, Stats page fully exercised
+- Toast notifications wired to all user-triggered Supabase write failures (score sync, round history, profile, phone, players, courses, tournament scores)
+- Stripe subscription integration: api/create-checkout, api/stripe-webhook, api/create-portal, Upgrade.jsx, PremiumGate clickable, Profile subscription card, App URL param handling. Pricing: $1.49/mo, $9.99/yr. Needs Stripe account + Vercel env vars + DB migration to activate.
 
 ## What's Left to Build
 
 ### Future Roadmap (not started)
-- **Phase 2 payments**: Stripe Checkout + Vercel `/api` serverless for real money premium unlock
-- **Toast notifications**: Infrastructure built, needs to be wired to error handling
+- **Phase 2 payments**: ~~Stripe Checkout + Vercel `/api` serverless for real money premium unlock~~ ✓ Done (code shipped, needs Stripe account + env vars + DB migration)
+- ~~**Toast notifications**: Infrastructure built, needs to be wired to error handling~~ ✓ Done
 - **GHIN API exploration**: Investigate USGA GHIN API for automatic handicap index sync
 
 ## Current Status

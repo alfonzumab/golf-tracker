@@ -614,7 +614,7 @@ const EarningsByPlayerCard = ({ stats, exp, toggle }) => {
 };
 
 // ─── Main Stats Page ──────────────────────────────────────────────────────────
-const Stats = ({ profile, rounds, tournamentHistory, go }) => {
+const Stats = ({ profile, rounds, tournamentHistory, go, onNavigate }) => {
   const [exp, setExp] = useState(null);
   const [period, setPeriod] = useState('lifetime');
 
@@ -702,7 +702,7 @@ const Stats = ({ profile, rounds, tournamentHistory, go }) => {
         <>
           <HeroCard stats={stats} period={period} />
           <div className="tkt" style={{ margin: '16px 0 8px' }}>Premium Stats</div>
-          <PremiumGate profile={profile}>
+          <PremiumGate profile={profile} onNavigate={onNavigate}>
             <ScoringCard key={period} stats={stats.scoring} trends={stats.trends} exp={exp === 0} toggle={() => toggle(0)} />
             <GamesCard stats={stats.games} exp={exp === 1} toggle={() => toggle(1)} />
             <SkinsCard stats={stats.skins} exp={exp === 2} toggle={() => toggle(2)} />

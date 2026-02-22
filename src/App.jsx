@@ -16,8 +16,10 @@ import {
 import { createTournament, getTournament, saveTournamentSetup, startTournament, finishTournament, updateTournamentScore, updateGroupGames, loadActiveTournament, saveActiveTournament, clearActiveTournament, loadGuestInfo, saveGuestInfo, clearGuestInfo, registerTournamentParticipant, loadTournamentHistory, reopenTournament } from './utils/tournamentStorage';
 import { calcAll } from './utils/calc';
 import { fmt$ } from './utils/golf';
+import { toast } from './utils/toast';
 import Toast from './components/Toast';
 import Auth from './components/Auth';
+import Upgrade from './components/Upgrade';
 import Nav from './components/Nav';
 import Mdl from './components/Modal';
 import Home from './components/Home';
@@ -124,6 +126,19 @@ export default function App() {
       }
 
       setTournamentHistory(th);
+
+      // Handle Stripe redirect params
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('upgraded') === '1') {
+        // Reload profile to pick up new subscription_tier set by webhook
+        const freshProf = await loadProfile();
+        if (freshProf) { setProfile(freshProf); sv('profile', freshProf); }
+        toast.success('Welcome to Premium! Your stats are now unlocked.');
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (params.get('upgrade') === '1') {
+        setPg('upgrade');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
 
       // Auto-resume live/setup tournament from history if none loaded from localStorage
       if (!activeCode && th.length > 0) {
@@ -615,14 +630,15 @@ export default function App() {
     home: "Settle Up Golf", score: "Scoring",
     players: "Players", courses: "Courses", hist: "History", setup: "Game Setup",
     thub: "Tournament", tsetup: "New Tournament", tlobby: "Tournament Lobby", tjoin: "Join Tournament",
-    tscore: "Scoring", tboard: "Leaderboard", profile: "Profile", stats: "Stats"
+    tscore: "Scoring", tboard: "Leaderboard", profile: "Profile", stats: "Stats",
+    upgrade: "Go Premium"
   };
 
   return (
     <div className="app">
       <Toast />
       <div className="hdr">
-        {["setup", "score", "bets", "profile", "stats"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
+        {["setup", "score", "bets", "profile", "stats", "upgrade"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "setup") { setSetup(null); setSetupCourse(null); go("home"); } else go("home"); }}>{"<"}</button>}
         {["thub", "tsetup", "tjoin"].includes(pg) && <button className="hdr-bk" onClick={() => { if (pg === "tsetup" || pg === "tjoin") go("thub"); else go("home"); }}>{"<"}</button>}
         {["tlobby", "tscore", "tboard"].includes(pg) && <button className="hdr-bk" onClick={() => go('home')}>{"<"}</button>}
         <div><div className="hdr-t">{titles[pg] || "Settle Up Golf"}</div>{pg === "score" && round && <div className="hdr-s">{round.course.name}</div>}{["tlobby", "tscore", "tboard"].includes(pg) && tournament && <div className="hdr-s">{tournament.course.name}</div>}</div>
@@ -659,8 +675,9 @@ export default function App() {
         isHost={(t) => t && session && t.hostUserId === session.user.id}
         onViewTournament={(t) => { setTournament(t); setViewingFinishedTournament(true); go('tboard'); }}
       />}
-      {pg === "profile" && <Profile session={session} profile={profile} courses={courses} players={players} rounds={rounds} tournamentHistory={tournamentHistory} onLogout={logout} onUpdateProfile={handleUpdateProfile} go={go} />}
-      {pg === "stats" && <Stats profile={profile} rounds={rounds} tournamentHistory={tournamentHistory} players={players} go={go} />}
+      {pg === "profile" && <Profile session={session} profile={profile} courses={courses} players={players} rounds={rounds} tournamentHistory={tournamentHistory} onLogout={logout} onUpdateProfile={handleUpdateProfile} go={go} onNavigate={setPg} />}
+      {pg === "stats" && <Stats profile={profile} rounds={rounds} tournamentHistory={tournamentHistory} players={players} go={go} onNavigate={setPg} />}
+      {pg === "upgrade" && <Upgrade onBack={() => setPg('home')} />}
 
       {/* Tournament pages */}
       {pg === "thub" && <TournamentHub onCreateNew={() => go('tsetup')} onJoin={handleJoinTournament} />}

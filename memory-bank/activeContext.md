@@ -1,7 +1,22 @@
 # Active Context — Golf Tracker
 
 ## Current State
-**Landing page live at settleup-golf.com. App at app.settleup-golf.com. Dev database fully seeded with rich test data.**
+**Stripe subscription integration implemented. Needs Stripe account setup + env vars + DB migration before going live.**
+
+## Recently Shipped (2026-02-21, session 4 — Stripe integration)
+- **Stripe subscription flow**: Full Checkout → webhook → profile update pipeline
+  - `api/create-checkout.js` — JWT-verified, creates Stripe customer + checkout session
+  - `api/stripe-webhook.js` — verifies Stripe signature, sets `subscription_tier = 'premium'` on `checkout.session.completed`, resets to `free` on `customer.subscription.deleted`
+  - `api/create-portal.js` — opens Stripe billing portal for premium users
+  - `src/components/Upgrade.jsx` — upgrade page with monthly ($1.49) and annual ($9.99) cards
+  - `PremiumGate.jsx` — "Coming Soon" → "Upgrade to Premium" clickable button with `onNavigate`
+  - `Stats.jsx` — passes `onNavigate` down to PremiumGate
+  - `Profile.jsx` — Subscription card shows Free/Premium badge + Upgrade/Manage buttons
+  - `App.jsx` — routes `upgrade` page, handles `?upgraded=1` and `?upgrade=1` URL params, shows toast on success
+  - `eslint.config.js` — added Node.js globals block for `api/` directory
+  - `migrations/stripe-customer-migration.sql` — adds `stripe_customer_id` + `stripe_subscription_id` columns
+- **Pricing**: $1.49/month, $9.99/year (44% savings)
+- **Pending manual steps**: Stripe account setup, products/prices, webhook registration, Vercel env vars, run DB migration
 
 ## Recently Shipped (2026-02-21, session 3)
 - **Home page instant load fix**: Cached `profile` and `tournament` in localStorage so all three Home cards (Round in Progress, Your Stats, Active Tournament) render immediately on refresh instead of waiting 600-900ms
@@ -45,8 +60,9 @@
 - **Workflow:** All new work on `dev` → test on preview URL → merge to `main`
 
 ## What's Next
-- Phase 2: Stripe Checkout + Vercel `/api` serverless for real payments
-- Wire up toast notifications to error handling
+- Stripe setup: create Stripe account, products, prices, webhook endpoint, add env vars to Vercel
+- Run `migrations/stripe-customer-migration.sql` on both dev and production Supabase
+- Test with Stripe test card 4242 4242 4242 4242 on preview URL
 - Future: GHIN API integration
 
 ## Session Start Checklist

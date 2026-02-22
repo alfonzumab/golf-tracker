@@ -1,4 +1,4 @@
-const PremiumGate = ({ profile, children }) => {
+const PremiumGate = ({ profile, onNavigate, children }) => {
   if (profile?.subscription_tier === 'premium') {
     return children;
   }
@@ -26,17 +26,17 @@ const PremiumGate = ({ profile, children }) => {
         </div>
         <button
           className="btn"
+          onClick={() => onNavigate && onNavigate('upgrade')}
           style={{
             background: 'linear-gradient(135deg, #d4a017, #f0c040)',
             color: '#0b1a10',
             fontWeight: 700,
             fontSize: 14,
             minHeight: 44,
-            cursor: 'default',
-            opacity: 0.9,
+            cursor: 'pointer',
           }}
         >
-          Coming Soon
+          Upgrade to Premium
         </button>
       </div>
     </div>

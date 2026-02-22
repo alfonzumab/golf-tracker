@@ -4,6 +4,8 @@
 
 | Commit | Summary |
 |--------|---------|
+| `9f44ecc` | Make Android PWA install prompt prominent on auth screen |
+| `c0a291e` | Add landing page (landing/index.html) + Vercel config |
 | `fd2f562` | Codebase cleanup: delete legacy files, archive migrations, update docs |
 | `0f62b9f` | Fix Stats period filter: key ScoringCard on period to reset course dropdown |
 | `1159309` | UX refinements: home teaser top, remove profile earnings tab, net earnings card, no YTD pill |
@@ -38,6 +40,11 @@
 - Premium Stats Phase 1.5 (time period filter, scoring by par type + course, skins by hole/course, partner tracking, Records card, Net Earnings card, Home teaser at top, Stats nav icon)
 - UX refinements: earnings tab removed from Profile, YTD pill removed, period filter resets course dropdown
 - Codebase cleanup: deleted legacy files + Vite scaffold, archived all SQL migrations, updated CLAUDE.md
+- Landing page at settleup-golf.com (landing/index.html — hero, how it works, free vs premium table, CTA)
+- App moved to app.settleup-golf.com (Vercel domain reassignment + Cloudflare CNAME for app subdomain)
+- Two Vercel projects from one repo: `golf-tracker-app` → app subdomain, `settleup-landing` → root domain
+- Android PWA install banner: prominent green gradient block above auth card (not buried in form)
+- Dev database seeded: `seed-dev.sql` — 12 players, 4 courses, 40 finished rounds, 3 tournaments (Spring Scramble, Summer Classic, Ryder Cup 2026), all game types covered, Stats page fully exercised
 
 ## What's Left to Build
 

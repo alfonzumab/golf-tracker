@@ -17,12 +17,14 @@ No test framework is configured. ESLint flat config (v9+) allows unused variable
 
 | Branch | Environment | Vercel Deploy | Supabase Project | URL |
 |--------|------------|---------------|-----------------|-----|
-| `main` | Production | Auto on push | Production (original) | `settleup-golf.com` / `www.settleup-golf.com` |
+| `main` | Production | Auto on push | Production (original) | `app.settleup-golf.com` |
 | `dev` | Staging/Preview | Auto preview deploy | Dev (separate project) | `golf-tracker-app-git-dev-alfonzumabs-projects.vercel.app` |
 
 **All new feature work happens on `dev` first.** Only merge to `main` after testing on the Vercel preview URL.
 
-**Vercel project:** `golf-tracker-app` (the only project — `golf-tracker` was a duplicate and has been deleted).
+**Vercel projects:**
+- `golf-tracker-app` — serves the React app at `app.settleup-golf.com` (root dir: `/`)
+- `settleup-landing` — serves the static landing page at `settleup-golf.com` + `www.settleup-golf.com` (root dir: `landing/`). This is a separate project connected to the same GitHub repo — changes to `landing/index.html` auto-deploy from `main`.
 
 **Environment variables** in Vercel are split by environment:
 - **Production** env vars → production Supabase
@@ -31,7 +33,7 @@ No test framework is configured. ESLint flat config (v9+) allows unused variable
 **Dev Supabase project:**
 - URL: `https://ocjhtvnsfdroovnumehk.supabase.co`
 - Anon Key: `sb_publishable_Kq7A0cxio01HOxQ3zkkZSg_Ok-eb6jG`
-- Seeded with 9 test players and 3 courses
+- Seeded via `seed-dev.sql` (root dir): 12 players, 4 courses, 40 rounds (2025-03 → 2026-02), 3 tournaments
 - Separate auth database (need separate account)
 - Email confirmations disabled for convenience
 
@@ -90,7 +92,7 @@ Mobile-first (480px max-width) golf round tracker ("SideAction Golf") with real-
 
 On login, data loads from Supabase with localStorage as write-through cache. Players and courses are now **global shared data** protected by admin-only write access via RLS. Regular users can only modify their personal favorites. Guest players exist only for the current round session.
 
-**Profile System:** Each user has a profile with `linked_player_id` (optional) that references a global player. When set, TournamentSetup auto-selects this player on step 2. Profiles also store `display_name` and `role` ('user' or 'admin').
+**Profile System:** Each user has a profile with `linked_player_id` (optional) that references a global player. When set, TournamentSetup auto-selects this player on step 2, and the Stats page computes analytics for that player. Profiles also store `display_name`, `role` ('user'|'admin'), `phone_number` (used for SMS group text pre-population), `handicap_index`, `ghin_number`, `preferred_course_id`, and `subscription_tier` ('free'|'premium', default 'free') for Stats page gating.
 
 ### Persistence Pattern
 
@@ -119,7 +121,7 @@ When a round is finished (`finishRound` RPC), participants are tracked in `round
 All app state lives in `src/App.jsx` via `useState` hooks. No context/Redux — props drilled to children. The component tree is shallow (max 3 levels).
 
 **Page routing** is a string state (`pg`):
-- Regular pages: `home`, `players`, `courses`, `setup`, `score`, `bets`, `hist`
+- Regular pages: `home`, `players`, `courses`, `setup`, `score`, `bets`, `hist`, `stats`, `profile`
 - Tournament pages: `thub`, `tsetup`, `tjoin`, `tlobby`, `tscore`, `tboard`
 
 Convention: tournament pages start with `t`. The expression `pg.startsWith('t')` determines whether tournament nav is shown.
@@ -177,6 +179,29 @@ Do not create separate duplicate rendering for the same game type — combine ri
 
 `calcRyderCupStandings(tournament)` — Aggregates all match results. Returns `{ team1Points, team2Points, matchResults, totalMatches }`.
 
+### Stats Engine (`src/utils/statsCalc.js`)
+
+`calcAllStats(linkedPlayerId, rounds, tournamentHistory, timePeriod)` — main entry point. Returns null if no linked player. `timePeriod` is `'lifetime'` (default) or a 4-digit year string (`'2025'`). Filters the processed round list before passing to all sub-calculators, so every card automatically respects the selected period.
+
+Sub-calculators: `calcScoringStats`, `calcGamesStats`, `calcSkinsStats`, `calcHeadToHead`, `calcCoursesStats`, `calcTrends`, `calcFunStats`. Each receives the filtered `processed` array (enriched round objects with earnings/settlements pre-computed via `calcAll`).
+
+Return shape: `{ roundCount, scoring, games, skins, h2h, courses, trends, fun, availableYears }`. `availableYears` is always computed from the *unfiltered* rounds so period picker pills are always visible.
+
+**Key data structures:**
+- `scoring.byParType` — `{ par3, par4, par5: { avg, count } }` for par-type scoring averages
+- `scoring.byCourse` — `[{ name, grossAvg, netAvg, roundCount, distribution }]` per-course breakdown
+- `skins.byHoleByCourse` — `[{ courseName, holes: [{ hole, count }] }]` — which holes won at which course
+- `h2h.partners` — team game partner stats `[{ id, name, teamGames, teamNet }]`; also `bestPartner`/`worstPartner`
+- `h2h.allOpponentsByNet` — all opponents sorted by net (used by EarningsByPlayerCard in Stats.jsx)
+
+### Premium Stats UI (`src/components/Stats.jsx`, `src/components/PremiumGate.jsx`)
+
+`Stats.jsx` uses two `useMemo` calls: `allStats` (always `'lifetime'`, for `availableYears`) and `stats` (filtered by `period` state). Period pills render from `availableYears` — no "YTD" button; the current year is the YTD equivalent. `ScoringCard` receives `key={period}` so it remounts and resets its internal `courseFilter` state whenever the period changes.
+
+Seven premium cards (0-indexed, toggled by `exp` state): Scoring, Games, Skins, H2H, Courses, Earnings by Player, Records. Non-premium users see blurred card content via `PremiumGate.jsx` which wraps card body content.
+
+`PremiumGate.jsx` — wraps any premium content. Shows a blur overlay with upgrade prompt when `profile.subscription_tier !== 'premium'`.
+
 ### Golf Math (`src/utils/golf.js`)
 
 `calcCH` → `getStrokes` pipeline: Player's handicap index → course handicap (via slope/rating) → per-hole stroke allocation array. `enrichPlayer(player, teeData)` computes courseHandicap + strokeHoles from a raw player object — used by both tournament scoring and leaderboard. Also: `fmt$()` for currency display, `scoreClass()` for score-to-par CSS classes, `sixPairs()` for random 6-6-6 team generation.
@@ -191,7 +216,7 @@ Do not create separate duplicate rendering for the same game type — combine ri
 - `rounds` — composite PK (id, user_id), date, course (JSONB), players (JSONB), games (JSONB), is_current (BOOLEAN), share_code (TEXT, unique)
 - `user_preferences` — user_id (PK), selected_course_id
 - `user_favorites` — user_id, player_id (composite PK) — replaces per-player favorite flags
-- `profiles` — id (UUID FK to auth.users), email, display_name, role ('user'|'admin')
+- `profiles` — id (UUID FK to auth.users), email, display_name, role ('user'|'admin'), phone_number, linked_player_id (FK → players), preferred_course_id (FK → courses), handicap_index, ghin_number, subscription_tier (TEXT: 'free'|'premium', default 'free')
 
 **Shared table** (cross-user, RLS allows read by share code):
 - `tournaments` — id (UUID PK), share_code (TEXT, unique), host_user_id, name, date, course (JSONB), tee_name, groups (JSONB), tournament_games (JSONB), team_config (JSONB), format (TEXT: 'standard'|'rydercup'), status (TEXT: 'setup'|'live'|'finished')
@@ -205,7 +230,7 @@ Do not create separate duplicate rendering for the same game type — combine ri
 ### Theme & Styling
 
 - `src/theme.js` exports `T` (color tokens), `GT` (game type enum), `PC` (4 player colors), `TT` (team colors: `a`/`aD` = blue Team A, `b`/`bD` = pink Team B)
-- `src/styles.css` is static CSS with hardcoded hex values (originally a JS template literal resolved against `T`). Note: `src/App.css` and `src/index.css` are unused Vite scaffold files (not imported anywhere).
+- `src/styles.css` is static CSS with hardcoded hex values (originally a JS template literal resolved against `T`). This is the only stylesheet — there are no other CSS files.
 - Components use both CSS classes and inline styles referencing `T` object
 - Fonts: Playfair Display (headings), DM Sans (body) — loaded via `index.html`
 - CSS class convention: short abbreviated names (`.cd` = card, `.pg` = page, `.bp` = button primary, `.fx` = flex, `.mb10` = margin-bottom 10px)
@@ -250,7 +275,7 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_Kq7A0cxio01HOxQ3zkkZSg_Ok-eb6jG
 - `history-migration.sql` — round_participants, tournament_participants tables + history RPCs (finish_round, register_round_participant, reopen_round, load_tournament_history)
 - `player-links-migration.sql` — player_links view exposing linked_player_id + preferred_course_id
 - `phone-number-migration.sql` — phone_number column on profiles
-- `premium-stats-migration.sql` — premium_access column on profiles + RPC for granting access
+- `premium-stats-migration.sql` — original premium_access column (now superseded by subscription_tier TEXT column added manually)
 
 After migration, manually set admin role: `UPDATE public.profiles SET role = 'admin' WHERE email = 'YOUR_EMAIL';`
 

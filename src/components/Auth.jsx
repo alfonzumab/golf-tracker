@@ -216,6 +216,46 @@ const Auth = () => {
           <div className="auth-sub">Track rounds, settle bets</div>
         </div>
 
+        {/* Prominent install banner — shown on Android before login */}
+        {!isStandalone && isInstallable && (
+          <div style={{
+            background: 'linear-gradient(135deg, #2ecc71, #1a7a42)',
+            borderRadius: 16,
+            padding: '20px 20px',
+            marginBottom: 16,
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 4 }}>📱</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: '#0b1a10', marginBottom: 4 }}>
+              Install Settle Up Golf
+            </div>
+            <div style={{ fontSize: 13, color: '#0b3320', marginBottom: 16, lineHeight: 1.4 }}>
+              Add to your home screen for the full app experience — no App Store needed.
+            </div>
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              style={{
+                background: '#0b1a10',
+                color: '#4ade80',
+                border: 'none',
+                borderRadius: 12,
+                padding: '14px 28px',
+                fontSize: 16,
+                fontWeight: 700,
+                width: '100%',
+                cursor: 'pointer',
+                minHeight: 48,
+              }}
+            >
+              Add to Home Screen
+            </button>
+            <div style={{ fontSize: 12, color: '#0b3320', marginTop: 10 }}>
+              Already installed? Sign in below.
+            </div>
+          </div>
+        )}
+
         <div className="auth-card">
           <div className="tabs mb10">
             <button className={`tab ${mode === "login" ? "on" : ""}`} onClick={() => { setMode("login"); setError(null); setMessage(null); }}>Log In</button>
@@ -264,26 +304,21 @@ const Auth = () => {
             {loading ? "..." : "Continue with Google"}
           </button>
 
-          {/* PWA Install Button */}
-          {!isStandalone && (isInstallable || isIOS) && (
+          {/* iOS install button — stays in form since iOS can't use beforeinstallprompt */}
+          {!isStandalone && isIOS && (
             <>
               <div className="auth-divider">
                 <span>or</span>
               </div>
-              <button 
-                onClick={handleInstallClick} 
+              <button
+                onClick={handleInstallClick}
                 className="btn bs"
-                style={{ 
-                  background: '#4ade80', 
-                  color: '#0b1a10', 
-                  border: 'none',
-                  fontWeight: 600
-                }}
+                style={{ background: '#4ade80', color: '#0b1a10', border: 'none', fontWeight: 600 }}
               >
-                📱 {isIOS ? 'Add to Home Screen' : 'Install App'}
+                📱 Add to Home Screen
               </button>
               <div style={{ fontSize: 12, color: '#6b9b7a', textAlign: 'center', marginTop: 8 }}>
-                Install for offline access & faster loading
+                Tap Share → Add to Home Screen in Safari
               </div>
             </>
           )}
